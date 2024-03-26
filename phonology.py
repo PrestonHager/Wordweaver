@@ -33,6 +33,9 @@ class Phoneme:
         self.stype = stype
         self.sound = self._lookup(sound)
     
+    def __str__(self) -> str:
+        return f"{self.sound}"
+
     def __repr__(self) -> str:
         return f"<{self.__class__.__module__}.{self.__class__.__qualname__} of type {self.stype} - {self.sound}>"
 
