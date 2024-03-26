@@ -340,7 +340,7 @@ VOWELS = {
     },
     "mid": {
         "central": {
-            "uh": "ə"
+            "euh": "ə"
         }
     },
     "open-mid": {
@@ -421,6 +421,7 @@ VOWELS_LOOKUP = {
     "eh": "\u025b",
     "ehy": "\u0153",
     "eu": "\u0258",
+    "euh": "\u0259",
     "ey": "\u00f8",
     "i": "i",
     "ie": "\u026a",
