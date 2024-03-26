@@ -5,7 +5,7 @@ import unittest
 # Add the parent directory to the path so we can import the module we want to test
 import sys
 from os import path
-sys.path.append(path.abspath(path.join(path.dirname(__file__), '..')))
+sys.path.append(path.abspath(path.join(path.dirname(__file__), '../src')))
 
 from wordweaver_project import WordweaverProject
 from phonology import Phoneme, PhonemeType

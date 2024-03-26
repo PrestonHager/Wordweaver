@@ -234,7 +234,7 @@ if __name__ == "__main__":
     # Set the application ID for Windows
     try:
         from ctypes import windll
-        myappid = 'xyz.prestonhager.wordweaver.1.0.0'
+        myappid = 'xyz.prestonhager.wordweaver'
         windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
     except ImportError:
         pass
