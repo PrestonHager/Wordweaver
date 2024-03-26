@@ -131,7 +131,7 @@ PULMONIC_CONSONANTS = {
             "lz": "ɮ"
         }
     },
-    "approximate": {
+    "approximant": {
         "labio-dental": {
             "vr": "ʋ"
         },
@@ -148,7 +148,7 @@ PULMONIC_CONSONANTS = {
             "rw": "ɰ"
         }
     },
-    "lateral-approximate": {
+    "lateral-approximant": {
         "post-alveolar": {
             "l": "l"
         },
@@ -287,6 +287,19 @@ PULMONIC_CONSONANTS_LOOKUP = {
     "zr": "\u0290"
 }
 
+PULMONIC_CONSONANTS_LOOKUP_REVERSE = {v: k for k, v in PULMONIC_CONSONANTS_LOOKUP.items()}
+
+NON_PULMONIC_CONSONANTS = {
+}
+
+NON_PULMONIC_CONSONANTS_TABLE = {
+}
+
+NON_PULMONIC_CONSONANTS_LOOKUP = {
+}
+
+NON_PULMONIC_CONSONANTS_LOOKUP_REVERSE = {v: k for k, v in NON_PULMONIC_CONSONANTS_LOOKUP.items()}
+
 VOWELS = {
     "close": {
         "front": {
@@ -424,6 +437,8 @@ VOWELS_LOOKUP = {
     "y": "y",
     "ye": "\u028f"
 }
+
+VOWELS_LOOKUP_REVERSE = {v: k for k, v in VOWELS_LOOKUP.items()}
 
 __all__ = [
     "PULMONIC_CONSONANTS",
