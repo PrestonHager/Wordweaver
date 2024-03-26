@@ -7,24 +7,71 @@ class WordweaverProject:
     def __init__(self, name: str, file: str=None, pulmonic_inventory: list[Phoneme] | list[str]=[], non_pulmonic_inventory: list[Phoneme] | list[str]=[], vowel_inventory: list[Phoneme] | list[str]=[], lexicon: list[str]=[]):
         self.name = name
         self.file = file
-        self.pulmonic_inventory = pulmonic_inventory
-        self.non_pulmonic_inventory = non_pulmonic_inventory
-        self.vowel_inventory = vowel_inventory
-        self.lexicon = lexicon
+        self._pulmonic_inventory = pulmonic_inventory
+        self._non_pulmonic_inventory = non_pulmonic_inventory
+        self._vowel_inventory = vowel_inventory
+        self._lexicon = lexicon
         # Convert strings to Phoneme objects
         if all(isinstance(sound, str) for sound in pulmonic_inventory):
-            self.pulmonic_inventory = [Phoneme(sound, PhonemeType.PULMONIC_CONSONANT) for sound in pulmonic_inventory]
+            self._pulmonic_inventory = [Phoneme(sound, PhonemeType.PULMONIC_CONSONANT) for sound in pulmonic_inventory]
         elif not all(isinstance(sound, Phoneme) for sound in pulmonic_inventory):
             raise ValueError("Invalid pulmonic inventory; values must be of type str or Phoneme")
         if all(isinstance(sound, str) for sound in non_pulmonic_inventory):
-            self.non_pulmonic_inventory = [Phoneme(sound, PhonemeType.NON_PULMONIC_CONSONANT) for sound in non_pulmonic_inventory]
+            self._non_pulmonic_inventory = [Phoneme(sound, PhonemeType.NON_PULMONIC_CONSONANT) for sound in non_pulmonic_inventory]
         elif not all(isinstance(sound, Phoneme) for sound in non_pulmonic_inventory):
             raise ValueError("Invalid non-pulmonic inventory; values must be of type str or Phoneme")
         if all(isinstance(sound, str) for sound in vowel_inventory):
-            self.vowel_inventory = [Phoneme(sound, PhonemeType.VOWEL) for sound in vowel_inventory]
+            self._vowel_inventory = [Phoneme(sound, PhonemeType.VOWEL) for sound in vowel_inventory]
         elif not all(isinstance(sound, Phoneme) for sound in vowel_inventory):
             raise ValueError("Invalid vowel inventory; values must be of type str or Phoneme")
     
+    @property
+    def pulmonic_inventory(self) -> list[Phoneme]:
+        return self._pulmonic_inventory
+    
+    @pulmonic_inventory.setter
+    def pulmonic_inventory(self, value: list[Phoneme]):
+        if all(isinstance(sound, str) for sound in value):
+            self._pulmonic_inventory = [Phoneme(sound, PhonemeType.PULMONIC_CONSONANT) for sound in value]
+        elif not all(isinstance(sound, Phoneme) for sound in value):
+            raise ValueError("Invalid pulmonic inventory; values must be of type Phoneme")
+        else:
+            self._pulmonic_inventory = value
+    
+    @property
+    def non_pulmonic_inventory(self) -> list[Phoneme]:
+        return self._non_pulmonic_inventory
+    
+    @non_pulmonic_inventory.setter
+    def non_pulmonic_inventory(self, value: list[Phoneme]):
+        if all(isinstance(sound, str) for sound in value):
+            self._non_pulmonic_inventory = [Phoneme(sound, PhonemeType.NON_PULMONIC_CONSONANT) for sound in value]
+        elif not all(isinstance(sound, Phoneme) for sound in value):
+            raise ValueError("Invalid non-pulmonic inventory; values must be of type Phoneme")
+        else:
+            self._non_pulmonic_inventory = value
+    
+    @property
+    def vowel_inventory(self) -> list[Phoneme]:
+        return self._vowel_inventory
+    
+    @vowel_inventory.setter
+    def vowel_inventory(self, value: list[Phoneme]):
+        if all(isinstance(sound, str) for sound in value):
+            self._vowel_inventory = [Phoneme(sound, PhonemeType.VOWEL) for sound in value]
+        elif not all(isinstance(sound, Phoneme) for sound in value):
+            raise ValueError("Invalid vowel inventory; values must be of type Phoneme")
+        else:
+            self._vowel_inventory = value
+    
+    @property
+    def lexicon(self) -> list[str]:
+        return self._lexicon
+    
+    @lexicon.setter
+    def lexicon(self, value: list[str]):
+        self._lexicon = value
+
     def save(self) -> bool:
         if self.file is None:
             return False

@@ -10,6 +10,7 @@ from platformdirs import user_cache_dir
 
 from phonology_defaults import DEFAULT_PULMONIC_PHONOLOGY_INVENTORY, DEFAULT_VOWEL_PHONOLOGY_INVENTORY
 from wordweaver_project import WordweaverProject
+from phonology_selector import PhonologySelector
 
 class App(QMainWindow):
     def __init__(self, project: WordweaverProject=None):
@@ -59,6 +60,7 @@ class App(QMainWindow):
         self.phonology_text = QTextEdit(self.project_view)
         self.phonology_text.setReadOnly(True)
         phonology_edit_button = QPushButton("Edit Phonology", self.project_view)
+        phonology_edit_button.clicked.connect(self.edit_phonology)
         self.project_view_layout.addWidget(phonology_label, 1, 0)
         self.project_view_layout.addWidget(self.phonology_text, 2, 0)
         self.project_view_layout.addWidget(phonology_edit_button, 3, 0)
@@ -67,6 +69,7 @@ class App(QMainWindow):
         self.lexicon_text = QTextEdit(self.project_view)
         self.lexicon_text.setReadOnly(True)
         lexicon_edit_button = QPushButton("Edit Lexicon", self.project_view)
+        lexicon_edit_button.clicked.connect(self.edit_lexicon)
         self.project_view_layout.addWidget(lexicon_label, 1, 1)
         self.project_view_layout.addWidget(self.lexicon_text, 2, 1)
         self.project_view_layout.addWidget(lexicon_edit_button, 3, 1)
@@ -199,6 +202,21 @@ class App(QMainWindow):
 
     def redo(self):
         pass
+
+    def edit_phonology(self):
+        if not hasattr(self, "phonology_selector"):
+            self.phonology_selector = PhonologySelector(self.project)
+        self.phonology_selector.show()
+        self.phonology_selector.activateWindow()
+        self.phonology_selector.closeEvent = self._close_phonology_selector
+
+    def edit_lexicon(self):
+        pass
+
+    def _close_phonology_selector(self, a0: QCloseEvent | None) -> None:
+        self.project = self.phonology_selector.project
+        self._update_project_view()
+        return super().closeEvent(a0)
 
     def closeEvent(self, a0: QCloseEvent | None) -> None:
         # If there is an unsaved project, then prompt the user to save it

@@ -1,25 +1,28 @@
 # phonology_selector.py
 
-from PyQt6.QtWidgets import QApplication, QPushButton, QGridLayout, QHBoxLayout, QLabel, QTextEdit, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QApplication, QPushButton, QGridLayout, QHBoxLayout, QLabel, QMainWindow, QTextEdit, QVBoxLayout, QWidget
 from PyQt6.QtGui import QFont
 from PyQt6.QtCore import Qt
 
 from phonology_const import PULMONIC_CONSONANTS
-from phonology_defaults import DEFAULT_PLUMONIC_PHONOLOGY_INVENTORY
+from wordweaver_project import WordweaverProject
 
-class PhonologySelector(QWidget):
-    def __init__(self, phonology_inventory=DEFAULT_PLUMONIC_PHONOLOGY_INVENTORY):
+class PhonologySelector(QMainWindow):
+    def __init__(self, project: WordweaverProject=None):
         super().__init__()
 
         # Setup defaults for the class
-        self.phonology_inventory = phonology_inventory
+        self._project = project
+        self.phonology_inventory = [p.sound_ascii for p in self._project.pulmonic_inventory] if self._project is not None else []
 
         # Construct GUI
         self.setWindowTitle("Phonology Selector")
 
         self.setGeometry(100, 100, 640, 480)
 
-        self.layout = QVBoxLayout(self)
+        widget = QWidget(self)
+        self.setCentralWidget(widget)
+        self.layout = QVBoxLayout(widget)
 
         # Add text and header
         header = QLabel("Phonology Selector", self)
@@ -124,8 +127,14 @@ class PhonologySelector(QWidget):
                         phoneme = button.property("phoneme")
                         button.setChecked(phoneme in self.phonology_inventory)
 
+    @property
+    def project(self):
+        # Update the project with the new phonology inventory
+        if self._project is not None:
+            self._project.pulmonic_inventory = self.phonology_inventory
+        return self._project
+
     def save(self):
-        print("Inventory: ", self.phonology_inventory)
         self.close()
 
 if __name__ == "__main__":
