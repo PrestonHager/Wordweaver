@@ -37,7 +37,8 @@ class Phoneme:
         return f"{self.sound}"
 
     def __repr__(self) -> str:
-        return f"<{self.__class__.__module__}.{self.__class__.__qualname__} of type {self.stype} - {self.sound}>"
+        # return f"<{self.__class__.__module__}.{self.__class__.__qualname__} of type {self.stype} - {self.sound}>"
+        return f"'{self.sound_ascii}'"
 
     def __eq__(self, other) -> bool:
         return self.sound == other.sound and self.stype == other.stype

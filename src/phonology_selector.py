@@ -4,6 +4,8 @@ from PyQt6.QtWidgets import QApplication, QPushButton, QGridLayout, QHBoxLayout,
 from PyQt6.QtGui import QFont
 from PyQt6.QtCore import Qt
 
+import logging
+
 from phonology_const import PULMONIC_CONSONANTS
 from wordweaver_project import WordweaverProject
 
@@ -11,11 +13,14 @@ class PhonologySelector(QMainWindow):
     def __init__(self, project: WordweaverProject=None):
         super().__init__()
 
+        self.logger = logging.getLogger(__name__ + "." + self.__class__.__name__)
+
         # Setup defaults for the class
         self._project = project
         self.phonology_inventory = [p.sound_ascii for p in self._project.pulmonic_inventory] if self._project is not None else []
 
         # Construct GUI
+        self.logger.debug("Constructing PhonologySelector GUI")
         self.setWindowTitle("Phonology Selector")
 
         self.setGeometry(100, 100, 640, 480)
@@ -70,6 +75,7 @@ class PhonologySelector(QMainWindow):
         self.layout.addWidget(buttons)
 
     def _add_phonology_const(self):
+        self.logger.debug("Adding phonology consonant buttons to PhonologySelector")
         manners = ["nasal", "plosive", "trill", "tap", "fricative", "lateral-fricative", "approximant", "lateral-approximant"]
         places = ["bi-labial", "labio-dental", "dental", "alveolar", "post-alveolar", "retroflex", "palatal", "velar", "uvular", "pharyngeal", "glottal"]
         # Add the labels
@@ -109,6 +115,7 @@ class PhonologySelector(QMainWindow):
     def _on_phoneme_button_clicked(self, checked):
         button = self.sender()
         phoneme = button.property("phoneme")
+        self.logger.debug(f"Phoneme `{phoneme}` is now {'selected' if checked else 'deselected'}")
         if checked:
             self.phonology_inventory.append(phoneme)
         else:
@@ -117,6 +124,7 @@ class PhonologySelector(QMainWindow):
         self.selection.setText(', '.join(self.phonology_inventory))
     
     def update_selection(self):
+        self.logger.debug("Updating phonology inventory from selection text box")
         self.phonology_inventory = self.selection.toPlainText().split(", ")
         for i in range(1, self.grid_layout.rowCount()):
             for j in range(1, self.grid_layout.columnCount()):

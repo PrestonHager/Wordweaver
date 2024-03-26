@@ -65,6 +65,14 @@ class WordweaverProject:
             self._vowel_inventory = value
     
     @property
+    def inventory(self) -> dict[str, Phoneme]:
+        return {
+            "pulmonic": self.pulmonic_inventory,
+            "non_pulmonic": self.non_pulmonic_inventory,
+            "vowel": self.vowel_inventory,
+        }
+
+    @property
     def lexicon(self) -> list[str]:
         return self._lexicon
     

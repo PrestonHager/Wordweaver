@@ -4,9 +4,12 @@ from PyQt6.QtWidgets import QApplication, QFileDialog, QPushButton, QGridLayout,
 from PyQt6.QtGui import QCloseEvent, QFont, QIcon
 from PyQt6.QtCore import Qt
 from os import path
-from platformdirs import user_cache_dir
+from platformdirs import user_cache_dir, user_log_dir
 # Note: you may also need user_data_dir,
 # user_log_dir, and user_runtime_dir (aka temp folder)
+
+import logging
+import pyperclip
 
 from phonology_defaults import DEFAULT_PULMONIC_PHONOLOGY_INVENTORY, DEFAULT_VOWEL_PHONOLOGY_INVENTORY
 from wordweaver_project import WordweaverProject
@@ -16,10 +19,14 @@ class App(QMainWindow):
     def __init__(self, project: WordweaverProject=None):
         super().__init__()
 
+        # Setup the logger
+        self.logger = logging.getLogger(__name__ + "." + self.__class__.__name__)
+
         # Set class defaults
         self.project = project
 
         # Construct GUI
+        self.logger.debug("Constructing GUI")
         self.setWindowTitle("Wordweaver")
 
         self.setGeometry(100, 100, 640, 480)
@@ -81,44 +88,61 @@ class App(QMainWindow):
         self.layout.addWidget(self.project_view)
 
         # Add menu buttons
+        self.logger.debug("Creating menubar and actions")
         menubar = self.menuBar()
 
-        file_menu = QMenu("&File", self)
-        new_action = file_menu.addAction("&New Project")
+        self.file_menu = QMenu("&File", self)
+        new_action = self.file_menu.addAction("&New Project")
         new_action.triggered.connect(self.new_project)
         new_action.setShortcut("Ctrl+N")
-        open_action = file_menu.addAction("&Open Project")
+        open_action = self.file_menu.addAction("&Open Project")
         open_action.triggered.connect(self.open_project)
         open_action.setShortcut("Ctrl+O")
-        close_action = file_menu.addAction("&Close Project")
+        close_action = self.file_menu.addAction("&Close Project")
         close_action.triggered.connect(self.close_project)
         close_action.setShortcut("Ctrl+W")
-        save_action = file_menu.addAction("&Save Project")
+        close_action.setEnabled(self.project is not None)
+        self.file_menu.addSeparator()
+        save_action = self.file_menu.addAction("&Save Project")
         save_action.triggered.connect(self.save)
         save_action.setShortcut("Ctrl+S")
-        save_as_action = file_menu.addAction("S&ave Project As")
+        save_action.setEnabled(self.project is not None)
+        save_as_action = self.file_menu.addAction("S&ave Project As")
         save_as_action.triggered.connect(self.save_as)
         save_as_action.setShortcut("Ctrl+Shift+S")
-        menubar.addMenu(file_menu)
+        save_as_action.setEnabled(self.project is not None)
+        menubar.addMenu(self.file_menu)
 
-        edit_menu = QMenu("&Edit", self)
-        copy_action = edit_menu.addAction("&Copy")
+        self.edit_menu = QMenu("&Edit", self)
+        copy_action = self.edit_menu.addAction("&Copy")
         copy_action.triggered.connect(self.copy)
         copy_action.setShortcut("Ctrl+C")
-        paste_action = edit_menu.addAction("&Paste")
+        copy_action.setEnabled(self.project is not None)
+        paste_action = self.edit_menu.addAction("&Paste")
         paste_action.triggered.connect(self.paste)
         paste_action.setShortcut("Ctrl+V")
+        paste_action.setEnabled(self.project is not None and pyperclip.paste() != '')
         # TODO: implement undo and redo
-        # edit_menu.addSeparator()
-        # undo_action = edit_menu.addAction("&Undo")
+        # self.edit_menu.addSeparator()
+        # undo_action = self.edit_menu.addAction("&Undo")
         # undo_action.triggered.connect(self.undo)
         # undo_action.setShortcut("Ctrl+Z")
-        # redo_action = edit_menu.addAction("&Redo")
+        # redo_action = self.edit_menu.addAction("&Redo")
         # redo_action.triggered.connect(self.redo)
         # redo_action.setShortcut("Ctrl+Y")
-        menubar.addMenu(edit_menu)
+        menubar.addMenu(self.edit_menu)
 
     def _update_main_view(self):
+        # Set menu action states
+        # Close project
+        self.file_menu.actions()[2].setEnabled(self.project is not None)
+        # Save project and save as
+        self.file_menu.actions()[4].setEnabled(self.project is not None)
+        self.file_menu.actions()[5].setEnabled(self.project is not None)
+        # Copy and paste
+        self.edit_menu.actions()[0].setEnabled(self.project is not None)
+        self.edit_menu.actions()[1].setEnabled(self.project is not None and pyperclip.paste() != '')
+        # Set project view and welcome message visibility
         if self.project is None:
             self.welcome_text.show()
             self.project_view.hide()
@@ -145,6 +169,7 @@ class App(QMainWindow):
         if ok and name:
             self.project = WordweaverProject(name, None, DEFAULT_PULMONIC_PHONOLOGY_INVENTORY, [], DEFAULT_VOWEL_PHONOLOGY_INVENTORY, [])
             self._update_main_view()
+            self.logger.info(f"Created new project: {name}")
     
     def open_project(self):
         # If there is an unsaved project, then prompt the user to save it
@@ -158,6 +183,7 @@ class App(QMainWindow):
         if dialog.exec() == QFileDialog.DialogCode.Accepted:
             self.project = WordweaverProject.from_file(dialog.selectedFiles()[0])
             self._update_main_view()
+            self.logger.info(f"Opened project: {self.project.name}")
 
     def close_project(self):
         # If there is an unsaved project, then prompt the user to save it
@@ -166,6 +192,7 @@ class App(QMainWindow):
                 return
         self.project = None
         self._update_main_view()
+        self.logger.info("Closed current project")
 
     def prompt_save(self) -> bool:
         return True
@@ -175,6 +202,7 @@ class App(QMainWindow):
         if self.project is not None:
             if self.project.file is not None:
                 self.project.save()
+                self.logger.info(f"Saved project \"{self.project.name}\" to {self.project.file}")
             else:
                 # if it doesn't, use the save as dialog.
                 self.save_as()
@@ -190,12 +218,15 @@ class App(QMainWindow):
         if dialog.exec() == QFileDialog.DialogCode.Accepted:
             self.project.file = dialog.selectedFiles()[0]
             self.project.save()
+            self.logger.info(f"Saved project \"{self.project.name}\" to {self.project.file} and updated project file location.")
 
     def copy(self):
-        pass
+        # Copy the current phonology text
+        pyperclip.copy(self.phonology_text.toPlainText())
 
     def paste(self):
-        pass
+        # Use the following command to paste
+        pyperclip.paste()
 
     def undo(self):
         pass
@@ -206,6 +237,7 @@ class App(QMainWindow):
     def edit_phonology(self):
         if not hasattr(self, "phonology_selector"):
             self.phonology_selector = PhonologySelector(self.project)
+            self.logger.debug("Created new phonology selector window")
         self.phonology_selector.show()
         self.phonology_selector.activateWindow()
         self.phonology_selector.closeEvent = self._close_phonology_selector
@@ -216,6 +248,9 @@ class App(QMainWindow):
     def _close_phonology_selector(self, a0: QCloseEvent | None) -> None:
         self.project = self.phonology_selector.project
         self._update_project_view()
+        self.logger.debug("Closed phonology selector window and updated project")
+        self.logger.info(f"Updated phonology to {self.project.inventory}")
+        delattr(self, "phonology_selector")
         return super().closeEvent(a0)
 
     def closeEvent(self, a0: QCloseEvent | None) -> None:
@@ -226,29 +261,51 @@ class App(QMainWindow):
             # Save the window metadata for later
             with open(path.join(user_cache_dir("Wordweaver", False, ensure_exists=True), ".editor"), "w") as f_out:
                 f_out.write(f"{self.project.file}")
+            self.logger.info("Saved project file location to cache file.")
+        else:
+            # Remove the cache file if there is no project
+            if path.exists(path.join(user_cache_dir("Wordweaver", False), ".editor")):
+                self.logger.info("Removing cache file.")
+                path.unlink(path.join(user_cache_dir("Wordweaver", False), ".editor"))
         return super().closeEvent(a0)
 
 if __name__ == "__main__":
+    # Parse command line arguments
+    import argparse
+    parser = argparse.ArgumentParser(description="Wordweaver: A complete toolbox for all things conlang.")
+    parser.add_argument("-v", "--verbose", action="store", help="Enable verbose logging", default="WARNING", choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"])
+    args = parser.parse_args()
+    # Setup logging defaults
+    logging.basicConfig(filename=path.join(user_log_dir("Wordweaver", False, ensure_exists=True), "wordweaver.log"), encoding="utf-8", level=args.verbose, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     import sys
+    logger = logging.getLogger(__name__)
     basedir = path.dirname(__file__)
     # Set the application ID for Windows
     try:
         from ctypes import windll
+        logger.debug("Setting application ID for Windows")
         myappid = 'xyz.prestonhager.wordweaver'
         windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
     except ImportError:
         pass
     # Look for current cache file
     if path.exists(path.join(user_cache_dir("Wordweaver", False, ensure_exists=True), ".editor")):
+        logger.info("Found cache file, trying to load project...")
         with open(path.join(user_cache_dir("Wordweaver", False), ".editor"), "r") as f_in:
             project_file = f_in.read().strip()
         if path.exists(project_file):
             project = WordweaverProject.from_file(project_file)
+            logger.info("Successfully loaded project from cache file.")
         else:
             project = None
+            logger.info("Failed to load project from cache file.")
+    else:
+        project = None
     # Create an application and run it
+    logger.debug("Create application")
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon(path.join(basedir, "wordweaver.ico")))
     window = App(project)
     window.show()
+    logger.debug("Running application")
     app.exec()
