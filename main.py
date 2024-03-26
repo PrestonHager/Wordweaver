@@ -1,7 +1,7 @@
 # main.py
 
 from PyQt6.QtWidgets import QApplication, QFileDialog, QPushButton, QGridLayout, QHBoxLayout, QInputDialog, QLabel, QMainWindow, QMenu, QScrollArea, QSizePolicy, QTextEdit, QVBoxLayout, QWidget
-from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QFont, QIcon
 from PyQt6.QtCore import Qt
 
 from phonology_defaults import DEFAULT_PULMONIC_PHONOLOGY_INVENTORY, DEFAULT_VOWEL_PHONOLOGY_INVENTORY
@@ -129,8 +129,18 @@ class App(QMainWindow):
         pass
 
 if __name__ == "__main__":
-    from sys import argv
-    app = QApplication(argv)
+    import sys
+    from os import path
+    basedir = path.dirname(__file__)
+
+    try:
+        from ctypes import windll  # Only exists on Windows.
+        myappid = 'xyz.prestonhager.wordweaver.1.0.0'
+        windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+    except ImportError:
+        pass
+    app = QApplication(sys.argv)
+    app.setWindowIcon(QIcon(path.join(basedir, "wordweaver.ico")))
     window = App()
     window.show()
     app.exec()
