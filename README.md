@@ -74,6 +74,10 @@ python -m PyInstaller Wordweaver.spec
 The packaged application will be in the `dist` directory.
 You can then use the built binary to run the application.
 
+When releasing new versions, update the version number in the `VERSION` file.
+The `src/VERSION` file is used only when running the application from source.
+The `VERSION` file is used when packaging the application with PyInstaller.
+
 To build an installer will depend on your operating system.
 You must run the appropriate command for your system:
 

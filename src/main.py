@@ -3,8 +3,9 @@
 from PyQt6.QtWidgets import QApplication, QFileDialog, QPushButton, QGridLayout, QHBoxLayout, QInputDialog, QLabel, QMainWindow, QMenu, QScrollArea, QSizePolicy, QTextEdit, QVBoxLayout, QWidget
 from PyQt6.QtGui import QCloseEvent, QFont, QIcon
 from PyQt6.QtCore import Qt
-from os import path
-from platformdirs import user_cache_dir, user_log_dir
+# from os import path
+from pathlib import Path
+from platformdirs import user_cache_path, user_log_path
 # Note: you may also need user_data_dir,
 # user_log_dir, and user_runtime_dir (aka temp folder)
 
@@ -12,6 +13,7 @@ import logging
 import pyperclip
 
 # from phonology_defaults import DEFAULT_PULMONIC_PHONOLOGY_INVENTORY, DEFAULT_VOWEL_PHONOLOGY_INVENTORY
+from about import About
 from wordweaver_project import WordweaverProject
 from phonology_selector import PhonologySelector
 
@@ -111,6 +113,13 @@ class App(QMainWindow):
         save_as_action.triggered.connect(self.save_as)
         save_as_action.setShortcut("Ctrl+Shift+S")
         save_as_action.setEnabled(self.project is not None)
+        self.file_menu.addSeparator()
+        about_action = self.file_menu.addAction("A&bout")
+        about_action.triggered.connect(self.open_about)
+        about_action.setShortcut("F1")
+        exit_action = self.file_menu.addAction("&Exit")
+        exit_action.triggered.connect(self.close)
+        exit_action.setShortcut("Alt+F4")
         menubar.addMenu(self.file_menu)
 
         self.edit_menu = QMenu("&Edit", self)
@@ -168,7 +177,7 @@ class App(QMainWindow):
                                         text="Untitled Project")
         if ok and name:
             try:
-                self.project = WordweaverProject.from_file(path.join(path.dirname(__file__), "default.wwproj"))
+                self.project = WordweaverProject.from_file(Path(__file__).parent.joinpath(Path("default.wwproj").absolute()))
             except FileNotFoundError:
                 self.logger.warning("Default project file not found; creating new empty project.")
                 self.project = WordweaverProject(name)
@@ -225,6 +234,14 @@ class App(QMainWindow):
             self.project.file = dialog.selectedFiles()[0]
             self.project.save()
             self.logger.info(f"Saved project \"{self.project.name}\" to {self.project.file} and updated project file location.")
+    
+    def open_about(self):
+        if not hasattr(self, "about_window"):
+            self.about_window = About(self)
+            self.logger.debug("Created about window")
+        self.about_window.show()
+        self.about_window.activateWindow()
+        self.about_window.closeEvent = self._close_about_window
 
     def copy(self):
         # Copy the current phonology text
@@ -251,6 +268,10 @@ class App(QMainWindow):
     def edit_lexicon(self):
         pass
 
+    def _close_about_window(self, a0: QCloseEvent | None) -> None:
+        delattr(self, "about_window")
+        return super().closeEvent(a0)
+
     def _close_phonology_selector(self, a0: QCloseEvent | None) -> None:
         self.project = self.phonology_selector.project
         self._update_project_view()
@@ -265,14 +286,14 @@ class App(QMainWindow):
             if not self.prompt_save():
                 pass
             # Save the window metadata for later
-            with open(path.join(user_cache_dir("Wordweaver", False, ensure_exists=True), ".editor"), "w") as f_out:
+            with open(user_cache_path("Wordweaver", False, ensure_exists=True).joinpath(Path(".editor")), "w") as f_out:
                 f_out.write(f"{self.project.file}")
             self.logger.info("Saved project file location to cache file.")
         else:
             # Remove the cache file if there is no project
-            if path.exists(path.join(user_cache_dir("Wordweaver", False), ".editor")):
+            if user_cache_path("Wordweaver", False).joinpath(Path(".editor")).exists():
                 self.logger.info("Removing cache file.")
-                path.unlink(path.join(user_cache_dir("Wordweaver", False), ".editor"))
+                user_cache_path("Wordweaver", False).joinpath(Path(".editor")).unlink()
         return super().closeEvent(a0)
 
 if __name__ == "__main__":
@@ -282,10 +303,10 @@ if __name__ == "__main__":
     parser.add_argument("-v", "--verbose", action="store", help="Enable verbose logging", default="WARNING", choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"])
     args = parser.parse_args()
     # Setup logging defaults
-    logging.basicConfig(filename=path.join(user_log_dir("Wordweaver", False, ensure_exists=True), "wordweaver.log"), encoding="utf-8", level=args.verbose, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    logging.basicConfig(filename=user_log_path("Wordweaver", False, ensure_exists=True).joinpath(Path("wordweaver.log")), encoding="utf-8", level=args.verbose, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     import sys
     logger = logging.getLogger(__name__)
-    basedir = path.dirname(__file__)
+    basedir = Path(__file__).parent
     # Set the application ID for Windows
     try:
         from ctypes import windll
@@ -295,11 +316,11 @@ if __name__ == "__main__":
     except ImportError:
         pass
     # Look for current cache file
-    if path.exists(path.join(user_cache_dir("Wordweaver", False, ensure_exists=True), ".editor")):
+    if user_cache_path("Wordweaver", False).joinpath(Path(".editor")).exists():
         logger.info("Found cache file, trying to load project...")
-        with open(path.join(user_cache_dir("Wordweaver", False), ".editor"), "r") as f_in:
+        with open(user_cache_path("Wordweaver", False).joinpath(Path(".editor")), "r") as f_in:
             project_file = f_in.read().strip()
-        if path.exists(project_file):
+        if Path(project_file).exists():
             project = WordweaverProject.from_file(project_file)
             logger.info("Successfully loaded project from cache file.")
         else:
@@ -310,7 +331,9 @@ if __name__ == "__main__":
     # Create an application and run it
     logger.debug("Create application")
     app = QApplication(sys.argv)
-    app.setWindowIcon(QIcon(path.join(basedir, "wordweaver.ico")))
+    icon = QIcon()
+    icon.addFile(str(basedir.joinpath(Path("icons/wordweaver.ico")).absolute()))
+    app.setWindowIcon(icon)
     window = App(project)
     window.show()
     logger.debug("Running application")

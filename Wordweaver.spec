@@ -1,11 +1,15 @@
 # -*- mode: python ; coding: utf-8 -*-
+from PyInstaller.utils.hooks import collect_data_files
+
+datas = [('src/icons/', 'icons/'), ('VERSION', '.')]
+datas += collect_data_files('ipapy')
 
 
 a = Analysis(
     ['src/main.py'],
     pathex=[],
     binaries=[],
-    datas=[('wordweaver.ico', '.')],
+    datas=datas,
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
@@ -34,5 +38,25 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['wordweaver.ico'],
+    icon=['src/icons/wordweaver.ico'],
+)
+
+# NOTE: The .app bundle is experimental code and may not work as expected
+app = BUNDLE(
+    exe,
+    name='Wordweaver.app',
+    icon='src/icons/wordweaver.ico',
+    bundle_identifier='xyz.prestonhager.wordweaver',
+    info_plist={
+        'NSPrincipalClass': 'NSApplication',
+        'NSAppleScriptEnabled': False,
+        'CFBundleDocumentTypes': [
+            {
+                'CFBundleTypeName': 'Wordweaver Project',
+                'CFBundleTypeIconFile': 'src/icons/wordweaver.ico',
+                'LSItemContentTypes': ['xyz.prestonhager.wordweaver.wordweaverproject'],
+                'LSHandlerRank': 'Owner',
+            }
+        ]
+    },
 )
