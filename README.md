@@ -83,11 +83,7 @@ You must run the appropriate command for your system:
 
 #### Windows
 
-Use Forge Installer:
-    
-```bash
-# TODO: Add command
-```
+Instructions coming soon!    
 
 #### macOS
 
