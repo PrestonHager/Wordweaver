@@ -3,7 +3,6 @@
 import random
 from enum import Enum
 
-# from phonology_const import *
 from ipapy import IPA_TO_UNICODE
 from ipapy.ipachar import IPAChar, IPAConsonant, IPAVowel
 
@@ -132,7 +131,7 @@ class PhonemeGenerator:
     def print_word(self, syllable_list: list[IPAChar], seperator: str=''):
         print(seperator.join([''.join([j.unicode_repr for j in i]) for i in syllable_list]))
 
-__all__ = ["Phoneme", "PhonemeType", "PhonemeConstraint", "PhonemeGenerator"]
+__all__ = ["Phonemes", "PhonemeConstraint", "PhonemeGenerator"]
 
 if __name__ == "__main__":
     from ipapy import UNICODE_TO_IPA

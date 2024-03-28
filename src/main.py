@@ -3,7 +3,6 @@
 from PyQt6.QtWidgets import QApplication, QFileDialog, QPushButton, QGridLayout, QHBoxLayout, QInputDialog, QLabel, QMainWindow, QMenu, QScrollArea, QSizePolicy, QTextEdit, QVBoxLayout, QWidget
 from PyQt6.QtGui import QCloseEvent, QFont, QIcon
 from PyQt6.QtCore import Qt
-# from os import path
 from pathlib import Path
 from platformdirs import user_cache_path, user_log_path
 # Note: you may also need user_data_dir,
@@ -12,7 +11,6 @@ from platformdirs import user_cache_path, user_log_path
 import logging
 import pyperclip
 
-# from phonology_defaults import DEFAULT_PULMONIC_PHONOLOGY_INVENTORY, DEFAULT_VOWEL_PHONOLOGY_INVENTORY
 from about import About
 from wordweaver_project import WordweaverProject
 from phonology_selector import PhonologySelector
