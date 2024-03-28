@@ -7,23 +7,41 @@ import sys
 from os import path
 sys.path.append(path.abspath(path.join(path.dirname(__file__), '../src')))
 
-from wordweaver_project import WordweaverProject
-from phonology import Phoneme, PhonemeType
+from ipapy.ipachar import IPAChar
 
+from wordweaver_project import WordweaverProject
+
+PULMONIC_INVENTORY_STR = [
+    "p",
+    "d",
+    "n",
+]
 PULMONIC_INVENTORY = [
-    Phoneme('p', PhonemeType.PULMONIC_CONSONANT),
-    Phoneme('gh', PhonemeType.PULMONIC_CONSONANT),
-    Phoneme('ng', PhonemeType.PULMONIC_CONSONANT)
+    IPAChar("bilabial consonant plosive voiceless"),
+    IPAChar("consonant plosive alveolar voiced"),
+    IPAChar("consonant alveolar nasal voiced"),
 ]
-NON_PULMONIC_INVENTORY = []
+NON_PULMONIC_INVENTORY_STR = [
+    "ǀ",
+]
+NON_PULMONIC_INVENTORY = [
+    IPAChar("click consonant dental voiceless"),
+]
+VOWEL_INVENTORY_STR = [
+    "a",
+    "i",
+    "ə",
+    "u",
+    "ɯ",
+]
 VOWEL_INVENTORY = [
-    Phoneme('a', PhonemeType.VOWEL),
-    Phoneme('eu', PhonemeType.VOWEL),
-    Phoneme('i', PhonemeType.VOWEL),
-    Phoneme('uh', PhonemeType.VOWEL),
-    Phoneme('uv', PhonemeType.VOWEL)
+    IPAChar("front open unrounded vowel"),
+    IPAChar("close front unrounded vowel"),
+    IPAChar("mid central unrounded vowel"),
+    IPAChar("back close rounded vowel"),
+    IPAChar("back close unrounded vowel"),
 ]
-LEXICON = []
+LEXICON = {}
 
 class TestWordweaverProject(unittest.TestCase):
     def test_init(self):
@@ -40,10 +58,10 @@ class TestWordweaverProject(unittest.TestCase):
     def test_init_convert(self):
         # Test the init method with string phonemes
         project = WordweaverProject('Test Project',
-                                    pulmonic_inventory=['p', 'gh', 'ng'],
-                                    non_pulmonic_inventory=[],
-                                    vowel_inventory=['a', 'eu', 'i', 'uh', 'uv'],
-                                    lexicon=[])
+                                    pulmonic_inventory=PULMONIC_INVENTORY_STR,
+                                    non_pulmonic_inventory=NON_PULMONIC_INVENTORY_STR,
+                                    vowel_inventory=VOWEL_INVENTORY_STR,
+                                    lexicon=LEXICON)
         self.assertEqual(project.name, 'Test Project')
         self.assertEqual(project.pulmonic_inventory, PULMONIC_INVENTORY)
         self.assertEqual(project.non_pulmonic_inventory, NON_PULMONIC_INVENTORY)
@@ -54,19 +72,19 @@ class TestWordweaverProject(unittest.TestCase):
         # Test the init method with invalid phonemes
         with self.assertRaises(ValueError):
             WordweaverProject('Test Project',
-                            pulmonic_inventory=['p', 'gh', 'ng', Phoneme('l', PhonemeType.PULMONIC_CONSONANT)],
+                            pulmonic_inventory=["plosive bilabial voiceless consonant", IPAChar("nasal dental voiceless consonant")],
                             non_pulmonic_inventory=[],
-                            vowel_inventory=['a', 'eu', 'i', 'uh', 'uv'],
-                            lexicon=[])
+                            vowel_inventory=[],
+                            lexicon={})
     
     def test_init_invalid2(self):
         # Test the init method with invalid phonemes
         with self.assertRaises(ValueError):
             WordweaverProject('Test Project',
-                            pulmonic_inventory=['p', 'gh', 'ng'],
+                            pulmonic_inventory=[],
                             non_pulmonic_inventory=[],
-                            vowel_inventory=['a', 'eu', 'i', 'uh', Phoneme('uv', PhonemeType.VOWEL)],
-                            lexicon=[])
+                            vowel_inventory=["open front unrounded vowel", IPAChar("back close rounded vowel")],
+                            lexicon={})
     
     # TODO: add tests for
     # - Maximum name length
@@ -85,9 +103,9 @@ class TestWordweaverProject(unittest.TestCase):
             data = f.read()
         self.assertEqual(data, b"\x87\xaf\xfa\x87\x01"\
                          b"\x00\x0cTest Project"\
-                         b"\x03\x00\x00\x00p\x00\x00\xCA\x94\x00\x00\xC5\x8B"\
-                         b"\x00"\
-                         b"\x05\x00\x00\x00a\x00\x00\xC9\x98\x00\x00\x00i\x00\x00\xCA\x8C\x00\x00\xC9\xAF"\
+                         b"\x03\x01p\x01d\x01n"\
+                         b"\x01\x02\xc7\x80"\
+                         b"\x05\x01a\x01i\x02\xc9\x99\x01u\x02\xc9\xaf"\
                          b"\x00"\
                          b"\x00\x00")
     
@@ -99,9 +117,9 @@ class TestWordweaverProject(unittest.TestCase):
         # Test the open file method
         project = WordweaverProject.from_file('test_project.wwproj')
         self.assertEqual(project.name, 'Test Project')
-        self.assertEqual(project.pulmonic_inventory, PULMONIC_INVENTORY)
-        self.assertEqual(project.non_pulmonic_inventory, NON_PULMONIC_INVENTORY)
-        self.assertEqual(project.vowel_inventory, VOWEL_INVENTORY)
+        self.assertEqual(str(project.pulmonic_inventory), str(PULMONIC_INVENTORY))
+        self.assertEqual(str(project.non_pulmonic_inventory), str(NON_PULMONIC_INVENTORY))
+        self.assertEqual(str(project.vowel_inventory), str(VOWEL_INVENTORY))
         self.assertEqual(project.lexicon, LEXICON)
 
 if __name__ == "__main__":

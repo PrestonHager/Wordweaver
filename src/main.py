@@ -11,7 +11,7 @@ from platformdirs import user_cache_dir, user_log_dir
 import logging
 import pyperclip
 
-from phonology_defaults import DEFAULT_PULMONIC_PHONOLOGY_INVENTORY, DEFAULT_VOWEL_PHONOLOGY_INVENTORY
+# from phonology_defaults import DEFAULT_PULMONIC_PHONOLOGY_INVENTORY, DEFAULT_VOWEL_PHONOLOGY_INVENTORY
 from wordweaver_project import WordweaverProject
 from phonology_selector import PhonologySelector
 
@@ -167,7 +167,13 @@ class App(QMainWindow):
                                         "Enter a name for the new project:",
                                         text="Untitled Project")
         if ok and name:
-            self.project = WordweaverProject(name, None, DEFAULT_PULMONIC_PHONOLOGY_INVENTORY, [], DEFAULT_VOWEL_PHONOLOGY_INVENTORY, [])
+            try:
+                self.project = WordweaverProject.from_file(path.join(path.dirname(__file__), "default.wwproj"))
+            except FileNotFoundError:
+                self.logger.warning("Default project file not found; creating new empty project.")
+                self.project = WordweaverProject(name)
+            self.project.name = name
+            self.project.file = None
             self._update_main_view()
             self.logger.info(f"Created new project: {name}")
     

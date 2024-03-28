@@ -1,5 +1,6 @@
 # phonology_selector.py
 
+from ipapy import IPA_TO_UNICODE
 from PyQt6.QtWidgets import QApplication, QPushButton, QGridLayout, QHBoxLayout, QLabel, QMainWindow, QTextEdit, QVBoxLayout, QWidget
 from PyQt6.QtGui import QFont, QPalette
 from PyQt6.QtCore import Qt
@@ -18,8 +19,8 @@ class PhonologySelector(QMainWindow):
         # Setup defaults for the class
         self._project = project
         # The inventories are stored as str lists until the project property is called
-        self.pulmonic_inventory = [p.sound_ascii for p in self._project.pulmonic_inventory] if self._project is not None else []
-        self.vowel_inventory = [v.sound_ascii for v in self._project.vowel_inventory] if self._project is not None else []
+        self.pulmonic_inventory = [IPA_TO_UNICODE[p.canonical_representation] for p in self._project.pulmonic_inventory] if self._project is not None else []
+        self.vowel_inventory = [IPA_TO_UNICODE[v.canonical_representation] for v in self._project.vowel_inventory] if self._project is not None else []
 
         # Construct GUI
         self.logger.debug("Constructing PhonologySelector GUI")
@@ -61,7 +62,7 @@ class PhonologySelector(QMainWindow):
         selection_group_layout.addWidget(selection_label)
         self.selection = QTextEdit(', '.join(self.pulmonic_inventory), selection_group)
         self.selection.setMaximumHeight(50)
-        self.selection.textChanged.connect(self.update_selection)
+        self.selection.textChanged.connect(self.update_pulmonic_selection)
         selection_group_layout.addWidget(self.selection)
         self.content_layout.addWidget(selection_group, 1, 0)
 
@@ -78,6 +79,7 @@ class PhonologySelector(QMainWindow):
         vowel_selection_group_layout.addWidget(vowel_selection_label)
         self.vowel_selection = QTextEdit(', '.join(self.vowel_inventory), vowel_group)
         self.vowel_selection.setMaximumHeight(50)
+        self.vowel_selection.textChanged.connect(self.update_vowel_selection)
         vowel_selection_group_layout.addWidget(self.vowel_selection)
         self.content_layout.addWidget(vowel_selection_group, 1, 1)
 
@@ -99,10 +101,9 @@ class PhonologySelector(QMainWindow):
 
     def _add_phonology_const(self):
         self.logger.debug("Adding phonology consonant buttons to PhonologySelector")
-        # Add the pulmonic consonants
+        # Add the pulmonic consonants labels
         manners = ["nasal", "plosive", "trill", "tap", "fricative", "lateral-fricative", "approximant", "lateral-approximant"]
         places = ["bi-labial", "labio-dental", "dental", "alveolar", "post-alveolar", "retroflex", "palatal", "velar", "uvular", "pharyngeal", "glottal"]
-        # Add the labels
         for i in range(len(manners)):
             manner = manners[i]
             label = QLabel(manner, self)
@@ -113,10 +114,9 @@ class PhonologySelector(QMainWindow):
             label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self.pulmonic_layout.addWidget(label, 0, j+1)
         
-        # Add the vowels
+        # Add the vowels labels
         vowel_manners = ["close", "near-close", "close-mid", "mid", "open-mid", "near-open", "open"]
         vowel_places = ["front", "central", "back"]
-        # Add the labels
         for i in range(len(vowel_manners)):
             manner = vowel_manners[i]
             label = QLabel(manner, self)
@@ -136,16 +136,29 @@ class PhonologySelector(QMainWindow):
                     phonemes = PULMONIC_CONSONANTS[manner][place]
                     button_group = QWidget()
                     button_layout = QHBoxLayout(button_group)
-                    for phoneme in phonemes.keys():
-                        # Create a button for each phoneme
-                        button = QPushButton(phonemes[phoneme])
-                        button.setProperty("phoneme", phoneme)
-                        button.setMinimumHeight(25)
-                        button.setMaximumWidth(20)
-                        button.setCheckable(True)
-                        button.setChecked(phoneme in self.pulmonic_inventory)
-                        button.clicked.connect(self._on_pulmonic_button_clicked)
-                        button_layout.addWidget(button)
+                    # Create a button for each voiced/voiceless pair
+                    if "voiced" in phonemes:
+                        button_voiced = QPushButton(phonemes["voiced"])
+                        button_voiced.setProperty("phoneme", phonemes["voiced"])
+                        button_voiced.setMinimumHeight(25)
+                        button_voiced.setMaximumWidth(20)
+                        button_voiced.setCheckable(True)
+                        button_voiced.setChecked(phonemes["voiced"] in self.pulmonic_inventory)
+                        button_voiced.clicked.connect(self._on_pulmonic_button_clicked)
+                        button_layout.addWidget(button_voiced)
+                    else:
+                        button_layout.addStretch()
+                    if "voiceless" in phonemes:
+                        button_voiceless = QPushButton(phonemes["voiceless"])
+                        button_voiceless.setProperty("phoneme", phonemes["voiceless"])
+                        button_voiceless.setMinimumHeight(25)
+                        button_voiceless.setMaximumWidth(20)
+                        button_voiceless.setCheckable(True)
+                        button_voiceless.setChecked(phonemes["voiceless"] in self.pulmonic_inventory)
+                        button_voiceless.clicked.connect(self._on_pulmonic_button_clicked)
+                        button_layout.addWidget(button_voiceless)
+                    else:
+                        button_layout.addStretch()
                     self.pulmonic_layout.addWidget(button_group, i+1, j+1)
                 except KeyError:
                     pass
@@ -161,16 +174,26 @@ class PhonologySelector(QMainWindow):
                     phonemes = VOWELS[manner][place]
                     button_group = QWidget()
                     button_layout = QHBoxLayout(button_group)
-                    for phoneme in phonemes.keys():
-                        # Create a button for each phoneme
-                        button = QPushButton(phonemes[phoneme])
-                        button.setProperty("phoneme", phoneme)
-                        button.setMinimumHeight(25)
-                        button.setMaximumWidth(20)
-                        button.setCheckable(True)
-                        button.setChecked(phoneme in self.vowel_inventory)
-                        button.clicked.connect(self._on_vowel_button_clicked)
-                        button_layout.addWidget(button)
+                    if "unrounded" in phonemes:
+                        phoneme = phonemes["unrounded"]
+                        button_rounded = QPushButton(phoneme)
+                        button_rounded.setProperty("phoneme", phoneme)
+                        button_rounded.setMinimumHeight(25)
+                        button_rounded.setMaximumWidth(20)
+                        button_rounded.setCheckable(True)
+                        button_rounded.setChecked(phoneme in self.vowel_inventory)
+                        button_rounded.clicked.connect(self._on_vowel_button_clicked)
+                        button_layout.addWidget(button_rounded)
+                    if "rounded" in phonemes:
+                        phoneme = phonemes["rounded"]
+                        button_unrounded = QPushButton(phoneme)
+                        button_unrounded.setProperty("phoneme", phoneme)
+                        button_unrounded.setMinimumHeight(25)
+                        button_unrounded.setMaximumWidth(20)
+                        button_unrounded.setCheckable(True)
+                        button_unrounded.setChecked(phoneme in self.vowel_inventory)
+                        button_unrounded.clicked.connect(self._on_vowel_button_clicked)
+                        button_layout.addWidget(button_unrounded)
                     # Add a left margin as we go down the rows
                     if j == 0:
                         button_layout.setContentsMargins(20*i, 0, 20*(I-i), 0)
@@ -186,7 +209,7 @@ class PhonologySelector(QMainWindow):
     def _on_pulmonic_button_clicked(self, checked):
         button = self.sender()
         phoneme = button.property("phoneme")
-        self.logger.debug(f"Phoneme `{phoneme}` is now {'selected' if checked else 'deselected'}")
+        self.logger.debug(f"Pulmonic phoneme `{phoneme}` is now {'selected' if checked else 'deselected'}")
         if checked:
             self.pulmonic_inventory.append(phoneme)
         else:
@@ -197,7 +220,7 @@ class PhonologySelector(QMainWindow):
     def _on_vowel_button_clicked(self, checked):
         button = self.sender()
         phoneme = button.property("phoneme")
-        self.logger.debug(f"Phoneme `{phoneme}` is now {'selected' if checked else 'deselected'}")
+        self.logger.debug(f"Vowel phoneme `{phoneme}` is now {'selected' if checked else 'deselected'}")
         if checked:
             self.vowel_inventory.append(phoneme)
         else:
@@ -205,23 +228,38 @@ class PhonologySelector(QMainWindow):
         # Update the text box
         self.vowel_selection.setText(', '.join(self.vowel_inventory))
     
-    def update_selection(self):
+    def update_pulmonic_selection(self):
         self.logger.debug("Updating phonology inventory from selection text box")
-        self.pulmonic_inventory = self.selection.toPlainText().split(", ")
+        self.pulmonic_inventory = [c.strip() for c in self.selection.toPlainText().split(",")]
         for i in range(1, self.pulmonic_layout.rowCount()):
             for j in range(1, self.pulmonic_layout.columnCount()):
                 item = self.pulmonic_layout.itemAtPosition(i, j)
                 if item != None:
                     for k in range(self.pulmonic_layout.itemAtPosition(i, j).widget().layout().count()):
                         button = item.widget().layout().itemAt(k).widget()
-                        phoneme = button.property("phoneme")
-                        button.setChecked(phoneme in self.pulmonic_inventory)
+                        if button is not None:
+                            phoneme = button.property("phoneme")
+                            button.setChecked(phoneme in self.pulmonic_inventory)
+    
+    def update_vowel_selection(self):
+        self.logger.debug("Updating vowel inventory from selection text box")
+        self.vowel_inventory = [v.strip() for v in self.vowel_selection.toPlainText().split(",")]
+        for i in range(1, self.vowel_layout.rowCount()):
+            for j in range(1, self.vowel_layout.columnCount()):
+                item = self.vowel_layout.itemAtPosition(i, j)
+                if item != None:
+                    for k in range(self.vowel_layout.itemAtPosition(i, j).widget().layout().count()):
+                        button = item.widget().layout().itemAt(k).widget()
+                        if button is not None:
+                            phoneme = button.property("phoneme")
+                            button.setChecked(phoneme in self.vowel_inventory)
 
     @property
     def project(self):
         # Update the project with the new phonology inventory
         if self._project is not None:
             self._project.pulmonic_inventory = self.pulmonic_inventory
+            self._project.vowel_inventory = self.vowel_inventory
         return self._project
 
     def save(self):
