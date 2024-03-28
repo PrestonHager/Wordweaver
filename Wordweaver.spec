@@ -45,7 +45,7 @@ exe = EXE(
 app = BUNDLE(
     exe,
     name='Wordweaver.app',
-    icon='src/icons/wordweaver.ico',
+    icon='src/icons/wordweaver.icns',
     bundle_identifier='xyz.prestonhager.wordweaver',
     info_plist={
         'NSPrincipalClass': 'NSApplication',
