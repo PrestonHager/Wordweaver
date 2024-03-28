@@ -1,1 +1,4 @@
 PyQt6
+platformdirs
+pyperclip
+ipapy @ git+https://github.com/PrestonHager/ipapy@v0.0.10.0
