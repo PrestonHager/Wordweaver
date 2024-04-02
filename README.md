@@ -1,5 +1,8 @@
 # Word Weaver
 
+[![Build](https://github.com/PrestonHager/Wordweaver/actions/workflows/python-app-build.yml/badge.svg)](https://github.com/PrestonHager/Wordweaver/actions/workflows/python-app-build.yml)
+[![Test](https://github.com/PrestonHager/Wordweaver/actions/workflows/python-app.yml/badge.svg)](https://github.com/PrestonHager/Wordweaver/actions/workflows/python-app.yml)
+
 Your complete toolbox for creating conlangs.
 
 ## Features
