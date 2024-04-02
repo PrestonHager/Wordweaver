@@ -11,73 +11,51 @@ permissions:
   contents: read
 
 jobs:
-  build-linux:
-    runs-on: ubuntu-latest
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
+        python-version: [ 3.12 ]
     steps:
     - uses: actions/checkout@v3
-    - name: Set up Python 3.12
+    - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v3
       with:
-        python-version: "3.12"
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        if [ -f requirements.txt ]; then python -m pip install -r requirements.txt; fi
-        python -m pip install PyInstaller
-    - name: Build executable
-      run: |
-        python -m PyInstaller Wordweaver.spec
-    - name: Upload artifact
-      uses: actions/upload-artifact@v2
-      with:
-        name: wordweaver-linux
-        path: dist/Wordweaver
-  build-windows:
-    runs-on: windows-latest
-    steps:
-    - uses: actions/checkout@v3
-    - name: Set up Python 3.12
-      uses: actions/setup-python@v3
-      with:
-        python-version: "3.12"
+        python-version: "${{ matrix.python-version }}"
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         python -m pip install -r requirements.txt
         python -m pip install PyInstaller
+    - name: Install Windows dependencies
+      run: |
+        iwr -useb get.scoop.sh -outfile 'install.ps1'
+        .\install.ps1 -RunAsAdmin
+        scoop update
+        scoop bucket add extras
+        scoop install nsis
+      if: runner.os == 'Windows'
     - name: Build executable
       run: |
         python -m PyInstaller Wordweaver.spec
-    - name: Upload artifact
-      uses: actions/upload-artifact@v2
-      with:
-        name: wordweaver-windows
-        path: dist/Wordweaver.exe
-  build-macos:
-    runs-on: macos-latest
-    steps:
-    - uses: actions/checkout@v3
-    - name: Set up Python 3.12
-      uses: actions/setup-python@v3
-      with:
-        python-version: "3.12"
-    - name: Install dependencies
+    - name: Build Windows installer
       run: |
-        python -m pip install --upgrade pip
-        if [ -f requirements.txt ]; then python -m pip install -r requirements.txt; fi
-        python -m pip install PyInstaller
-    - name: Build executable
-      run: |
-        python -m PyInstaller Wordweaver.spec
-    - name: Build installer
+        makensis src/wordweaver.nsi
+      if: runner.os == 'Windows'
+    - name: Build macOS installer
       uses: akiojin/generate-mac-installer-github-action@v0.1.0
       with:
         output-directory: dist
         root-directory: dist
         bundle-path: Wordweaver.app
         identifier: xyz.prestonhager.wordweaver
-    - name: Upload artifact
+      if: runner.os == 'macOS'
+    - name: Upload artifacts
       uses: actions/upload-artifact@v2
       with:
-        name: wordweaver-macos
-        path: dist/Wordweaver.pkg
+        name: wordweaver-${{ matrix.os }}
+        path: dist/Wordweaver*
