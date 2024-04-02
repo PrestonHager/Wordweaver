@@ -39,7 +39,10 @@ Clone the repository and install the dependencies with pip:
 ```bash
 git clone https://github.com/PrestonHager/Wordweaver.git
 cd Wordweaver
-python -m venv .venv -r requirements.txt
+python -m venv .venv
+source .venv/bin/activate
+# or .venv\Scripts\activate on Windows
+python -m pip install -r requirements.txt
 ```
 
 If you don't want to work in a virtual environment, you can install the dependencies globally:
