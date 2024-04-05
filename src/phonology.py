@@ -19,7 +19,7 @@ def define_phoneme_types():
     return {"CONSONANT": consonants, "VOWEL": vowels}
 
 # Call the function to define the enum
-Phonemes = Enum("PhonemeType", define_phoneme_types())
+Phonemes = Enum("Phonemes", define_phoneme_types())
 
 class PhonemeConstraint:
     def __init__(self, phoneme: Phonemes, optional: bool=False):
@@ -54,7 +54,7 @@ class PhonemeGenerator:
             # Check if the phoneme type is defined in the inventory
             if self._inventory[t] == []:
                 raise ValueError(f"Phonemes of type {t} are not defined in the inventory.")
-    
+
     @property
     def inventory(self):
         return self._inventory
@@ -62,7 +62,7 @@ class PhonemeGenerator:
     @inventory.setter
     def inventory(self, inventory: list[IPAChar] | list[str]):
         self._inventory = self._sort_inventory(inventory)
-    
+
     def _sort_inventory(self, inventory: list[IPAChar] | dict[Phonemes, list[IPAChar]]) -> dict[Phonemes, list[IPAChar]]:
         if type(inventory) == dict:
             return inventory
@@ -85,29 +85,36 @@ class PhonemeGenerator:
                         if char.is_equivalent(phoneme):
                             inv[t].append(phoneme)
             return inv
-    
+
     def constrain(self, constraint: tuple[PhonemeConstraint], *secondary_constraints: tuple[tuple[PhonemeConstraint]]):
-        """
-        Set the constraint(s) for the PhonemeGenerator object.
+        """Set the constraint(s) for the PhonemeGenerator object.
         
-        :param constraint: tuple: A tuple of PhonemeConstraint objects.
-        :param *secondary_constraints: tuple: A tuple of PhonemeConstraint objects.
+        Arguments:
+            constraint: tuple: A tuple of PhonemeConstraint objects.
+            *secondary_constraints: tuple: A tuple of PhonemeConstraint objects.
+
+        Returns:
+            PhonemeGenerator: The PhonemeGenerator object.
         """
         self.constraint = constraint
         if len(secondary_constraints) > 0:
             self.secondary_constraints = secondary_constraints
         return self
-    
+
     def generate_syllables(self, n: int):
-        """
-        Generate a list of syllables based on the constraints set for the PhonemeGenerator object.
+        """Generate a list of syllables based on the constraints set for the PhonemeGenerator object.
+
         The first syllable of each generated word will use the first constraint, the second syllable will use the second constraint, and so on.
         If there are more syllables than constraints, the last constraint will be used for the remaining syllables.
 
-        :param n: int: The number of syllables to generate.
-        :return: generator: A generator that yields a list of IPAChar objects for each syllable.
-        :rtype: generator
-        :raises ValueError: If the phoneme type is not defined in the inventory.
+        Arguments:
+            n: int: The number of syllables to generate.
+        
+        Yeilds:
+            syllable: list[IPAChar]: A list of IPAChar objects representing a syllable.
+        
+        Raises:
+            ValueError: If the phoneme type is not defined in the inventory.
         """
         for i in range(n):
             syllable = []
@@ -122,12 +129,12 @@ class PhonemeGenerator:
                     # optional phoneme so we generate it half the time
                     syllable.append(random.choice(self._inventory[cons.phoneme]))
             yield syllable
-    
+
     def generate_random(self, syllable_length: int, n: int) -> list[list[IPAChar]]:
         return [
             [j for j in self.generate_syllables(syllable_length)] for i in range(n)
         ]
-    
+
     def print_word(self, syllable_list: list[IPAChar], seperator: str=''):
         print(seperator.join([''.join([j.unicode_repr for j in i]) for i in syllable_list]))
 
