@@ -2,6 +2,7 @@
 
 [![Build](https://github.com/PrestonHager/Wordweaver/actions/workflows/python-app-build.yml/badge.svg)](https://github.com/PrestonHager/Wordweaver/actions/workflows/python-app-build.yml)
 [![Test](https://github.com/PrestonHager/Wordweaver/actions/workflows/python-app.yml/badge.svg)](https://github.com/PrestonHager/Wordweaver/actions/workflows/python-app.yml)
+[![Documentation Status](https://readthedocs.org/projects/wordweaver-app/badge/?version=latest)](https://wordweaver-app.readthedocs.io/en/latest/?badge=latest)
 
 Your complete toolbox for creating conlangs.
 
@@ -39,7 +40,10 @@ Clone the repository and install the dependencies with pip:
 ```bash
 git clone https://github.com/PrestonHager/Wordweaver.git
 cd Wordweaver
-python -m venv .venv -r requirements.txt
+# Create a virtual environment and activate it
+python -m venv .venv
+source .venv/bin/activate   # or .venv\Scripts\activate on Windows
+python -m pip install -r requirements.txt
 ```
 
 If you don't want to work in a virtual environment, you can install the dependencies globally:
@@ -48,22 +52,30 @@ If you don't want to work in a virtual environment, you can install the dependen
 python -m pip install -r requirements.txt
 ```
 
-[0]: https://github.com/PrestonHager/Wordweaver/releases
-[1]: https://www.python.org/downloads/
-[2]: https://github.com/PrestonHager/Wordweaver
-
 ### Running and Testing
 
 To run the application, use the `main.py` file:
 
 ```bash
-python main.py
+python src/main.py
 ```
 
 To run the tests, use the `unittest` module. For example, to run the tests in the `test` directory:
 
 ```bash
 python -m unittest discover test
+```
+
+To lint the code, use `pylint`. It may need to be installed using `pip install pylint` if it is not already installed. Activate it using the following:
+
+```bash
+pylint --rcfile=pylintrc src
+```
+
+To build the documentation use the `sphinx-build` command as follows:
+
+```bash
+sphinx-build -b html docs docs/_build
 ```
 
 ### Packaging
@@ -86,7 +98,7 @@ You must run the appropriate command for your system:
 
 #### Windows
 
-Instructions coming soon!    
+Instructions coming soon!
 
 #### macOS
 
@@ -95,3 +107,7 @@ Instructions coming soon!
 #### Linux
 
 Instructions coming soon!
+
+[0]: https://github.com/PrestonHager/Wordweaver/releases
+[1]: https://www.python.org/downloads/
+[2]: https://github.com/PrestonHager/Wordweaver

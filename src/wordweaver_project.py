@@ -2,6 +2,8 @@
 
 import logging
 
+from os.path import exists
+
 from ipapy.ipachar import IPAChar
 from ipapy import IPA_TO_UNICODE, UNICODE_TO_IPA
 
@@ -9,7 +11,7 @@ class WordweaverProject:
     def __init__(self, name: str, file: str=None, pulmonic_inventory: list[IPAChar] | list[str]=[], non_pulmonic_inventory: list[IPAChar] | list[str]=[], vowel_inventory: list[IPAChar] | list[str]=[], lexicon: dict[str, str]={}):
         """
         Initialize a new WordweaverProject object.
-        
+
         The inventories should be a list of IPAChar objects or unicode strings of each phoneme.
 
         :param name: str: The name of the project.
@@ -40,7 +42,7 @@ class WordweaverProject:
             self._vowel_inventory = self._inventory_to_ipa(vowel_inventory)
         elif not all(isinstance(sound, IPAChar) for sound in vowel_inventory):
             raise ValueError("Invalid vowel inventory; values must be of type str or IPAChar")
-    
+
     def _inventory_to_ipa(self, inv: list[str]) -> list[IPAChar]:
         ipa_inv = []
         for sound in inv:
@@ -49,11 +51,11 @@ class WordweaverProject:
             except KeyError:
                 self.logger.warning(f"Invalid IPA character: {sound}")
         return ipa_inv
-    
+
     @property
     def pulmonic_inventory(self) -> list[IPAChar]:
         return self._pulmonic_inventory
-    
+
     @pulmonic_inventory.setter
     def pulmonic_inventory(self, value: list[IPAChar] | list[str]):
         if all(isinstance(sound, str) for sound in value):
@@ -62,11 +64,11 @@ class WordweaverProject:
             raise ValueError("Invalid pulmonic inventory; values must be of type IPAChar or str")
         else:
             self._pulmonic_inventory = value
-    
+
     @property
     def non_pulmonic_inventory(self) -> list[IPAChar]:
         return self._non_pulmonic_inventory
-    
+
     @non_pulmonic_inventory.setter
     def non_pulmonic_inventory(self, value: list[IPAChar] | list[str]):
         if all(isinstance(sound, str) for sound in value):
@@ -75,11 +77,11 @@ class WordweaverProject:
             raise ValueError("Invalid non-pulmonic inventory; values must be of type IPAChar or str")
         else:
             self._non_pulmonic_inventory = value
-    
+
     @property
     def vowel_inventory(self) -> list[IPAChar]:
         return self._vowel_inventory
-    
+
     @vowel_inventory.setter
     def vowel_inventory(self, value: list[IPAChar] | list[str]):
         if all(isinstance(sound, str) for sound in value):
@@ -88,7 +90,7 @@ class WordweaverProject:
             raise ValueError("Invalid vowel inventory; values must be of type IPAChar or str")
         else:
             self._vowel_inventory = value
-    
+
     @property
     def inventory(self) -> dict[str, IPAChar]:
         return {
@@ -100,38 +102,40 @@ class WordweaverProject:
     @property
     def lexicon(self) -> dict[str, str]:
         return self._lexicon
-    
+
     @lexicon.setter
     def lexicon(self, value: dict[str, str]):
         self._lexicon = value
 
     def save(self) -> bool:
-        """
-        Save the project to the file specified in the project.
+        """Save the project to the file specified in the project.
+
+        .. code-block::
+        
+            File format is as follows:
+            Magic number:         4 bytes     0x87AFFA87
+            Version:              1 byte      0x01
+            Name length:          2 bytes     len(name)
+            Name:                 n bytes     name
+            Pulmonic length:      1 bytes     len(pulmonic_inventory)
+            Pulmonics:            n bytes     pulmonic_inventory
+            Non-pulmonic length:  1 bytes     len(non_pulmonic_inventory)
+            Non-pulmonics:        n bytes     non_pulmonic_inventory
+            Vowel length:         1 bytes     len(vowel_inventory)
+            Vowels:               n bytes     vowel_inventory
+            Lexicon length:       3 bytes     len(lexicon)
+            Lexicon:
+                Word length:      1 byte      len(word)
+                Word:             n bytes     word
+
+        Given the format. There is a maximum length of
+        65535 characters for the name; 255 for the
+        phonology_inventory, and vowel_inventory.
+        The lexicon is limited to 16777215 words. With
+        each word limited to 255 characters.
         """
         if self.file is None:
             return False
-        # File format is as follows:
-        # Magic number:         4 bytes     0x87AFFA87
-        # Version:              1 byte      0x01
-        # Name length:          2 bytes     len(name)
-        # Name:                 n bytes     name
-        # Pulmonic length:      1 bytes     len(pulmonic_inventory)
-        # Pulmonics:            n bytes     pulmonic_inventory
-        # Non-pulmonic length:  1 bytes     len(non_pulmonic_inventory)
-        # Non-pulmonics:        n bytes     non_pulmonic_inventory
-        # Vowel length:         1 bytes     len(vowel_inventory)
-        # Vowels:               n bytes     vowel_inventory
-        # Lexicon length:       3 bytes     len(lexicon)
-        # Lexicon:
-        #   Word length:        1 byte      len(word)
-        #   Word:               n bytes     word
-        #
-        # Given the format. There is a maximum length of
-        # 65535 characters for the name; 255 for the 
-        # phonology_inventory, and vowel_inventory.
-        # The lexicon is limited to 16777215 words. With
-        # each word limited to 255 characters.
         with open(self.file, 'wb') as f_out:
             f_out.write(0x87AFFA87.to_bytes(4, 'big'))
             f_out.write(0x01.to_bytes(1, 'big'))
@@ -145,7 +149,7 @@ class WordweaverProject:
                 f_out.write(len(word).to_bytes(1, 'big'))
                 f_out.write(word.encode())
         return True
-    
+
     @staticmethod
     def _write_inventory(f_stream, inventory: list[IPAChar]):
         f_stream.write(len(inventory).to_bytes(1, 'big'))
@@ -157,7 +161,6 @@ class WordweaverProject:
     @staticmethod
     def from_file(file):
         # Check that the file exists
-        from os.path import exists
         if not exists(file):
             raise FileNotFoundError(f"File not found: {file}")
         # File format is the same as the save method
@@ -180,7 +183,7 @@ class WordweaverProject:
             lexicon_length = int.from_bytes(f_in.read(3), 'big')
             lexicon = {}
             # TODO: format lexicon
-            for i in range(lexicon_length):
+            for _ in range(lexicon_length):
                 lexicon.append(f_in.read(1).decode())
         return WordweaverProject(name, file, pulmonic_inventory, non_pulmonic_inventory, vowel_inventory, lexicon)
 
@@ -188,7 +191,7 @@ class WordweaverProject:
     def _read_inventory(f_stream):
         inventory = []
         inventory_len = int.from_bytes(f_stream.read(1), 'big')
-        for i in range(inventory_len):
+        for _ in range(inventory_len):
             sound_len = int.from_bytes(f_stream.read(1), 'big')
             sound_unicode = f_stream.read(sound_len).decode()
             inventory.append(UNICODE_TO_IPA[sound_unicode])
