@@ -6,7 +6,6 @@
 
 # uv
 .venv/
-uv.lock
 
 # Nix
 result
