@@ -22,23 +22,20 @@ jobs:
         python-version: [ 3.12 ]
     steps:
     - uses: actions/checkout@v3
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v3
+    - name: Install Nix
+      uses: cachix/install-nix-action@v27
       with:
-        python-version: "${{ matrix.python-version }}"
-    - name: Install uv (Unix)
-      if: runner.os != 'Windows'
-      run: |
-        curl -LsSf https://astral.sh/uv/install.sh | sh
-        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-    - name: Install uv (Windows)
-      if: runner.os == 'Windows'
-      run: |
-        irm https://astral.sh/uv/install.ps1 | iex
-        echo "$env:USERPROFILE\.cargo\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        extra_nix_config: |
+          experimental-features = nix-command flakes
+    - name: Setup Cachix
+      uses: cachix/cachix-action@v15
+      with:
+        name: wordweaver
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+        skipPush: true
     - name: Install dependencies
       run: |
-        uv sync --extra dev
+        nix develop --command uv sync --extra dev
     - name: Install Windows dependencies
       run: |
         iwr -useb get.scoop.sh -outfile 'install.ps1'
@@ -49,7 +46,7 @@ jobs:
       if: runner.os == 'Windows'
     - name: Build executable
       run: |
-        uv run python -m PyInstaller Wordweaver.spec
+        nix develop --command uv run python -m PyInstaller Wordweaver.spec
     - name: Build Windows installer
       run: |
         makensis src/wordweaver.nsi

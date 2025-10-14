@@ -120,10 +120,14 @@ Platform-specific dependencies are automatically handled by the flake.
 
 ## CI/CD Integration
 
-The GitHub Actions workflows have been updated to use uv for dependency management, which works alongside the Nix setup:
+The GitHub Actions workflows use Nix Flakes for consistent environments:
 
-- **Test workflow**: Runs on pull requests
-- **Build workflow**: Creates executables for Linux, macOS, and Windows
+- **Test workflow**: Uses `cachix/install-nix-action` and `cachix/cachix-action` to set up Nix, then runs tests in a `nix develop` shell
+- **Build workflow**: Uses Nix to ensure consistent builds across Linux, macOS, and Windows
+
+The workflows use Cachix for caching Nix builds to speed up CI/CD runs. If you fork this repository, you can set up your own Cachix cache by:
+1. Creating a cache at https://app.cachix.org/
+2. Adding the `CACHIX_AUTH_TOKEN` secret to your repository settings
 
 ## Development Tips
 
