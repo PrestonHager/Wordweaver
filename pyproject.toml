@@ -1,0 +1,36 @@
+[project]
+name = "wordweaver"
+version = "0.1.0"
+description = "A complete toolbox for all things conlang"
+readme = "README.md"
+requires-python = ">=3.12"
+license = {text = "MIT"}
+authors = [
+    {name = "Preston Hager", email = "preston@prestonhager.com"}
+]
+dependencies = [
+    "PyQt6>=6.9.0",
+    "platformdirs>=4.0.0",
+    "pyperclip>=1.11.0",
+    "ipapy @ git+https://github.com/PrestonHager/ipapy@v0.0.10.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "sphinx>=8.0.0",
+    "PyInstaller>=6.16.0",
+    "pylint>=3.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[tool.pylint]
+max-line-length = 127
