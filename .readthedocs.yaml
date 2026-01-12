@@ -17,7 +17,7 @@ build:
       - export PATH="$HOME/.cargo/bin:$PATH"
     post_install:
       # Install dependencies with uv
-      - uv sync
+      - $HOME/.cargo/bin/uv sync
 
 # Build documentation in the "docs/" directory with Sphinx
 sphinx:
