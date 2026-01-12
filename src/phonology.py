@@ -85,8 +85,8 @@ class PhonemeGenerator:
                         phoneme.unicode_repr = IPA_TO_UNICODE[phoneme.canonical_representation]
                     except KeyError:
                         raise ValueError(
-                            f"Phoneme {phoneme} does not have a unicode representation; "
-                            "probably because it doesn't exist."
+                            f"Phoneme {phoneme} does not have a unicode",
+                            "representation; probably because it doesn't exist."
                         )
                 for phoneme_name in Phonemes._member_names_:
                     t = Phonemes[phoneme_name]
