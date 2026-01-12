@@ -14,7 +14,6 @@ build:
     pre_install:
       # Install uv
       - curl -LsSf https://astral.sh/uv/install.sh | sh
-      - export PATH="$HOME/.cargo/bin:$PATH"
     post_install:
       # Install dependencies with uv
       - $HOME/.cargo/bin/uv sync

@@ -12,10 +12,10 @@ class WordweaverProject:
     def __init__(self,
                  name: str,
                  file: str = None,
-                 pulmonic_inventory: list[IPAChar] | list[str] = [],
-                 non_pulmonic_inventory: list[IPAChar] | list[str] = [],
-                 vowel_inventory: list[IPAChar] | list[str] = [],
-                 lexicon: dict[str, str] = {}):
+                 pulmonic_inventory: list[IPAChar] | list[str] = None,
+                 non_pulmonic_inventory: list[IPAChar] | list[str] = None,
+                 vowel_inventory: list[IPAChar] | list[str] = None,
+                 lexicon: dict[str, str] = None):
         """
         Initialize a new WordweaverProject object.
 
@@ -36,6 +36,13 @@ class WordweaverProject:
         self.logger = logging.getLogger(__name__ + "." + self.__class__.__name__)
         self.name = name
         self.file = file
+        
+        # Initialize with empty containers if None
+        pulmonic_inventory = pulmonic_inventory if pulmonic_inventory is not None else []
+        non_pulmonic_inventory = non_pulmonic_inventory if non_pulmonic_inventory is not None else []
+        vowel_inventory = vowel_inventory if vowel_inventory is not None else []
+        lexicon = lexicon if lexicon is not None else {}
+        
         self._pulmonic_inventory = pulmonic_inventory
         self._non_pulmonic_inventory = non_pulmonic_inventory
         self._vowel_inventory = vowel_inventory
