@@ -26,11 +26,15 @@ jobs:
         name: wordweaver
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
         skipPush: true
-    - name: Install dependencies and lint
+    - name: Install dependencies
       run: |
         nix develop --command bash -c "
           uv sync &&
-          uv pip install flake8 &&
+          uv pip install flake8
+        "
+    - name: Lint with flake8
+      run: |
+        nix develop --command bash -c "
           uv run flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics &&
           uv run flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
         "

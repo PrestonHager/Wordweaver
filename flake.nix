@@ -33,7 +33,7 @@
           pkgs.freetype
           pkgs.dbus
           pkgs.glib
-          pkgs.qt6.full
+          pkgs.qt6.qtbase
         ];
         
         macosDeps = pkgs.lib.optionals pkgs.stdenv.isDarwin [
