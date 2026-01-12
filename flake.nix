@@ -32,9 +32,26 @@
           pkgs.fontconfig
           pkgs.freetype
           pkgs.dbus
-          pkgs.glib
           pkgs.qt6.qtbase
+          pkgs.qt6.qtdeclarative
+          pkgs.qt6.wrapQtAppsHook
+          pkgs.python3Packages.pyqt6
+          pkgs.stdenv.cc.cc
+          pkgs.libxkbcommon
+          pkgs.glib
+          pkgs.gsettings-desktop-schemas
+          pkgs.gtk3
+          pkgs.libz
+          pkgs.zstd
         ];
+        
+        # Linux shell hook with GSettings setup (what wrapGAppsHook3 does)
+        linuxShellHook = pkgs.lib.optionalString pkgs.stdenv.isLinux ''
+          export QT_QPA_PLATFORM_PLUGIN_PATH="${pkgs.qt6.qtbase}/lib/qt-6/plugins"
+          export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath linuxDeps}:$LD_LIBRARY_PATH"
+          # Set up GSettings schemas - construct path like wrapGAppsHook3 does
+          export XDG_DATA_DIRS="${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}:${pkgs.glib}/share/gsettings-schemas/${pkgs.glib.name}:${pkgs.gtk3}/share/gsettings-schemas/${pkgs.gtk3.name}:$XDG_DATA_DIRS"
+        '';
         
         macosDeps = pkgs.lib.optionals pkgs.stdenv.isDarwin [
           pkgs.darwin.apple_sdk.frameworks.Cocoa
@@ -45,6 +62,9 @@
       {
         # Development shell
         devShells.default = pkgs.mkShell {
+          nativeBuildInputs = pkgs.lib.optionals pkgs.stdenv.isLinux [
+            pkgs.wrapGAppsHook3
+          ];
           buildInputs = buildInputs ++ linuxDeps ++ macosDeps;
           
           shellHook = ''
@@ -58,10 +78,7 @@
             echo ""
             
             # Set environment variables for Qt on Linux
-            ${pkgs.lib.optionalString pkgs.stdenv.isLinux ''
-              export QT_QPA_PLATFORM_PLUGIN_PATH="${pkgs.qt6.qtbase}/lib/qt-6/plugins"
-              export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath linuxDeps}:$LD_LIBRARY_PATH"
-            ''}
+            ${linuxShellHook}
           '';
         };
 

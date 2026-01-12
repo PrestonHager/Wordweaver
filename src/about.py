@@ -15,7 +15,8 @@ class About(QDialog):
         self.setWindowTitle("About")
 
         self.layout = QVBoxLayout()
-        self.label = QLabel(f"Wordweaver is a complete toolbox for all conlanging.\n\nVersion: {VERSION}\n{GITHUB_URL}")
+        self.label = QLabel(f"Wordweaver is a complete toolbox for all conlanging. \
+\n\nVersion: {VERSION}\n\n{GITHUB_URL}")
         self.layout.addWidget(self.label)
 
         self.buttonBox = QDialogButtonBox(QDialogButtonBox.StandardButton.Open | QDialogButtonBox.StandardButton.Close)

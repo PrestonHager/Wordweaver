@@ -237,6 +237,12 @@ class App(QMainWindow):
                 self.save_as()
 
     def save_as(self):
+        try:
+            self._save_as_qt()
+        except Exception as e:
+            self.logger.error(f"Failed to save project: {e}")
+
+    def _save_as_qt(self):
         # Ask the user for a file name to save the project to
         dialog = QFileDialog(self)
         dialog.selectFile(f"{self.project.name}.wwproj" if self.project is not None else "Untitled Project.wwproj")
@@ -360,4 +366,7 @@ if __name__ == "__main__":
     window = App(project)
     window.show()
     logger.debug("Running application")
-    app.exec()
+    try:
+        app.exec()
+    except Exception as e:
+        logger.critical(f"Unhandled exception: {e}")
