@@ -34,10 +34,15 @@ jobs:
         "
     - name: Lint with flake8
       run: |
+        echo "Running flake8 linter on src"
         nix develop --command bash -c "
-          uv run flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics &&
-          uv run flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+          uv run flake8 src --count --select=E9,F63,F7,F82 --show-source --statistics &&
+          uv run flake8 src --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
         "
+        echo "Running flake8 linter on test"
+        nix develop --command bash -c "
+          uv run flake8 test --count --select=E9,F63,F7,F82 --show-source --statistics &&
+          uv run flake8 test --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with unittest
       run: |
         nix develop --command uv run python -m unittest discover test
