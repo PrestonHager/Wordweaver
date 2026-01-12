@@ -41,6 +41,16 @@ jobs:
           uv run flake8 test --count --select=E9,F63,F7,F82 --show-source --statistics &&
           uv run flake8 test --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
         "
+    - name: Lint with pylint
+      run: |
+        echo "Running pylint linter on src"
+        nix develop --command bash -c "
+          uv run pylint src --exit-zero
+        "
+        echo "Running pylint linter on test"
+        nix develop --command bash -c "
+          uv run pylint test --exit-zero
+        "
     - name: Test with unittest
       run: |
         nix develop --command uv run python -m unittest discover test
