@@ -15,21 +15,42 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    - name: Set up Python 3.12
-      uses: actions/setup-python@v3
+    - name: Install Nix
+      uses: cachix/install-nix-action@v27
       with:
-        python-version: "3.12"
+        extra_nix_config: |
+          experimental-features = nix-command flakes
+    - name: Setup Cachix
+      uses: cachix/cachix-action@v15
+      with:
+        name: wordweaver
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+        skipPush: true
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
-        pip install flake8
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        nix develop --command uv sync --extra dev
     - name: Lint with flake8
       run: |
-        # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        echo "Running flake8 linter on src"
+        nix develop --command bash -c "
+          uv run flake8 src --count --select=E9,F63,F7,F82 --show-source --statistics &&
+          uv run flake8 src --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        "
+        echo "Running flake8 linter on test"
+        nix develop --command bash -c "
+          uv run flake8 test --count --select=E9,F63,F7,F82 --show-source --statistics &&
+          uv run flake8 test --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        "
+    - name: Lint with pylint
+      run: |
+        echo "Running pylint linter on src"
+        nix develop --command bash -c "
+          uv run pylint src --exit-zero
+        "
+        echo "Running pylint linter on test"
+        nix develop --command bash -c "
+          uv run pylint test --exit-zero
+        "
     - name: Test with unittest
       run: |
-        python -m unittest discover test
+        nix develop --command uv run python -m unittest discover test

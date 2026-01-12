@@ -30,12 +30,45 @@ If you only plan on writing documentation, you can skip the packaging step.
 
 ### Prerequisites
 
-- [Python][1]
+- [Python 3.12+][1]
+- [uv package manager][3] (recommended) or pip
+- [Nix][4] (optional, for Nix Flakes development)
 - [This repository][2]
 
 ### Setup
 
-Clone the repository and install the dependencies with pip:
+#### Option 1: Using Nix Flakes (Recommended)
+
+If you have Nix with flakes enabled, you can set up the development environment automatically:
+
+```bash
+git clone https://github.com/PrestonHager/Wordweaver.git
+cd Wordweaver
+nix develop
+```
+
+This will drop you into a shell with all dependencies installed. Then install Python dependencies:
+
+```bash
+uv sync
+```
+
+#### Option 2: Using uv (without Nix)
+
+Clone the repository and install the dependencies with uv:
+
+```bash
+git clone https://github.com/PrestonHager/Wordweaver.git
+cd Wordweaver
+# Install uv if you haven't already
+curl -LsSf https://astral.sh/uv/install.sh | sh  # Unix/macOS
+# or: irm https://astral.sh/uv/install.ps1 | iex  # Windows
+
+# Install dependencies
+uv sync
+```
+
+#### Option 3: Using pip (legacy)
 
 ```bash
 git clone https://github.com/PrestonHager/Wordweaver.git
@@ -43,38 +76,48 @@ cd Wordweaver
 # Create a virtual environment and activate it
 python -m venv .venv
 source .venv/bin/activate   # or .venv\Scripts\activate on Windows
-python -m pip install -r requirements.txt
-```
-
-If you don't want to work in a virtual environment, you can install the dependencies globally:
-
-```bash
-python -m pip install -r requirements.txt
+pip install -e .
 ```
 
 ### Running and Testing
 
-To run the application, use the `main.py` file:
+To run the application:
 
 ```bash
+# With uv
+uv run python src/main.py
+
+# Or with pip (after installing)
 python src/main.py
 ```
 
-To run the tests, use the `unittest` module. For example, to run the tests in the `test` directory:
+To run the tests:
 
 ```bash
+# With uv
+uv run python -m unittest discover test
+
+# Or with pip
 python -m unittest discover test
 ```
 
-To lint the code, use `pylint`. It may need to be installed using `pip install pylint` if it is not already installed. Activate it using the following:
+To lint the code, use `pylint`:
 
 ```bash
+# With uv
+uv run pylint --rcfile=pylintrc src
+
+# Or with pip (after installing pylint)
 pylint --rcfile=pylintrc src
 ```
 
-To build the documentation use the `sphinx-build` command as follows:
+To build the documentation use the `sphinx-build` command:
 
 ```bash
+# With uv
+uv run sphinx-build -b html docs docs/_build
+
+# Or with pip (after installing sphinx)
 sphinx-build -b html docs docs/_build
 ```
 
@@ -83,6 +126,10 @@ sphinx-build -b html docs docs/_build
 To package the application, use the `pyinstaller` module.
 
 ```bash
+# With uv
+uv run python -m PyInstaller Wordweaver.spec
+
+# Or with pip (after installing PyInstaller)
 python -m PyInstaller Wordweaver.spec
 ```
 
@@ -111,3 +158,5 @@ Instructions coming soon!
 [0]: https://github.com/PrestonHager/Wordweaver/releases
 [1]: https://www.python.org/downloads/
 [2]: https://github.com/PrestonHager/Wordweaver
+[3]: https://docs.astral.sh/uv/
+[4]: https://nixos.org/download.html

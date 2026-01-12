@@ -1,6 +1,9 @@
 # main.py
 
-from PyQt6.QtWidgets import QApplication, QFileDialog, QPushButton, QGridLayout, QHBoxLayout, QInputDialog, QLabel, QMainWindow, QMenu, QScrollArea, QSizePolicy, QTextEdit, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import (
+    QApplication, QFileDialog, QPushButton, QGridLayout, QInputDialog, QLabel,
+    QMainWindow, QMenu, QSizePolicy, QTextEdit, QVBoxLayout, QWidget
+)
 from PyQt6.QtGui import QCloseEvent, QFont, QIcon
 from PyQt6.QtCore import Qt
 from pathlib import Path
@@ -15,8 +18,12 @@ from about import About
 from wordweaver_project import WordweaverProject
 from phonology_selector import PhonologySelector
 
+WELCOME_TEXT = """Your complete toolbox for all things conglang.
+Start by creating a new project or opening an existing one."""
+
+
 class App(QMainWindow):
-    def __init__(self, project: WordweaverProject=None):
+    def __init__(self, project: WordweaverProject = None):
         super().__init__()
 
         # Setup the logger
@@ -44,7 +51,7 @@ class App(QMainWindow):
         self.layout.addWidget(header)
 
         # Add a welcome message if no project is open
-        self.welcome_text = QLabel("Your complete toolbox for all things conglang.\nStart by creating a new project or opening an existing one.", self)
+        self.welcome_text = QLabel(WELCOME_TEXT, self)
         self.welcome_text.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.welcome_text.setContentsMargins(20, 0, 0, 20)
         self.welcome_text.setWordWrap(True)
@@ -161,9 +168,14 @@ class App(QMainWindow):
     def _update_project_view(self):
         if self.project is not None:
             self.project_name.setText(self.project.name)
-            phonology_text = "C = " + ', '.join(map(str, self.project.pulmonic_inventory)) if len(self.project.pulmonic_inventory) > 0 else ""
-            phonology_text += "\nB = " + ', '.join(map(str, self.project.non_pulmonic_inventory)) if len(self.project.non_pulmonic_inventory) > 0 else ""
-            phonology_text += "\nV = " + ', '.join(map(str, self.project.vowel_inventory)) if len(self.project.vowel_inventory) > 0 else ""
+            parts = []
+            if len(self.project.pulmonic_inventory) > 0:
+                parts.append("C = " + ', '.join(map(str, self.project.pulmonic_inventory)))
+            if len(self.project.non_pulmonic_inventory) > 0:
+                parts.append("B = " + ', '.join(map(str, self.project.non_pulmonic_inventory)))
+            if len(self.project.vowel_inventory) > 0:
+                parts.append("V = " + ', '.join(map(str, self.project.vowel_inventory)))
+            phonology_text = "\n".join(parts)
             self.phonology_text.setText(phonology_text)
             self.lexicon_text.setText(', '.join(self.project.lexicon))
 
@@ -183,7 +195,7 @@ class App(QMainWindow):
             self.project.file = None
             self._update_main_view()
             self.logger.info(f"Created new project: {name}")
-    
+
     def open_project(self):
         # If there is an unsaved project, then prompt the user to save it
         if self.project is not None:
@@ -221,6 +233,12 @@ class App(QMainWindow):
                 self.save_as()
 
     def save_as(self):
+        try:
+            self._save_as_qt()
+        except Exception as e:
+            self.logger.error(f"Failed to save project: {e}")
+
+    def _save_as_qt(self):
         # Ask the user for a file name to save the project to
         dialog = QFileDialog(self)
         dialog.selectFile(f"{self.project.name}.wwproj" if self.project is not None else "Untitled Project.wwproj")
@@ -231,8 +249,9 @@ class App(QMainWindow):
         if dialog.exec() == QFileDialog.DialogCode.Accepted:
             self.project.file = dialog.selectedFiles()[0]
             self.project.save()
-            self.logger.info(f"Saved project \"{self.project.name}\" to {self.project.file} and updated project file location.")
-    
+            self.logger.info(f"Saved project \"{self.project.name}\" to \
+{self.project.file} and updated project file location.")
+
     def open_about(self):
         if not hasattr(self, "about_window"):
             self.about_window = About(self)
@@ -294,14 +313,22 @@ class App(QMainWindow):
                 user_cache_path("Wordweaver", False).joinpath(Path(".editor")).unlink()
         return super().closeEvent(a0)
 
+
 if __name__ == "__main__":
     # Parse command line arguments
     import argparse
     parser = argparse.ArgumentParser(description="Wordweaver: A complete toolbox for all things conlang.")
-    parser.add_argument("-v", "--verbose", action="store", help="Enable verbose logging", default="WARNING", choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"])
+    parser.add_argument("-v", "--verbose",
+                        action="store",
+                        help="Enable verbose logging",
+                        default="WARNING",
+                        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"])
     args = parser.parse_args()
     # Setup logging defaults
-    logging.basicConfig(filename=user_log_path("Wordweaver", False, ensure_exists=True).joinpath(Path("wordweaver.log")), encoding="utf-8", level=args.verbose, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    logging.basicConfig(filename=user_log_path("Wordweaver", False, ensure_exists=True).joinpath(Path("wordweaver.log")),
+                        encoding="utf-8",
+                        level=args.verbose,
+                        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     import sys
     logger = logging.getLogger(__name__)
     basedir = Path(__file__).parent
@@ -309,7 +336,7 @@ if __name__ == "__main__":
     try:
         from ctypes import windll
         logger.debug("Setting application ID for Windows")
-        myappid = 'xyz.prestonhager.wordweaver'
+        myappid = 'com.prestonhager.wordweaver'
         windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
     except ImportError:
         pass
@@ -335,4 +362,7 @@ if __name__ == "__main__":
     window = App(project)
     window.show()
     logger.debug("Running application")
-    app.exec()
+    try:
+        app.exec()
+    except Exception as e:
+        logger.critical(f"Unhandled exception: {e}")

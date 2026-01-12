@@ -46,7 +46,7 @@ app = BUNDLE(
     exe,
     name='Wordweaver.app',
     icon='src/icons/wordweaver.icns',
-    bundle_identifier='xyz.prestonhager.wordweaver',
+    bundle_identifier='com.prestonhager.wordweaver',
     info_plist={
         'NSPrincipalClass': 'NSApplication',
         'NSAppleScriptEnabled': False,
@@ -54,7 +54,7 @@ app = BUNDLE(
             {
                 'CFBundleTypeName': 'Wordweaver Project',
                 'CFBundleTypeIconFile': 'src/icons/wordweaver.ico',
-                'LSItemContentTypes': ['xyz.prestonhager.wordweaver.wordweaverproject'],
+                'LSItemContentTypes': ['com.prestonhager.wordweaver.wordweaverproject'],
                 'LSHandlerRank': 'Owner',
             }
         ]
