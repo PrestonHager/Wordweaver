@@ -4,7 +4,8 @@ import random
 from enum import Enum
 
 from ipapy import IPA_TO_UNICODE
-from ipapy.ipachar import IPAChar, IPAConsonant, IPAVowel
+from ipapy.ipachar import IPAChar
+
 
 # Declare the Phonemes class to include current IPA characters
 def define_phoneme_types():
@@ -18,19 +19,25 @@ def define_phoneme_types():
             vowels.append(char)
     return {"CONSONANT": consonants, "VOWEL": vowels}
 
+
 # Call the function to define the enum
 Phonemes = Enum("Phonemes", define_phoneme_types())
 
+
 class PhonemeConstraint:
-    def __init__(self, phoneme: Phonemes, optional: bool=False):
+    def __init__(self, phoneme: Phonemes, optional: bool = False):
         self.phoneme = phoneme
         self.optional = optional
-    
+
     def __repr__(self) -> str:
-        return f"<{self.__class__.__module__}.{self.__class__.__qualname__} of type {self.phoneme} - optional: {self.optional}>"
+        return f"<{self.__class__.__module__}.{self.__class__.__qualname__} \
+of type {self.phoneme} - optional: {self.optional}>"
+
 
 class PhonemeGenerator:
-    def __init__(self, inventory: list[IPAChar] | dict[Phonemes, list[IPAChar]], constraint: tuple[PhonemeConstraint]=(PhonemeConstraint(Phonemes.VOWEL),), *secondary_constraints: tuple[PhonemeConstraint]):
+    def __init__(self, inventory: list[IPAChar] | dict[Phonemes, list[IPAChar]],
+                 constraint: tuple[PhonemeConstraint] = (PhonemeConstraint(Phonemes.VOWEL),),
+                 *secondary_constraints: tuple[PhonemeConstraint]):
         """
         Initialize the PhonemeGenerator class with an inventory of IPAChar objects and specified constraint(s).
 
@@ -39,11 +46,11 @@ class PhonemeGenerator:
         :param *secondary_constraints: tuple[PhonemeConstraint]: A tuple of PhonemeConstraint objects.
         """
         # Check all types
-        if type(inventory) not in [list, dict]:
+        if not isinstance(inventory, dict) and not isinstance(inventory, list):
             raise TypeError("Inventory must be a list or dict.")
-        if type(constraint) != tuple:
+        if not isinstance(constraint, tuple):
             raise TypeError("Constraint must be a tuple.")
-        if len(secondary_constraints) > 0 and all(type(i) != tuple for i in secondary_constraints):
+        if len(secondary_constraints) > 0 and all(not isinstance(i, tuple) for i in secondary_constraints):
             raise TypeError("Secondary constraints must be a tuple.")
         # Assign values
         self.constraint = constraint
@@ -64,7 +71,7 @@ class PhonemeGenerator:
         self._inventory = self._sort_inventory(inventory)
 
     def _sort_inventory(self, inventory: list[IPAChar] | dict[Phonemes, list[IPAChar]]) -> dict[Phonemes, list[IPAChar]]:
-        if type(inventory) == dict:
+        if isinstance(inventory, dict):
             return inventory
         else:
             inv = {t: [] for t in Phonemes}
@@ -77,7 +84,9 @@ class PhonemeGenerator:
                     try:
                         phoneme.unicode_repr = IPA_TO_UNICODE[phoneme.canonical_representation]
                     except KeyError:
-                        raise ValueError(f"Phoneme {phoneme} does not have a unicode representation; probably because it doesn't exist.")
+                        raise ValueError(f"Phoneme {phoneme} does not have a \
+                            unicode representation; probably because it \
+                            doesn't exist.")
                 for phoneme_name in Phonemes._member_names_:
                     t = Phonemes[phoneme_name]
                     # loop through the enum members to find a match
@@ -88,7 +97,7 @@ class PhonemeGenerator:
 
     def constrain(self, constraint: tuple[PhonemeConstraint], *secondary_constraints: tuple[tuple[PhonemeConstraint]]):
         """Set the constraint(s) for the PhonemeGenerator object.
-        
+
         Arguments:
             constraint: tuple: A tuple of PhonemeConstraint objects.
             *secondary_constraints: tuple: A tuple of PhonemeConstraint objects.
@@ -104,15 +113,17 @@ class PhonemeGenerator:
     def generate_syllables(self, n: int):
         """Generate a list of syllables based on the constraints set for the PhonemeGenerator object.
 
-        The first syllable of each generated word will use the first constraint, the second syllable will use the second constraint, and so on.
-        If there are more syllables than constraints, the last constraint will be used for the remaining syllables.
+        The first syllable of each generated word will use the first constraint,
+        the second syllable will use the second constraint, and so on.
+        If there are more syllables than constraints, the last constraint will
+        be used for the remaining syllables.
 
         Arguments:
             n: int: The number of syllables to generate.
-        
+
         Yeilds:
             syllable: list[IPAChar]: A list of IPAChar objects representing a syllable.
-        
+
         Raises:
             ValueError: If the phoneme type is not defined in the inventory.
         """
@@ -135,13 +146,13 @@ class PhonemeGenerator:
             [j for j in self.generate_syllables(syllable_length)] for i in range(n)
         ]
 
-    def print_word(self, syllable_list: list[IPAChar], seperator: str=''):
+    def print_word(self, syllable_list: list[IPAChar], seperator: str = ''):
         print(seperator.join([''.join([j.unicode_repr for j in i]) for i in syllable_list]))
+
 
 __all__ = ["Phonemes", "PhonemeConstraint", "PhonemeGenerator"]
 
 if __name__ == "__main__":
-    from ipapy import UNICODE_TO_IPA
     inventory = [
         IPAChar(descriptors="open front unrounded vowel"),
         IPAChar(descriptors="close front unrounded vowel"),

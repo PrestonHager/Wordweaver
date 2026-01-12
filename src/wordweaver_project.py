@@ -7,20 +7,31 @@ from os.path import exists
 from ipapy.ipachar import IPAChar
 from ipapy import IPA_TO_UNICODE, UNICODE_TO_IPA
 
+
 class WordweaverProject:
-    def __init__(self, name: str, file: str=None, pulmonic_inventory: list[IPAChar] | list[str]=[], non_pulmonic_inventory: list[IPAChar] | list[str]=[], vowel_inventory: list[IPAChar] | list[str]=[], lexicon: dict[str, str]={}):
+    def __init__(self,
+                 name: str,
+                 file: str = None,
+                 pulmonic_inventory: list[IPAChar] | list[str] = [],
+                 non_pulmonic_inventory: list[IPAChar] | list[str] = [],
+                 vowel_inventory: list[IPAChar] | list[str] = [],
+                 lexicon: dict[str, str] = {}):
         """
         Initialize a new WordweaverProject object.
 
         The inventories should be a list of IPAChar objects or unicode strings of each phoneme.
 
         :param name: str: The name of the project.
-        :param file: str: The file path to save the project to can be a relative or absolute path.
-        :param pulmonic_inventory: list[IPAChar] | list[str]: A list of pulmonic consonants.
-        :param non_pulmonic_inventory: list[IPAChar] | list[str]: A list of non-pulmonic consonants.
+        :param file: str: The file path to save the project to can be a relative
+            or absolute path.
+        :param pulmonic_inventory: list[IPAChar] | list[str]: A list of pulmonic
+            consonants.
+        :param non_pulmonic_inventory: list[IPAChar] | list[str]: A list of
+            non-pulmonic consonants.
         :param vowel_inventory: list[IPAChar] | list[str]: A list of vowels.
         :param lexicon: dict[str, str]: A dictionary of words.
-        :raises ValueError: If the inventory is not a list of IPAChar objects or unicode strings. Each lists must contain only one type.
+        :raises ValueError: If the inventory is not a list of IPAChar objects or
+            unicode strings. Each lists must contain only one type.
         """
         self.logger = logging.getLogger(__name__ + "." + self.__class__.__name__)
         self.name = name
@@ -111,7 +122,7 @@ class WordweaverProject:
         """Save the project to the file specified in the project.
 
         .. code-block::
-        
+
             File format is as follows:
             Magic number:         4 bytes     0x87AFFA87
             Version:              1 byte      0x01
@@ -154,7 +165,9 @@ class WordweaverProject:
     def _write_inventory(f_stream, inventory: list[IPAChar]):
         f_stream.write(len(inventory).to_bytes(1, 'big'))
         for sound in inventory:
-            sound_unicode = sound.unicode_repr if sound.unicode_repr is not None else IPA_TO_UNICODE[sound.canonical_representation]
+            sound_unicode = sound.unicode_repr
+            if sound_unicode is None:
+                sound_unicode = IPA_TO_UNICODE[sound.canonical_representation]
             f_stream.write(len(sound_unicode.encode()).to_bytes(1, 'big'))
             f_stream.write(sound_unicode.encode())
 
