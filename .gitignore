@@ -4,6 +4,14 @@
 # VS Code
 .vscode/
 
+# uv
+.venv/
+
+# Nix
+result
+result-*
+.direnv/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

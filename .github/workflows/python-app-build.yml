@@ -22,15 +22,20 @@ jobs:
         python-version: [ 3.12 ]
     steps:
     - uses: actions/checkout@v3
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v3
+    - name: Install Nix
+      uses: cachix/install-nix-action@v27
       with:
-        python-version: "${{ matrix.python-version }}"
+        extra_nix_config: |
+          experimental-features = nix-command flakes
+    - name: Setup Cachix
+      uses: cachix/cachix-action@v15
+      with:
+        name: wordweaver
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+        skipPush: true
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
-        python -m pip install -r requirements.txt
-        python -m pip install PyInstaller
+        nix develop --command uv sync --extra dev
     - name: Install Windows dependencies
       run: |
         iwr -useb get.scoop.sh -outfile 'install.ps1'
@@ -41,7 +46,7 @@ jobs:
       if: runner.os == 'Windows'
     - name: Build executable
       run: |
-        python -m PyInstaller Wordweaver.spec
+        nix develop --command uv run python -m PyInstaller Wordweaver.spec
     - name: Build Windows installer
       run: |
         makensis src/wordweaver.nsi
@@ -52,7 +57,7 @@ jobs:
         output-directory: dist
         root-directory: dist
         bundle-path: Wordweaver.app
-        identifier: xyz.prestonhager.wordweaver
+        identifier: com.prestonhager.wordweaver
       if: runner.os == 'macOS'
     - name: Upload artifacts
       uses: actions/upload-artifact@v2
