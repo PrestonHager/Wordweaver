@@ -28,10 +28,7 @@ jobs:
         skipPush: true
     - name: Install dependencies
       run: |
-        nix develop --command bash -c "
-          uv sync &&
-          uv pip install flake8
-        "
+        nix develop --command uv sync --extra dev
     - name: Lint with flake8
       run: |
         echo "Running flake8 linter on src"

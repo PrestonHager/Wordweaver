@@ -20,6 +20,7 @@ dev = [
     "sphinx>=8.0.0",
     "PyInstaller>=6.16.0",
     "pylint>=3.0.0",
+    "flake8>=7.3.0",
 ]
 
 [build-system]
@@ -33,4 +34,5 @@ allow-direct-references = true
 packages = ["src"]
 
 [tool.pylint]
-max-line-length = 127
+max-line-length = 120
+
