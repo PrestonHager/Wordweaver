@@ -60,7 +60,7 @@ jobs:
         identifier: com.prestonhager.wordweaver
       if: runner.os == 'macOS'
     - name: Upload artifacts
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v6
       with:
         name: wordweaver-${{ matrix.os }}
         path: dist/Wordweaver*
