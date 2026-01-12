@@ -168,18 +168,14 @@ class App(QMainWindow):
     def _update_project_view(self):
         if self.project is not None:
             self.project_name.setText(self.project.name)
-            phonology_text = ""
+            parts = []
             if len(self.project.pulmonic_inventory) > 0:
-                phonology_text += "C = " + ', '.join(map(str,
-                                                     self.project.pulmonic_inventory))
-                phonology_text += "\n"
+                parts.append("C = " + ', '.join(map(str, self.project.pulmonic_inventory)))
             if len(self.project.non_pulmonic_inventory) > 0:
-                phonology_text += "B = " + ', '.join(map(str,
-                                                     self.project.non_pulmonic_inventory))
-                phonology_text += "\n"
+                parts.append("B = " + ', '.join(map(str, self.project.non_pulmonic_inventory)))
             if len(self.project.vowel_inventory) > 0:
-                phonology_text += "V = " + ', '.join(map(str,
-                                                     self.project.vowel_inventory))
+                parts.append("V = " + ', '.join(map(str, self.project.vowel_inventory)))
+            phonology_text = "\n".join(parts)
             self.phonology_text.setText(phonology_text)
             self.lexicon_text.setText(', '.join(self.project.lexicon))
 
