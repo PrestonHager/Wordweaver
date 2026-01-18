@@ -37,7 +37,7 @@ jobs:
         nix develop --command uv sync --extra dev
     - name: Build executable
       run: |
-        nix develop --command uv run python -m PyInstaller Wordweaver.spec
+        nix develop --command uv run python -m PyInstaller src/Wordweaver.spec
     - name: Get version for macOS installer
       id: version
       run: |
@@ -80,7 +80,7 @@ jobs:
       if: runner.os == 'Windows'
     - name: Build executable
       run: |
-        uv run python -m PyInstaller Wordweaver.spec
+        uv run python -m PyInstaller src/Wordweaver.spec
     - name: Build Windows installer
       run: |
         makensis src/wordweaver.nsi
