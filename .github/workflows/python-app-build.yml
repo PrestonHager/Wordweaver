@@ -75,7 +75,7 @@ jobs:
       with:
         install_scoop: true
         buckets: extras
-        apps: makensis
+        apps: nsis
         scoop_update: true
         update_path: true
     - name: Build executable
