@@ -71,13 +71,13 @@ jobs:
       run: |
         uv sync --extra dev
     - name: Install Windows dependencies
-      run: |
-        iwr -useb get.scoop.sh -outfile 'install.ps1'
-        .\install.ps1 -RunAsAdmin
-        scoop update
-        scoop bucket add extras
-        scoop install nsis
-      if: runner.os == 'Windows'
+      uses: MinoruSekine/setup-scoop@v4.0.2
+      with:
+        install_scoop: true
+        buckets: extras
+        apps: makensis
+        scoop_update: true
+        update_path: true
     - name: Build executable
       run: |
         uv run python -m PyInstaller src/Wordweaver.spec
