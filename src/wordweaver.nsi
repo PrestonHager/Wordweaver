@@ -42,7 +42,7 @@ Section "Wordweaver (required)"
   SetOutPath $INSTDIR
   
   ; Put file there
-  File "dist\Wordweaver.exe"
+  File "dist\Wordweaver\Wordweaver.exe"
   
   ; Write the installation path into the registry
   WriteRegStr HKLM "SOFTWARE\Wordweaver" "Install_Dir" "$INSTDIR"
