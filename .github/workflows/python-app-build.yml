@@ -81,6 +81,15 @@ jobs:
     - name: Build executable
       run: |
         uv run python -m PyInstaller src/Wordweaver.spec
+    - name: Debug - List dist contents
+      run: |
+        Write-Host "=== Contents of dist/ ==="
+        Get-ChildItem -Recurse dist/ | ForEach-Object { $_.FullName }
+      if: always()
+    # Uncomment to enable interactive SSH debugging:
+    # - name: Setup tmate session
+    #   uses: mxschmitt/action-tmate@v3
+    #   if: failure()
     - name: Build Windows installer
       run: |
         makensis src/wordweaver.nsi
