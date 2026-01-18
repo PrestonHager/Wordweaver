@@ -17,18 +17,17 @@ jobs:
       matrix:
         os:
           - ubuntu-latest
-          - windows-latest
           - macos-latest
-        python-version: [ 3.12 ]
+        python-version: [ 3.13 ]
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v6
     - name: Install Nix
-      uses: cachix/install-nix-action@v27
+      uses: cachix/install-nix-action@v31
       with:
         extra_nix_config: |
           experimental-features = nix-command flakes
     - name: Setup Cachix
-      uses: cachix/cachix-action@v15
+      uses: cachix/cachix-action@v16
       with:
         name: wordweaver
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
@@ -36,6 +35,41 @@ jobs:
     - name: Install dependencies
       run: |
         nix develop --command uv sync --extra dev
+    - name: Build executable
+      run: |
+        nix develop --command uv run python -m PyInstaller Wordweaver.spec
+    - name: Get version for macOS installer
+      id: version
+      run: |
+        echo "value=$(cat VERSION | tr -d '\n')" >> "$GITHUB_OUTPUT"
+      if: runner.os == 'macOS'
+    - name: Build macOS installer
+      uses: akiojin/generate-mac-installer-github-action@v1.0.4
+      with:
+        output-directory: dist
+        root-directory: dist
+        bundle-path: Wordweaver.app
+        identifier: com.prestonhager.wordweaver
+        version: ${{ steps.version.outputs.value }}
+      if: runner.os == 'macOS'
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v6
+      with:
+        name: wordweaver-${{ matrix.os }}
+        path: dist/Wordweaver*
+  build-windows:
+    # Because windows is *special* and can't use nix :(
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v6
+    - name: Install Python and uv
+      run: |
+        choco install python --version=3.12.0
+        python -m pip install --upgrade pip
+        pip install uv
+    - name: Install dependencies
+      run: |
+        uv sync --extra dev
     - name: Install Windows dependencies
       run: |
         iwr -useb get.scoop.sh -outfile 'install.ps1'
@@ -46,21 +80,12 @@ jobs:
       if: runner.os == 'Windows'
     - name: Build executable
       run: |
-        nix develop --command uv run python -m PyInstaller Wordweaver.spec
+        uv run python -m PyInstaller Wordweaver.spec
     - name: Build Windows installer
       run: |
         makensis src/wordweaver.nsi
-      if: runner.os == 'Windows'
-    - name: Build macOS installer
-      uses: akiojin/generate-mac-installer-github-action@v0.1.0
-      with:
-        output-directory: dist
-        root-directory: dist
-        bundle-path: Wordweaver.app
-        identifier: com.prestonhager.wordweaver
-      if: runner.os == 'macOS'
     - name: Upload artifacts
       uses: actions/upload-artifact@v6
       with:
-        name: wordweaver-${{ matrix.os }}
+        name: wordweaver-Windows
         path: dist/Wordweaver*
