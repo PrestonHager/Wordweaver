@@ -5,7 +5,7 @@
 Name "Wordweaver"
 
 ; The file to write
-OutFile "..\dist\Wordweaver-install.exe"
+OutFile "dist\Wordweaver-install.exe"
 
 ; Request application privileges for Windows Vista and higher
 RequestExecutionLevel admin
@@ -42,7 +42,7 @@ Section "Wordweaver (required)"
   SetOutPath $INSTDIR
   
   ; Put file there
-  File "..\dist\Wordweaver.exe"
+  File "dist\Wordweaver.exe"
   
   ; Write the installation path into the registry
   WriteRegStr HKLM "SOFTWARE\Wordweaver" "Install_Dir" "$INSTDIR"
