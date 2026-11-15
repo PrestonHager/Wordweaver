@@ -1,0 +1,27 @@
+[project]
+name = "wordweaver"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "ipapy",
+    "platformdirs>=4.14.5",
+    "pyinstaller>=6.22.3",
+    "pyperclip>=1.11.0",
+    "pyqt6>=6.12.1",
+    "sphinx>=9.2.0",
+]
+
+[project.scripts]
+wordweaver = "main:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/main.py"]
+
+[tool.uv.sources]
+ipapy = { git = "https://github.com/PrestonHager/ipapy", rev = "v0.0.10.0" }

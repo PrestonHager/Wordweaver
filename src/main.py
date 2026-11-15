@@ -294,7 +294,7 @@ class App(QMainWindow):
                 user_cache_path("Wordweaver", False).joinpath(Path(".editor")).unlink()
         return super().closeEvent(a0)
 
-if __name__ == "__main__":
+def main():
     # Parse command line arguments
     import argparse
     parser = argparse.ArgumentParser(description="Wordweaver: A complete toolbox for all things conlang.")
@@ -336,3 +336,6 @@ if __name__ == "__main__":
     window.show()
     logger.debug("Running application")
     app.exec()
+
+if __name__ == "__main__":
+    main()
