@@ -23,7 +23,9 @@ PULMONIC_CONSONANTS = {
         },
         "velar": {
             "voiceless": "k",
-            "voiced": "g"
+            # NOTE: This is the IPA letter, not ASCII g, which some fonts draw
+            # with a loop tail.
+            "voiced": "\u0261"
         },
         "uvular": {
             "voiceless": "q",
