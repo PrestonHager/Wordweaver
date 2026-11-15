@@ -1,6 +1,6 @@
 # main.py
 
-from PyQt6.QtWidgets import QApplication, QFileDialog, QPushButton, QGridLayout, QHBoxLayout, QInputDialog, QLabel, QMainWindow, QMenu, QScrollArea, QSizePolicy, QTextEdit, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QApplication, QFileDialog, QPushButton, QGridLayout, QHBoxLayout, QInputDialog, QLabel, QMainWindow, QMenu, QMessageBox, QScrollArea, QSizePolicy, QTextEdit, QVBoxLayout, QWidget
 from PyQt6.QtGui import QCloseEvent, QFont, QIcon
 from PyQt6.QtCore import Qt
 from pathlib import Path
@@ -12,11 +12,11 @@ import logging
 import pyperclip
 
 from about import About
-from wordweaver_project import WordweaverProject
+from wordweaver_project import Project, ProjectFileError
 from phonology_selector import PhonologySelector
 
 class App(QMainWindow):
-    def __init__(self, project: WordweaverProject=None):
+    def __init__(self, project: Project=None):
         super().__init__()
 
         # Setup the logger
@@ -161,11 +161,16 @@ class App(QMainWindow):
     def _update_project_view(self):
         if self.project is not None:
             self.project_name.setText(self.project.name)
-            phonology_text = "C = " + ', '.join(map(str, self.project.pulmonic_inventory)) if len(self.project.pulmonic_inventory) > 0 else ""
-            phonology_text += "\nB = " + ', '.join(map(str, self.project.non_pulmonic_inventory)) if len(self.project.non_pulmonic_inventory) > 0 else ""
-            phonology_text += "\nV = " + ', '.join(map(str, self.project.vowel_inventory)) if len(self.project.vowel_inventory) > 0 else ""
-            self.phonology_text.setText(phonology_text)
-            self.lexicon_text.setText(', '.join(self.project.lexicon))
+            self.phonology_text.setText(', '.join(self.language.inventory.symbols))
+            # TODO: show the Lexicon once Languages have one.
+            self.lexicon_text.setText("")
+
+    @property
+    def language(self):
+        # The UI only shows one Language per Project for now, so make sure there is one.
+        if not self.project.languages:
+            self.project.add_language(self.project.name)
+        return self.project.languages[0]
 
     def new_project(self):
         # Prompt the user for a project name
@@ -175,10 +180,10 @@ class App(QMainWindow):
                                         text="Untitled Project")
         if ok and name:
             try:
-                self.project = WordweaverProject.from_file(Path(__file__).parent.joinpath(Path("default.wwproj").absolute()))
-            except FileNotFoundError:
-                self.logger.warning("Default project file not found; creating new empty project.")
-                self.project = WordweaverProject(name)
+                self.project = Project.load(Path(__file__).parent.joinpath(Path("default.wwproj")).absolute())
+            except (FileNotFoundError, ProjectFileError) as e:
+                self.logger.warning(f"Couldn't load the default project ({e}); creating new empty project.")
+                self.project = Project(name)
             self.project.name = name
             self.project.file = None
             self._update_main_view()
@@ -194,7 +199,12 @@ class App(QMainWindow):
         dialog.setFileMode(QFileDialog.FileMode.ExistingFile)
         dialog.setNameFilters(("Wordweaver Project (*.wwproj)", "All Files (*)"))
         if dialog.exec() == QFileDialog.DialogCode.Accepted:
-            self.project = WordweaverProject.from_file(dialog.selectedFiles()[0])
+            try:
+                self.project = Project.load(dialog.selectedFiles()[0])
+            except (OSError, ProjectFileError) as e:
+                self.logger.warning(f"Couldn't open project: {e}")
+                QMessageBox.warning(self, "Couldn't Open Project", str(e))
+                return
             self._update_main_view()
             self.logger.info(f"Opened project: {self.project.name}")
 
@@ -257,7 +267,7 @@ class App(QMainWindow):
 
     def edit_phonology(self):
         if not hasattr(self, "phonology_selector"):
-            self.phonology_selector = PhonologySelector(self.project)
+            self.phonology_selector = PhonologySelector(self.language)
             self.logger.debug("Created new phonology selector window")
         self.phonology_selector.show()
         self.phonology_selector.activateWindow()
@@ -271,10 +281,10 @@ class App(QMainWindow):
         return super().closeEvent(a0)
 
     def _close_phonology_selector(self, a0: QCloseEvent | None) -> None:
-        self.project = self.phonology_selector.project
+        # The selector already wrote any saved changes into the Language.
         self._update_project_view()
         self.logger.debug("Closed phonology selector window and updated project")
-        self.logger.info(f"Updated phonology to {self.project.inventory}")
+        self.logger.info(f"Phoneme inventory is now {self.language.inventory.symbols}")
         delattr(self, "phonology_selector")
         return super().closeEvent(a0)
 
@@ -318,12 +328,13 @@ def main():
         logger.info("Found cache file, trying to load project...")
         with open(user_cache_path("Wordweaver", False).joinpath(Path(".editor")), "r") as f_in:
             project_file = f_in.read().strip()
-        if Path(project_file).exists():
-            project = WordweaverProject.from_file(project_file)
+        # Old pre-v1 project files can't be opened anymore, so those fail here too.
+        try:
+            project = Project.load(project_file)
             logger.info("Successfully loaded project from cache file.")
-        else:
+        except (OSError, ProjectFileError) as e:
             project = None
-            logger.info("Failed to load project from cache file.")
+            logger.info(f"Failed to load project from cache file: {e}")
     else:
         project = None
     # Create an application and run it

@@ -1,9 +1,11 @@
 # phonology.py
 
 import random
+from collections.abc import Callable, Iterator
+from dataclasses import dataclass
 from enum import Enum
 
-from ipapy import IPA_TO_UNICODE
+from ipapy import IPA_TO_UNICODE, UNICODE_TO_IPA
 from ipapy.ipachar import IPAChar, IPAConsonant, IPAVowel
 
 # Declare the Phonemes class to include current IPA characters
@@ -20,6 +22,82 @@ def define_phoneme_types():
 
 # Call the function to define the enum
 Phonemes = Enum("Phonemes", define_phoneme_types())
+
+@dataclass(frozen=True)
+class Phoneme:
+    """A single distinctive sound of a Language, written as an IPA symbol, with a stable ID."""
+    id: int
+    symbol: str
+
+    @property
+    def ipa(self) -> IPAChar:
+        return UNICODE_TO_IPA[self.symbol]
+
+    def __str__(self) -> str:
+        return self.symbol
+
+class PhonemeInventory:
+    """The set of Phonemes a Language uses, kept in the order they were added."""
+
+    def __init__(self, new_id: Callable[[], int]):
+        """
+        :param new_id: Callable[[], int]: Gives out a new record ID each time it's called, so IDs are unique in the Project.
+        """
+        self._new_id = new_id
+        self._phonemes: dict[str, Phoneme] = {}
+
+    def add(self, symbol: str) -> Phoneme:
+        """Add a Phoneme by its IPA symbol, or return the existing one if it's already in the inventory.
+
+        :raises ValueError: If the symbol isn't a valid IPA character.
+        """
+        if symbol in self._phonemes:
+            return self._phonemes[symbol]
+        if symbol not in UNICODE_TO_IPA:
+            raise ValueError(f"Invalid IPA character: {symbol}")
+        phoneme = Phoneme(self._new_id(), symbol)
+        self._phonemes[symbol] = phoneme
+        return phoneme
+
+    def remove(self, symbol: str):
+        """Remove a Phoneme by its IPA symbol.
+
+        :raises KeyError: If the Phoneme isn't in the inventory.
+        """
+        del self._phonemes[symbol]
+
+    def set_symbols(self, symbols: list[str]):
+        """Make the inventory hold exactly these symbols. Phonemes that stay keep their IDs.
+
+        :raises ValueError: If any symbol isn't a valid IPA character. The inventory isn't changed then.
+        """
+        invalid = [s for s in symbols if s not in UNICODE_TO_IPA]
+        if invalid:
+            raise ValueError(f"Invalid IPA characters: {', '.join(invalid)}")
+        for symbol in [s for s in self._phonemes if s not in symbols]:
+            self.remove(symbol)
+        for symbol in symbols:
+            self.add(symbol)
+
+    def get(self, symbol: str) -> Phoneme | None:
+        return self._phonemes.get(symbol)
+
+    @property
+    def symbols(self) -> list[str]:
+        return list(self._phonemes)
+
+    def _restore(self, phoneme: Phoneme):
+        # Put back a Phoneme loaded from a file, keeping its ID.
+        self._phonemes[phoneme.symbol] = phoneme
+
+    def __iter__(self) -> Iterator[Phoneme]:
+        return iter(list(self._phonemes.values()))
+
+    def __len__(self) -> int:
+        return len(self._phonemes)
+
+    def __contains__(self, symbol: str) -> bool:
+        return symbol in self._phonemes
 
 class PhonemeConstraint:
     def __init__(self, phoneme: Phonemes, optional: bool=False):
@@ -138,7 +216,7 @@ class PhonemeGenerator:
     def print_word(self, syllable_list: list[IPAChar], seperator: str=''):
         print(seperator.join([''.join([j.unicode_repr for j in i]) for i in syllable_list]))
 
-__all__ = ["Phonemes", "PhonemeConstraint", "PhonemeGenerator"]
+__all__ = ["Phoneme", "PhonemeInventory", "Phonemes", "PhonemeConstraint", "PhonemeGenerator"]
 
 if __name__ == "__main__":
     from ipapy import UNICODE_TO_IPA

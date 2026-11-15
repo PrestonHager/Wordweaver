@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 from PyInstaller.utils.hooks import collect_data_files
 
-datas = [('src/icons/', 'icons/'), ('VERSION', '.')]
+datas = [('src/icons/', 'icons/'), ('VERSION', '.'), ('src/default.wwproj', '.')]
 datas += collect_data_files('ipapy')
 
 

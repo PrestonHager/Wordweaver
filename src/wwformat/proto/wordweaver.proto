@@ -1,0 +1,51 @@
+// wordweaver.proto
+//
+// Payload messages for the v1 .wwproj chunks (see ADR 0003).
+// Each chunk type in wwformat/registry.py maps to one message here.
+//
+// After editing this file, regenerate wordweaver_pb2.py from the repo root:
+//   uv run python -m grpc_tools.protoc -I src/wwformat/proto --python_out=src/wwformat src/wwformat/proto/wordweaver.proto
+//
+// Conventions, so the record tables stay generic:
+// - Fields holding text are uint32 indexes into the string table, where 0 is "".
+// - Every record has a stable `uint64 id = 1` that's unique in the Project.
+// - Every table message is just `repeated <Record> records = 1`.
+// - Only add new fields; never renumber or reuse a field number.
+
+syntax = "proto3";
+
+package wordweaver.v1;
+
+// Chunk STRING_TABLE. Holds the strings for indexes 1..n, since 0 is always "".
+message StringTable {
+  repeated string strings = 1;
+}
+
+// Chunk PROJECT.
+message ProjectInfo {
+  uint32 name = 1;
+  // The next unused record ID, so IDs are never reused after a delete.
+  uint64 next_id = 2;
+}
+
+message Language {
+  uint64 id = 1;
+  uint32 name = 2;
+}
+
+// Chunk LANGUAGES.
+message LanguageTable {
+  repeated Language records = 1;
+}
+
+message Phoneme {
+  uint64 id = 1;
+  uint64 language_id = 2;
+  // The Phoneme's IPA symbol.
+  uint32 symbol = 3;
+}
+
+// Chunk PHONEMES.
+message PhonemeTable {
+  repeated Phoneme records = 1;
+}
