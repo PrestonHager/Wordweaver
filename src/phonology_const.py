@@ -1,35 +1,38 @@
 # phonology_const.py
 
+# NOTE: These follow the official IPA chart (2020). The chart puts dental,
+# alveolar and post-alveolar in one column for everything but fricatives,
+# so those sounds live under "alveolar" here.
 PULMONIC_CONSONANTS = {
     "plosive": {
         "bi-labial": {
-            "voiced": "p",
-            "voiceless": "b"
+            "voiceless": "p",
+            "voiced": "b"
         },
         "alveolar": {
-            "voiced": "t"
-        },
-        "post-alveolar": {
+            "voiceless": "t",
             "voiced": "d"
         },
         "retroflex": {
-            "voiced": "\u0288",
-            "voiceless": "\u0256"
+            "voiceless": "ʈ",
+            "voiced": "ɖ"
         },
         "palatal": {
-            "voiced": "c",
-            "voiceless": "\u025f"
+            "voiceless": "c",
+            "voiced": "ɟ"
         },
         "velar": {
-            "voiced": "k",
-            "voiceless": "g"
+            "voiceless": "k",
+            # NOTE: This is the IPA letter, not ASCII g, which some fonts draw
+            # with a loop tail.
+            "voiced": "\u0261"
         },
         "uvular": {
-            "voiced": "q",
-            "voiceless": "\u0262"
+            "voiceless": "q",
+            "voiced": "ɢ"
         },
         "glottal": {
-            "voiceless": "\u0294"
+            "voiceless": "ʔ"
         }
     },
     "nasal": {
@@ -37,134 +40,186 @@ PULMONIC_CONSONANTS = {
             "voiced": "m"
         },
         "labio-dental": {
-            "voiced": "\u0271"
+            "voiced": "ɱ"
         },
-        "post-alveolar": {
+        "alveolar": {
             "voiced": "n"
         },
         "retroflex": {
-            "voiced": "\u0273"
+            "voiced": "ɳ"
         },
         "palatal": {
-            "voiced": "\u0272"
+            "voiced": "ɲ"
         },
         "velar": {
-            "voiced": "\u014b"
+            "voiced": "ŋ"
         },
         "uvular": {
-            "voiced": "\u0274"
+            "voiced": "ɴ"
         }
     },
     "trill": {
         "bi-labial": {
-            "voiced": "\u0299"
+            "voiced": "ʙ"
         },
-        "post-alveolar": {
+        "alveolar": {
             "voiced": "r"
         },
         "uvular": {
-            "voiced": "\u0280"
+            "voiced": "ʀ"
         }
     },
     "tap": {
         "labio-dental": {
-            "voiced": "\u2c71"
+            "voiced": "ⱱ"
         },
-        "post-alveolar": {
-            "voiced": "\u027e"
+        "alveolar": {
+            "voiced": "ɾ"
         },
         "retroflex": {
-            "voiced": "\u027d"
+            "voiced": "ɽ"
         }
     },
     "fricative": {
         "bi-labial": {
-            "voiced": "\u0278",
-            "voiceless": "\u03b2"
+            "voiceless": "ɸ",
+            "voiced": "β"
         },
         "labio-dental": {
-            "voiced": "f",
-            "voiceless": "v"
+            "voiceless": "f",
+            "voiced": "v"
         },
         "dental": {
-            "voiced": "\u03b8",
-            "voiceless": "\u00f0"
+            "voiceless": "θ",
+            "voiced": "ð"
         },
         "alveolar": {
-            "voiced": "s",
-            "voiceless": "z"
+            "voiceless": "s",
+            "voiced": "z"
         },
         "post-alveolar": {
-            "voiced": "\u0283",
-            "voiceless": "\u0292"
+            "voiceless": "ʃ",
+            "voiced": "ʒ"
         },
         "retroflex": {
-            "voiced": "\u0282",
-            "voiceless": "\u0290"
+            "voiceless": "ʂ",
+            "voiced": "ʐ"
         },
         "palatal": {
-            "voiced": "\u00e7",
-            "voiceless": "\u029d"
+            "voiceless": "ç",
+            "voiced": "ʝ"
         },
         "velar": {
-            "voiced": "x",
-            "voiceless": "\u0263"
+            "voiceless": "x",
+            "voiced": "ɣ"
         },
         "uvular": {
-            "voiced": "\u03c7",
-            "voiceless": "\u0281"
+            "voiceless": "χ",
+            "voiced": "ʁ"
         },
         "pharyngeal": {
-            "voiced": "\u0127",
-            "voiceless": "\u0295"
+            "voiceless": "ħ",
+            "voiced": "ʕ"
         },
         "glottal": {
-            "voiced": "h",
-            "voiceless": "\u0266"
+            "voiceless": "h",
+            "voiced": "ɦ"
         }
     },
     "lateral-fricative": {
-        "dental": {
-            "voiced": "\u026c"
-        },
-        "post-alveolar": {
-            "voiced": "\u026e"
+        "alveolar": {
+            "voiceless": "ɬ",
+            "voiced": "ɮ"
         }
     },
     "approximant": {
         "labio-dental": {
-            "voiced": "\u028b"
+            "voiced": "ʋ"
         },
-        "post-alveolar": {
-            "voiced": "\u0279"
+        "alveolar": {
+            "voiced": "ɹ"
         },
         "retroflex": {
-            "voiced": "\u027b"
+            "voiced": "ɻ"
         },
         "palatal": {
             "voiced": "j"
         },
         "velar": {
-            "voiced": "\u0270"
+            "voiced": "ɰ"
         }
     },
     "lateral-approximant": {
-        "post-alveolar": {
+        "alveolar": {
             "voiced": "l"
         },
         "retroflex": {
-            "voiced": "\u026d"
+            "voiced": "ɭ"
         },
         "palatal": {
-            "voiced": "\u028e"
+            "voiced": "ʎ"
         },
         "velar": {
-            "voiced": "\u029f"
+            "voiced": "ʟ"
         }
     }
 }
 
+# NOTE: The chart only gives examples for ejectives, so these are the ones it
+# lists (p', t', k', s').
 NON_PULMONIC_CONSONANTS = {
+    "click": {
+        "bi-labial": {
+            "voiceless": "ʘ"
+        },
+        "dental": {
+            "voiceless": "ǀ"
+        },
+        "alveolar": {
+            "voiceless": "ǃ"
+        },
+        "palato-alveolar": {
+            "voiceless": "ǂ"
+        }
+    },
+    "lateral-click": {
+        "alveolar": {
+            "voiceless": "ǁ"
+        }
+    },
+    "implosive": {
+        "bi-labial": {
+            "voiced": "ɓ"
+        },
+        "alveolar": {
+            "voiced": "ɗ"
+        },
+        "palatal": {
+            "voiced": "ʄ"
+        },
+        "velar": {
+            "voiced": "ɠ"
+        },
+        "uvular": {
+            "voiced": "ʛ"
+        }
+    },
+    "ejective": {
+        "bi-labial": {
+            "voiceless": "pʼ"
+        },
+        "alveolar": {
+            "voiceless": "tʼ"
+        },
+        "velar": {
+            "voiceless": "kʼ"
+        }
+    },
+    "ejective-fricative": {
+        "alveolar": {
+            "voiceless": "sʼ"
+        }
+    }
 }
 
 VOWELS = {
@@ -174,72 +229,72 @@ VOWELS = {
             "rounded": "y"
         },
         "central": {
-            "unrounded": "\u0268",
-            "rounded": "\u0289"
+            "unrounded": "ɨ",
+            "rounded": "ʉ"
         },
         "back": {
-            "unrounded": "\u026f",
+            "unrounded": "ɯ",
             "rounded": "u"
         }
     },
-    "medial-close-mid": {
+    "near-close": {
         "front": {
-            "unrounded": "\u026a",
-            "rounded": "\u028f"
+            "unrounded": "ɪ",
+            "rounded": "ʏ"
         },
         "back": {
-            "unrounded": "\u028a"
+            "rounded": "ʊ"
         }
     },
     "close-mid": {
         "front": {
             "unrounded": "e",
-            "rounded": "\u00f8"
+            "rounded": "ø"
         },
         "central": {
-            "unrounded": "\u0258",
-            "rounded": "\u0275"
+            "unrounded": "ɘ",
+            "rounded": "ɵ"
         },
         "back": {
-            "unrounded": "\u0264",
+            "unrounded": "ɤ",
             "rounded": "o"
         }
     },
     "mid": {
         "central": {
-            "unrounded": "\u0259"
+            "unrounded": "ə"
         }
     },
     "open-mid": {
         "front": {
-            "unrounded": "\u025b",
-            "rounded": "\u0153"
+            "unrounded": "ɛ",
+            "rounded": "œ"
         },
         "central": {
-            "unrounded": "\u025c",
-            "rounded": "\u025e"
+            "unrounded": "ɜ",
+            "rounded": "ɞ"
         },
         "back": {
-            "unrounded": "\u028c",
-            "rounded": "\u0254"
+            "unrounded": "ʌ",
+            "rounded": "ɔ"
         }
     },
-    "medial-open-mid": {
+    "near-open": {
         "front": {
-            "unrounded": "\u00e6"
+            "unrounded": "æ"
         },
         "central": {
-            "unrounded": "\u0250"
+            "unrounded": "ɐ"
         }
     },
     "open": {
         "front": {
             "unrounded": "a",
-            "rounded": "\u0276"
+            "rounded": "ɶ"
         },
         "back": {
-            "unrounded": "\u0251",
-            "rounded": "\u0252"
+            "unrounded": "ɑ",
+            "rounded": "ɒ"
         }
     }
 }
