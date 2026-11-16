@@ -2,13 +2,15 @@
 
 from dataclasses import dataclass, field
 
+from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import (QDialog, QDialogButtonBox, QFormLayout, QHBoxLayout, QLabel, QLineEdit, QListWidget,
                              QMessageBox, QPlainTextEdit, QPushButton, QVBoxLayout, QWidget)
 
-from lexicon import ConceptReference, Definition, Entry, Form
+from lexicon import ConceptReference, Definition, Entry, Form, FormCheck, check_form
 from sense_picker import SensePicker
 from senses import Sense, SenseLookup, lookup_for
 from tag_widgets import TagPicker
+from widgets import label
 from wordweaver_project import DEFAULT_GLOSS_LANGUAGE, Language
 
 @dataclass
@@ -33,8 +35,58 @@ class _DefinitionDraft:
             return f"{self.sense.label()}\n{self.concept_reference}"
         return str(self.concept_reference)
 
+class FormWarnings(QWidget):
+    """The Form check's warnings, shown under the Form field, with a button to add each unknown Phoneme to the Inventory."""
+
+    phoneme_added = pyqtSignal(str)
+
+    def __init__(self, language: Language, parent: QWidget | None=None):
+        super().__init__(parent)
+        self.language = language
+        self.check = FormCheck()
+        self.add_buttons: dict[str, QPushButton] = {}
+        self._text = ""
+        self._layout = QVBoxLayout(self)
+        self._layout.setContentsMargins(0, 0, 0, 0)
+        self.hide()
+
+    def update_form(self, text: str):
+        """Check the Form text again and redraw the warnings."""
+        self._text = text
+        self.check = check_form(text, self.language.inventory.symbols)
+        # First, clear out the old warnings.
+        while self._layout.count():
+            widget = self._layout.takeAt(0).widget()
+            widget.setParent(None)
+            widget.deleteLater()
+        self.add_buttons = {}
+        # Then give each unknown Phoneme a row with its own button.
+        for symbol in self.check.unknown:
+            row = QWidget(self)
+            row_layout = QHBoxLayout(row)
+            row_layout.setContentsMargins(0, 0, 0, 0)
+            row_layout.addWidget(label(f"/{symbol}/ isn't in the Phoneme Inventory.", "error", row), 1)
+            button = QPushButton("Add to Inventory", row)
+            button.clicked.connect(lambda _checked, s=symbol: self.add_phoneme(s))
+            row_layout.addWidget(button)
+            self.add_buttons[symbol] = button
+            self._layout.addWidget(row)
+        # Invalid IPA can't go in the Inventory, so it just gets a note.
+        for text in self.check.invalid:
+            self._layout.addWidget(label(f"{text} isn't an IPA consonant or vowel.", "error", self))
+        self.setVisible(not self.check.ok)
+
+    def add_phoneme(self, symbol: str):
+        # Add it the same way the Phonology page does, so it's validated and gets an ID like any other Phoneme.
+        self.language.inventory.add(symbol)
+        self.phoneme_added.emit(symbol)
+        self.update_form(self._text)
+
 class EntryEditor(QDialog):
-    """A dialog for adding a new Entry to a Language's Lexicon, or editing one that's already there."""
+    """A dialog for adding a new Entry to a Language's Lexicon, or editing one that's already there.
+
+    The Form is checked against the Phoneme Inventory as you type. It only warns, so the Entry can always be saved.
+    """
 
     def __init__(self, language: Language, entry: Entry | None=None, parent: QWidget | None=None,
                  gloss_language: str=DEFAULT_GLOSS_LANGUAGE, senses: SenseLookup | None=None):
@@ -53,12 +105,18 @@ class EntryEditor(QDialog):
         else:
             self._drafts = [_DefinitionDraft(d, list(d.glosses), list(d.terms), d.description, d.concept_reference) for d in entry.definitions]
         self._current = -1
+        # Phonemes added to the Inventory from the Form warnings, so the page can refresh anything showing it.
+        self.added_phonemes: list[str] = []
 
         layout = QVBoxLayout(self)
         form_layout = QFormLayout()
         self.form_input = QLineEdit(self)
         self.form_input.setPlaceholderText("IPA, like kata")
         form_layout.addRow("Form:", self.form_input)
+        self.form_warnings = FormWarnings(language, self)
+        self.form_warnings.phoneme_added.connect(self.added_phonemes.append)
+        self.form_input.textChanged.connect(self.form_warnings.update_form)
+        form_layout.addRow("", self.form_warnings)
         # Tags go with the whole Entry, not one Definition, so they sit up here by the Form.
         # They're kept in their own widget, since they belong to the Project and not the Entry.
         self.tag_picker = None
@@ -112,6 +170,7 @@ class EntryEditor(QDialog):
 
         if entry is not None:
             self.form_input.setText(str(entry.form))
+        self.form_warnings.update_form(self.form_input.text())
         self._refresh_list(0)
 
     def _refresh_list(self, row: int):
@@ -272,7 +331,11 @@ class EntryEditor(QDialog):
             return True
         # Open the picked match in its own editor, then come back here so you can decide again.
         if warning.opened is not None:
-            EntryEditor(self.language, warning.opened, parent=self, gloss_language=self.gloss_language, senses=self._senses).exec()
+            editor = EntryEditor(self.language, warning.opened, parent=self, gloss_language=self.gloss_language, senses=self._senses)
+            editor.form_warnings.phoneme_added.connect(self.added_phonemes.append)
+            editor.exec()
+            # The other editor may have added Phonemes, so check this Form again.
+            self.form_warnings.update_form(self.form_input.text())
         return False
 
 class HomophoneWarning(QDialog):
@@ -304,4 +367,4 @@ class HomophoneWarning(QDialog):
         self.opened = self.matches[max(self.match_list.currentRow(), 0)]
         self.reject()
 
-__all__ = ["EntryEditor", "HomophoneWarning"]
+__all__ = ["EntryEditor", "FormWarnings", "HomophoneWarning"]

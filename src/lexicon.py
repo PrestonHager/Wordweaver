@@ -5,7 +5,11 @@ from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass
 from enum import Enum, IntEnum
 
+from phonology import is_valid_phoneme
 from tags import Tag, Tags
+
+# Tie bars join two letters into one sound, like the affricate /t͡s/.
+_TIE_BARS = "͜͡"
 
 class Form:
     """How an Entry is said, as a sequence of Phonemes written as IPA symbols."""
@@ -18,6 +22,7 @@ class Form:
         """Split IPA text into Phonemes, matching the longest of `symbols` first.
 
         Anything that doesn't match one of `symbols` becomes one Phoneme per letter, keeping any combining marks with it.
+        Letters joined by a tie bar, like t͡s, stay together.
         Spaces are ignored.
         """
         symbols = sorted({s for s in symbols if s}, key=len, reverse=True)
@@ -29,9 +34,12 @@ class Form:
             match = next((s for s in symbols if text.startswith(s, i)), None)
             if match is None:
                 # Otherwise take one letter, plus any combining marks right after it.
+                # A tie bar is a combining mark too, so when one ends the run we take the next letter with it.
                 end = i + 1
                 while end < len(text) and unicodedata.combining(text[end]):
                     end += 1
+                    if text[end - 1] in _TIE_BARS and end < len(text):
+                        end += 1
                 match = text[i:end]
             phonemes.append(match)
             i += len(match)
@@ -55,6 +63,41 @@ class Form:
 
     def __len__(self) -> int:
         return len(self._phonemes)
+
+@dataclass(frozen=True)
+class FormCheck:
+    """What check_form found in a Form. It's only a warning, so nothing here stops an Entry being saved.
+
+    `unknown` has the IPA Phonemes that aren't in the Phoneme Inventory, and `invalid` has the text that isn't an IPA consonant or vowel.
+    Both are in the order they first show up in the Form, without repeats.
+    """
+    unknown: tuple[str, ...] = ()
+    invalid: tuple[str, ...] = ()
+
+    @property
+    def ok(self) -> bool:
+        return not self.unknown and not self.invalid
+
+def check_form(form: Form | str, symbols: Iterable[str]) -> FormCheck:
+    """Check a Form against a Phoneme Inventory, given as its IPA symbols.
+
+    A Form given as a string is split with Form.parse using the same symbols.
+    An empty Form always passes, since unfinished Entries have one.
+    """
+    symbols = set(symbols)
+    if not isinstance(form, Form):
+        form = Form.parse(form, symbols)
+    unknown = {}
+    invalid = {}
+    for phoneme in form.phonemes:
+        if phoneme in symbols:
+            continue
+        # Use the same check as the Phoneme Inventory, so anything flagged as unknown can be added to it.
+        if is_valid_phoneme(phoneme):
+            unknown[phoneme] = None
+        else:
+            invalid[phoneme] = None
+    return FormCheck(tuple(unknown), tuple(invalid))
 
 class SearchField(Enum):
     """What part of an Entry a Lexicon search looks at."""
@@ -469,4 +512,4 @@ def _clean_terms(terms: Iterable[str]) -> tuple[str, ...]:
     # Technical terms are optional, so blank ones are just dropped.
     return tuple(t.strip() for t in terms if t.strip())
 
-__all__ = ["ConceptReference", "ConceptSource", "Definition", "Entry", "Form", "Lexicon", "SearchField", "SortOrder"]
+__all__ = ["ConceptReference", "ConceptSource", "Definition", "Entry", "Form", "FormCheck", "Lexicon", "SearchField", "SortOrder", "check_form"]

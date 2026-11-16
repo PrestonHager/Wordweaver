@@ -1,6 +1,6 @@
 # lexicon_page.py
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QComboBox, QDialog, QHBoxLayout, QLineEdit, QListWidget, QListWidgetItem, QMessageBox, QVBoxLayout, QWidget
 
 import logging
@@ -13,6 +13,9 @@ from wordweaver_project import Language, Project
 
 class LexiconPage(QWidget):
     """The picked Language's Entries, with buttons to add, edit, and remove them."""
+
+    # Sent when the Entry editor adds a Phoneme to the Inventory from a Form warning.
+    inventory_changed = pyqtSignal()
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
@@ -138,6 +141,7 @@ class LexiconPage(QWidget):
         accepted = editor.exec() == QDialog.DialogCode.Accepted
         # Refresh either way, since the Homophone warning can open and change another Entry.
         self._update_lexicon_list()
+        self._check_inventory(editor)
         if accepted:
             self.logger.info(f"Added Entry: {editor.entry}")
 
@@ -145,8 +149,16 @@ class LexiconPage(QWidget):
         entry = self._picked_entry()
         if entry is None:
             return
-        EntryEditor(self.language, entry, parent=self, gloss_language=self.project.gloss_language).exec()
+        editor = EntryEditor(self.language, entry, parent=self, gloss_language=self.project.gloss_language)
+        editor.exec()
         self._update_lexicon_list()
+        self._check_inventory(editor)
+
+    def _check_inventory(self, editor: EntryEditor):
+        # Phonemes added from the Form warnings stay even if the editor was cancelled.
+        if editor.added_phonemes:
+            self.logger.info(f"Added Phonemes from the Lexicon: {', '.join(editor.added_phonemes)}")
+            self.inventory_changed.emit()
 
     def remove_entry(self):
         entry = self._picked_entry()
