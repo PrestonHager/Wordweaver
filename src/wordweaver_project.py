@@ -1,5 +1,6 @@
 # wordweaver_project.py
 
+import os
 import re
 from collections.abc import Callable
 from enum import IntEnum
@@ -10,7 +11,7 @@ from lexicon_csv import export_csv
 from phoneme_classes import DEFAULT_CLASS_ID_BLOCK, PhonemeClass, PhonemeClasses
 from phonology import Phoneme, PhonemeInventory
 from tags import Tag, Tags
-from wwformat import ChunkType, CorruptFileError, FileContents, NewerVersionError, ProjectFileError, UnknownChunkError, pb
+from wwformat import ChunkType, CorruptFileError, FileContents, NewerVersionError, ProjectFileError, StringTable, UnknownChunkError, pb
 
 DEFAULT_GLOSS_LANGUAGE = "en"
 
@@ -99,6 +100,10 @@ class Project:
         # Tags are shared by every Language, and removing one takes it off every Entry.
         self.tags = Tags(self._new_id, self._untag_everywhere)
         self._gloss_language = DEFAULT_GLOSS_LANGUAGE
+        # What the file held after the last save or load, so saves can append only the changes.
+        self._saved: FileContents | None = None
+        self._saved_path: str | None = None
+        self._saved_stat: tuple[int, int] | None = None
 
     @property
     def gloss_language(self) -> str:
@@ -162,7 +167,23 @@ class Project:
             self.file = file
         if self.file is None:
             raise ValueError("The Project doesn't have a file to save to")
-        self._to_contents().write(self.file)
+        if self._saved is not None and self._saved_path == os.path.abspath(self.file) and self._saved_stat == _stat(self.file):
+            # The file already holds what we last saved, so we only append what changed since then.
+            contents = self._to_contents(self._saved.strings.copy())
+            patch = contents.patch_from(self._saved)
+            if patch is not None:
+                FileContents.append(self.file, patch)
+        else:
+            # The first save to a file writes the whole Project.
+            contents = self._to_contents(StringTable())
+            contents.write(self.file)
+        self._remember_saved(contents)
+
+    def _remember_saved(self, contents: FileContents):
+        # Keep what's in the file, so the next save can tell what changed.
+        self._saved = contents
+        self._saved_path = os.path.abspath(self.file)
+        self._saved_stat = _stat(self.file)
 
     @classmethod
     def load(cls, file: str | Path) -> "Project":
@@ -171,13 +192,17 @@ class Project:
         :raises FileNotFoundError: If the file doesn't exist.
         :raises ProjectFileError: If the file isn't a Project file, or is damaged.
         """
-        project = cls._from_contents(FileContents.read(file))
+        contents = FileContents.read(file)
+        project = cls._from_contents(contents)
         project.file = file
+        # A broken patch is still sitting at the end of the file, so the next save has to write the whole file.
+        if not contents.dropped_patch:
+            project._remember_saved(contents)
         return project
 
-    def _to_contents(self) -> FileContents:
+    def _to_contents(self, strings: StringTable) -> FileContents:
         # Each record goes in its own table, pointing at its parent by ID.
-        contents = FileContents()
+        contents = FileContents(strings)
         strings = contents.strings
         info = contents.get(ChunkType.PROJECT)
         info.name = strings.index(self.name)
@@ -291,6 +316,14 @@ class Project:
             raise CorruptFileError("A Definition belongs to an Entry that isn't in the file")
         project._unknown_chunks = list(contents.unknown_chunks)
         return project
+
+def _stat(file: str | Path) -> tuple[int, int] | None:
+    # If the file's size or modified time changed, something else wrote to it since we last did.
+    try:
+        stat = os.stat(file)
+    except FileNotFoundError:
+        return None
+    return stat.st_size, stat.st_mtime_ns
 
 def _load_concept_reference(record, strings) -> ConceptReference | None:
     # No source means no reference.
