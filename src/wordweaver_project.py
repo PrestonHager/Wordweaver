@@ -4,6 +4,7 @@ from collections.abc import Callable
 from enum import IntEnum
 from pathlib import Path
 
+from lexicon import Definition, Entry, Form, Lexicon
 from phoneme_classes import DEFAULT_CLASS_ID_BLOCK, PhonemeClass, PhonemeClasses
 from phonology import Phoneme, PhonemeInventory
 from wwformat import ChunkType, CorruptFileError, FileContents, NewerVersionError, ProjectFileError, UnknownChunkError, pb
@@ -20,7 +21,7 @@ class LanguageKind(IntEnum):
         return self.name.replace("_", "-").title()
 
 class Language:
-    """One conlang inside a Project, with its own Phoneme Inventory."""
+    """One conlang inside a Project, with its own Phoneme Inventory and Lexicon."""
 
     def __init__(self, id: int, name: str, new_id: Callable[[], int], kind: LanguageKind, default_class_ids_start: int):
         # Languages are made by Project.add_language, which hands out the IDs.
@@ -29,6 +30,7 @@ class Language:
         self.kind = kind
         self.inventory = PhonemeInventory(new_id)
         self._classes = PhonemeClasses(self.inventory, new_id, default_class_ids_start)
+        self.lexicon = Lexicon(new_id)
 
     @property
     def id(self) -> int:
@@ -144,6 +146,12 @@ class Project:
                     record.hand_edited = True
                     record.phoneme_ids.extend(p.id for p in phoneme_class.phonemes)
                 contents.add_record(ChunkType.PHONEME_CLASSES, record)
+            for entry in language.lexicon:
+                form = [strings.index(symbol) for symbol in entry.form.phonemes]
+                contents.add_record(ChunkType.ENTRIES, pb.Entry(id=entry.id, language_id=language.id, form=form))
+                for definition in entry.definitions:
+                    glosses = [strings.index(gloss) for gloss in definition.glosses]
+                    contents.add_record(ChunkType.DEFINITIONS, pb.Definition(id=definition.id, entry_id=entry.id, glosses=glosses))
         contents.unknown_chunks = list(self._unknown_chunks)
         return contents
 
@@ -183,6 +191,21 @@ class Project:
                 phoneme_class._name = strings[record.name]
             if record.hand_edited:
                 phoneme_class._restore_members(record.phoneme_ids)
+        # Then gather each Entry's Definitions, and put the Entries back into their Lexicons.
+        definitions: dict[int, list[Definition]] = {}
+        for record in contents.records(ChunkType.DEFINITIONS):
+            definitions.setdefault(record.entry_id, []).append(Definition(record.id, [strings[g] for g in record.glosses]))
+        entry_ids = set()
+        for record in contents.records(ChunkType.ENTRIES):
+            if record.language_id not in languages:
+                raise CorruptFileError(f"Entry {record.id} belongs to a Language that isn't in the file")
+            if record.id not in definitions:
+                raise CorruptFileError(f"Entry {record.id} doesn't have a Definition")
+            form = Form(strings[symbol] for symbol in record.form)
+            languages[record.language_id].lexicon._restore(Entry(record.id, form, definitions[record.id]))
+            entry_ids.add(record.id)
+        if not definitions.keys() <= entry_ids:
+            raise CorruptFileError("A Definition belongs to an Entry that isn't in the file")
         project._unknown_chunks = list(contents.unknown_chunks)
         return project
 

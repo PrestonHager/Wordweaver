@@ -98,6 +98,11 @@ QComboBox::drop-down {{ border: none; width: 24px; }}
 QComboBox::down-arrow {{ image: url("{chevron}"); width: 14px; height: 14px; }}
 QComboBox QAbstractItemView {{ background: {surface}; border: 1px solid {border}; selection-background-color: {accent_soft}; selection-color: {text}; outline: none; padding: 4px; }}
 
+QListWidget#EntryList {{ background: transparent; border: none; outline: none; font-size: 14px; }}
+QListWidget#EntryList::item {{ padding: 8px 10px; border-radius: 8px; }}
+QListWidget#EntryList::item:hover {{ background: {hover}; }}
+QListWidget#EntryList::item:selected {{ background: {accent_soft}; color: {text}; }}
+
 QMenuBar {{ background: {bg}; border-bottom: 1px solid {border}; }}
 QMenuBar::item {{ padding: 6px 10px; background: transparent; border-radius: 6px; }}
 QMenuBar::item:selected {{ background: {hover}; }}

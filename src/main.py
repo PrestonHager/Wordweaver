@@ -13,7 +13,8 @@ import pyperclip
 
 from about import About
 from icons import bind_icon, icon as make_icon
-from pages import LexiconPage, OverviewPage, WelcomePage
+from lexicon_page import LexiconPage
+from pages import OverviewPage, WelcomePage
 from phonology_page import PhonologyPage
 from theme import theme
 from widgets import Button, label
@@ -219,6 +220,7 @@ class App(QMainWindow):
         # Finally, refresh the pages for the picked Language.
         self.overview_page.refresh(self.project, self.language)
         self.phonology_page.set_language(self.language)
+        self.lexicon_page.refresh(self.project, self.language)
 
     def _open_page(self, key: str, language: Language | None = None):
         # Switch Language first if a card asked for a different one.
