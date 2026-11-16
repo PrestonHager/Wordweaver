@@ -11,6 +11,7 @@ from allophones_card import AllophonesCard
 from classes_card import ClassesCard
 from phonology import is_valid_phoneme
 from phonology_const import PULMONIC_CONSONANTS, VOWELS
+from phonology_settings import FrequencyCard, SuprasegmentalsCard
 from theme import theme
 from widgets import Button, Card, Chip, FlowLayout, PageHeader, label
 from wordweaver_project import Language
@@ -269,6 +270,15 @@ class PhonologyPage(QWidget):
         self.allophones_card.changed.connect(self._on_classes_changed)
         layout.addWidget(self.allophones_card)
 
+        # Then how common each Phoneme is, and the Language's Suprasegmentals.
+        # These only change their own settings, so they pass their changes straight on.
+        self.frequency_card = FrequencyCard(body)
+        self.frequency_card.changed.connect(self.changed)
+        layout.addWidget(self.frequency_card)
+        self.suprasegmentals_card = SuprasegmentalsCard(body)
+        self.suprasegmentals_card.changed.connect(self.changed)
+        layout.addWidget(self.suprasegmentals_card)
+
         # Now the two charts, each in its own card.
         consonants = Card(body)
         consonants.layout.addWidget(label("PULMONIC CONSONANTS", "section"))
@@ -299,6 +309,8 @@ class PhonologyPage(QWidget):
         self.symbol_input.clear()
         self.classes_card.set_language(language)
         self.allophones_card.set_language(language)
+        self.frequency_card.set_language(language)
+        self.suprasegmentals_card.set_language(language)
         self.refresh()
 
     def refresh(self):
@@ -323,6 +335,7 @@ class PhonologyPage(QWidget):
             button.setChecked(symbol in symbols)
         self.classes_card.refresh()
         self.allophones_card.refresh()
+        self.frequency_card.refresh()
 
     def _on_classes_changed(self):
         # Class and rule edits change the chips and the other card's pickers, so redraw everything.
