@@ -24,15 +24,17 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x10wordweaver.proto\x12\rwordweaver.v1\"\x1e\n\x0bStringTable\x12\x0f\n\x07strings\x18\x01 \x03(\t\",\n\x0bProjectInfo\x12\x0c\n\x04name\x18\x01 \x01(\r\x12\x0f\n\x07next_id\x18\x02 \x01(\x04\"p\n\x08Language\x12\n\n\x02id\x18\x01 \x01(\x04\x12\x0c\n\x04name\x18\x02 \x01(\r\x12)\n\x04kind\x18\x03 \x01(\x0e\x32\x1b.wordweaver.v1.LanguageKind\x12\x1f\n\x17\x64\x65\x66\x61ult_class_ids_start\x18\x04 \x01(\x04\"9\n\rLanguageTable\x12(\n\x07records\x18\x01 \x03(\x0b\x32\x17.wordweaver.v1.Language\":\n\x07Phoneme\x12\n\n\x02id\x18\x01 \x01(\x04\x12\x13\n\x0blanguage_id\x18\x02 \x01(\x04\x12\x0e\n\x06symbol\x18\x03 \x01(\r\"7\n\x0cPhonemeTable\x12\'\n\x07records\x18\x01 \x03(\x0b\x32\x16.wordweaver.v1.Phoneme\"|\n\x0cPhonemeClass\x12\n\n\x02id\x18\x01 \x01(\x04\x12\x13\n\x0blanguage_id\x18\x02 \x01(\x04\x12\x0c\n\x04name\x18\x03 \x01(\r\x12\x13\n\x0b\x64\x65\x66\x61ult_key\x18\x04 \x01(\r\x12\x13\n\x0bhand_edited\x18\x05 \x01(\x08\x12\x13\n\x0bphoneme_ids\x18\x06 \x03(\x04\"A\n\x11PhonemeClassTable\x12,\n\x07records\x18\x01 \x03(\x0b\x32\x1b.wordweaver.v1.PhonemeClass*\x81\x01\n\x0cLanguageKind\x12\x1a\n\x16LANGUAGE_KIND_LANGUAGE\x10\x00\x12 \n\x1cLANGUAGE_KIND_PROTO_LANGUAGE\x10\x01\x12\x19\n\x15LANGUAGE_KIND_DIALECT\x10\x02\x12\x18\n\x14LANGUAGE_KIND_CREOLE\x10\x03\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x10wordweaver.proto\x12\rwordweaver.v1\"\x1e\n\x0bStringTable\x12\x0f\n\x07strings\x18\x01 \x03(\t\",\n\x0bProjectInfo\x12\x0c\n\x04name\x18\x01 \x01(\r\x12\x0f\n\x07next_id\x18\x02 \x01(\x04\"p\n\x08Language\x12\n\n\x02id\x18\x01 \x01(\x04\x12\x0c\n\x04name\x18\x02 \x01(\r\x12)\n\x04kind\x18\x03 \x01(\x0e\x32\x1b.wordweaver.v1.LanguageKind\x12\x1f\n\x17\x64\x65\x66\x61ult_class_ids_start\x18\x04 \x01(\x04\"9\n\rLanguageTable\x12(\n\x07records\x18\x01 \x03(\x0b\x32\x17.wordweaver.v1.Language\":\n\x07Phoneme\x12\n\n\x02id\x18\x01 \x01(\x04\x12\x13\n\x0blanguage_id\x18\x02 \x01(\x04\x12\x0e\n\x06symbol\x18\x03 \x01(\r\"7\n\x0cPhonemeTable\x12\'\n\x07records\x18\x01 \x03(\x0b\x32\x16.wordweaver.v1.Phoneme\"|\n\x0cPhonemeClass\x12\n\n\x02id\x18\x01 \x01(\x04\x12\x13\n\x0blanguage_id\x18\x02 \x01(\x04\x12\x0c\n\x04name\x18\x03 \x01(\r\x12\x13\n\x0b\x64\x65\x66\x61ult_key\x18\x04 \x01(\r\x12\x13\n\x0bhand_edited\x18\x05 \x01(\x08\x12\x13\n\x0bphoneme_ids\x18\x06 \x03(\x04\"A\n\x11PhonemeClassTable\x12,\n\x07records\x18\x01 \x03(\x0b\x32\x1b.wordweaver.v1.PhonemeClass\"C\n\x0b\x43ontextSide\x12(\n\x04kind\x18\x01 \x01(\x0e\x32\x1a.wordweaver.v1.ContextKind\x12\n\n\x02id\x18\x02 \x01(\x04\"\xae\x01\n\rAllophoneRule\x12\n\n\x02id\x18\x01 \x01(\x04\x12\x13\n\x0blanguage_id\x18\x02 \x01(\x04\x12\x12\n\nphoneme_id\x18\x03 \x01(\x04\x12\x11\n\tallophone\x18\x04 \x01(\r\x12*\n\x06\x62\x65\x66ore\x18\x05 \x01(\x0b\x32\x1a.wordweaver.v1.ContextSide\x12)\n\x05\x61\x66ter\x18\x06 \x01(\x0b\x32\x1a.wordweaver.v1.ContextSide\"C\n\x12\x41llophoneRuleTable\x12-\n\x07records\x18\x01 \x03(\x0b\x32\x1c.wordweaver.v1.AllophoneRule*\x81\x01\n\x0cLanguageKind\x12\x1a\n\x16LANGUAGE_KIND_LANGUAGE\x10\x00\x12 \n\x1cLANGUAGE_KIND_PROTO_LANGUAGE\x10\x01\x12\x19\n\x15LANGUAGE_KIND_DIALECT\x10\x02\x12\x18\n\x14LANGUAGE_KIND_CREOLE\x10\x03*n\n\x0b\x43ontextKind\x12\x14\n\x10\x43ONTEXT_ANYTHING\x10\x00\x12\x19\n\x15\x43ONTEXT_WORD_BOUNDARY\x10\x01\x12\x13\n\x0f\x43ONTEXT_PHONEME\x10\x02\x12\x19\n\x15\x43ONTEXT_PHONEME_CLASS\x10\x03\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'wordweaver_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
-  _globals['_LANGUAGEKIND']._serialized_start=597
-  _globals['_LANGUAGEKIND']._serialized_end=726
+  _globals['_LANGUAGEKIND']._serialized_start=912
+  _globals['_LANGUAGEKIND']._serialized_end=1041
+  _globals['_CONTEXTKIND']._serialized_start=1043
+  _globals['_CONTEXTKIND']._serialized_end=1153
   _globals['_STRINGTABLE']._serialized_start=35
   _globals['_STRINGTABLE']._serialized_end=65
   _globals['_PROJECTINFO']._serialized_start=67
@@ -49,4 +51,10 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_PHONEMECLASS']._serialized_end=527
   _globals['_PHONEMECLASSTABLE']._serialized_start=529
   _globals['_PHONEMECLASSTABLE']._serialized_end=594
+  _globals['_CONTEXTSIDE']._serialized_start=596
+  _globals['_CONTEXTSIDE']._serialized_end=663
+  _globals['_ALLOPHONERULE']._serialized_start=666
+  _globals['_ALLOPHONERULE']._serialized_end=840
+  _globals['_ALLOPHONERULETABLE']._serialized_start=842
+  _globals['_ALLOPHONERULETABLE']._serialized_end=909
 # @@protoc_insertion_point(module_scope)

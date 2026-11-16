@@ -7,6 +7,7 @@ from PyQt6.QtWidgets import QFrame, QGridLayout, QHBoxLayout, QLineEdit, QPushBu
 import logging
 import pyperclip
 
+from allophones_card import AllophonesCard
 from classes_card import ClassesCard
 from phonology import is_valid_phoneme
 from phonology_const import PULMONIC_CONSONANTS, VOWELS
@@ -263,6 +264,11 @@ class PhonologyPage(QWidget):
         self.classes_card.changed.connect(self._on_classes_changed)
         layout.addWidget(self.classes_card)
 
+        # And the Allophone Rules, which can use those Classes as contexts.
+        self.allophones_card = AllophonesCard(body)
+        self.allophones_card.changed.connect(self._on_classes_changed)
+        layout.addWidget(self.allophones_card)
+
         # Now the two charts, each in its own card.
         consonants = Card(body)
         consonants.layout.addWidget(label("PULMONIC CONSONANTS", "section"))
@@ -292,6 +298,7 @@ class PhonologyPage(QWidget):
         self.language = language
         self.symbol_input.clear()
         self.classes_card.set_language(language)
+        self.allophones_card.set_language(language)
         self.refresh()
 
     def refresh(self):
@@ -304,7 +311,10 @@ class PhonologyPage(QWidget):
         for symbol in symbols:
             classes = ", ".join(c.name for c in self.language.classes_of(symbol))
             tooltip = DESCRIPTIONS.get(symbol, "Off-chart Phoneme") + (f"\nClasses: {classes}" if classes else "")
-            chip = Chip(symbol, tooltip, self.chips_box)
+            # Show the Phoneme's Allophones next to it, like t [ɾ ʔ].
+            allophones = self.language.allophones_of(symbol)
+            detail = f"[{' '.join(allophones)}]" if allophones else ""
+            chip = Chip(symbol, tooltip, self.chips_box, detail)
             chip.removed.connect(lambda s: self.toggle(s, False))
             self.chips.addWidget(chip)
         self.chips_box.setVisible(bool(symbols))
@@ -312,9 +322,10 @@ class PhonologyPage(QWidget):
         for symbol, button in self.buttons.items():
             button.setChecked(symbol in symbols)
         self.classes_card.refresh()
+        self.allophones_card.refresh()
 
     def _on_classes_changed(self):
-        # Class edits change the chip tooltips, so redraw those too.
+        # Class and rule edits change the chips and the other card's pickers, so redraw everything.
         self.refresh()
         self.changed.emit()
 

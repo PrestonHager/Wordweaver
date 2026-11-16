@@ -83,7 +83,7 @@ class Chip(QFrame):
 
     removed = pyqtSignal(str)
 
-    def __init__(self, text: str, tooltip: str = "", parent: QWidget | None = None):
+    def __init__(self, text: str, tooltip: str = "", parent: QWidget | None = None, detail: str = ""):
         super().__init__(parent)
         self.setObjectName("Chip")
         self.setFixedHeight(28)
@@ -92,6 +92,11 @@ class Chip(QFrame):
         layout.setContentsMargins(12, 2, 4, 2)
         layout.setSpacing(2)
         layout.addWidget(QLabel(text, self))
+        # Extra text after the main text, like a Phoneme's Allophones. It isn't part of what `removed` sends.
+        if detail:
+            detail_label = QLabel(detail, self)
+            detail_label.setObjectName("ChipDetail")
+            layout.addWidget(detail_label)
         if tooltip:
             self.setToolTip(tooltip)
         remove = Button(icon="x", tooltip=f"Remove {text}", parent=self, icon_size=14)

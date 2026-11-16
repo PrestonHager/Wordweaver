@@ -4,6 +4,7 @@ from collections.abc import Callable
 from enum import IntEnum
 from pathlib import Path
 
+from allophones import WORD_BOUNDARY, AllophoneRule, AllophoneRules, ContextSide
 from phoneme_classes import DEFAULT_CLASS_ID_BLOCK, PhonemeClass, PhonemeClasses
 from phonology import Phoneme, PhonemeInventory
 from wwformat import ChunkType, CorruptFileError, FileContents, NewerVersionError, ProjectFileError, UnknownChunkError, pb
@@ -29,6 +30,7 @@ class Language:
         self.kind = kind
         self.inventory = PhonemeInventory(new_id)
         self._classes = PhonemeClasses(self.inventory, new_id, default_class_ids_start)
+        self._allophone_rules = AllophoneRules(self.inventory, self._classes, new_id)
 
     @property
     def id(self) -> int:
@@ -59,6 +61,26 @@ class Language:
     def classes_of(self, symbol: str) -> list[PhonemeClass]:
         """Get every Phoneme Class a Phoneme is in."""
         return self._classes.of(symbol)
+
+    @property
+    def allophone_rules(self) -> list[AllophoneRule]:
+        return list(self._allophone_rules)
+
+    def add_allophone_rule(self, phoneme: str, allophone: str, before: ContextSide | str=None, after: ContextSide | str=None) -> AllophoneRule:
+        """Say a Phoneme is pronounced as an Allophone between two contexts, like /t/ → [ɾ] / Vowel _ Vowel.
+
+        Each side of the context is a Phoneme (or its IPA symbol), a Phoneme Class, WORD_BOUNDARY, or None for anything.
+
+        :raises ValueError: If a Phoneme or Class isn't in this Language, or the Allophone isn't valid IPA.
+        """
+        return self._allophone_rules.add(phoneme, allophone, before, after)
+
+    def remove_allophone_rule(self, rule: AllophoneRule):
+        self._allophone_rules.remove(rule)
+
+    def allophones_of(self, symbol: str) -> list[str]:
+        """Get the Allophones a Phoneme's rules give it, each once."""
+        return self._allophone_rules.of(symbol)
 
     def __repr__(self) -> str:
         return f"<Language {self.id} {self.name!r}: {', '.join(self.inventory.symbols)}>"
@@ -144,6 +166,10 @@ class Project:
                     record.hand_edited = True
                     record.phoneme_ids.extend(p.id for p in phoneme_class.phonemes)
                 contents.add_record(ChunkType.PHONEME_CLASSES, record)
+            for rule in language.allophone_rules:
+                contents.add_record(ChunkType.ALLOPHONE_RULES, pb.AllophoneRule(
+                    id=rule.id, language_id=language.id, phoneme_id=rule.phoneme.id, allophone=strings.index(rule.allophone),
+                    before=_side_to_record(rule.before), after=_side_to_record(rule.after)))
         contents.unknown_chunks = list(self._unknown_chunks)
         return contents
 
@@ -183,7 +209,42 @@ class Project:
                 phoneme_class._name = strings[record.name]
             if record.hand_edited:
                 phoneme_class._restore_members(record.phoneme_ids)
+        # Finally, put back the Allophone Rules, now that everything they point at is loaded.
+        for record in contents.records(ChunkType.ALLOPHONE_RULES):
+            if record.language_id not in languages:
+                raise CorruptFileError(f"Allophone Rule {record.id} belongs to a Language that isn't in the file")
+            language = languages[record.language_id]
+            phonemes = {p.id: p for p in language.inventory}
+            classes = {c.id: c for c in language.classes}
+            if record.phoneme_id not in phonemes:
+                raise CorruptFileError(f"Allophone Rule {record.id} is for a Phoneme that isn't in its Language")
+            before = _side_from_record(record.before, phonemes, classes, record.id)
+            after = _side_from_record(record.after, phonemes, classes, record.id)
+            language._allophone_rules._restore(record.id, phonemes[record.phoneme_id], strings[record.allophone], before, after)
         project._unknown_chunks = list(contents.unknown_chunks)
         return project
 
-__all__ = ["Language", "LanguageKind", "Project", "ProjectFileError", "CorruptFileError", "NewerVersionError", "UnknownChunkError"]
+def _side_to_record(side: ContextSide) -> pb.ContextSide:
+    if side is WORD_BOUNDARY:
+        return pb.ContextSide(kind=pb.CONTEXT_WORD_BOUNDARY)
+    if isinstance(side, PhonemeClass):
+        return pb.ContextSide(kind=pb.CONTEXT_PHONEME_CLASS, id=side.id)
+    if isinstance(side, Phoneme):
+        return pb.ContextSide(kind=pb.CONTEXT_PHONEME, id=side.id)
+    return pb.ContextSide()
+
+def _side_from_record(record: pb.ContextSide, phonemes: dict[int, Phoneme], classes: dict[int, PhonemeClass], rule_id: int) -> ContextSide:
+    if record.kind == pb.CONTEXT_WORD_BOUNDARY:
+        return WORD_BOUNDARY
+    if record.kind == pb.CONTEXT_PHONEME:
+        if record.id not in phonemes:
+            raise CorruptFileError(f"Allophone Rule {rule_id} has a context Phoneme that isn't in its Language")
+        return phonemes[record.id]
+    if record.kind == pb.CONTEXT_PHONEME_CLASS:
+        if record.id not in classes:
+            raise CorruptFileError(f"Allophone Rule {rule_id} has a context Class that isn't in its Language")
+        return classes[record.id]
+    # Anything else, including a kind from a newer version, means nothing in particular.
+    return None
+
+__all__ = ["WORD_BOUNDARY", "AllophoneRule", "Language", "LanguageKind", "Project", "ProjectFileError", "CorruptFileError", "NewerVersionError", "UnknownChunkError"]
