@@ -1,18 +1,31 @@
 # wordweaver_project.py
 
 from collections.abc import Callable
+from enum import IntEnum
 from pathlib import Path
 
 from phonology import Phoneme, PhonemeInventory
 from wwformat import ChunkType, CorruptFileError, FileContents, ProjectFileError, pb
 
+class LanguageKind(IntEnum):
+    """A label for a Language. It's only a description and doesn't change how the Language works."""
+    # The values match the LanguageKind enum in the .proto, so they can be saved as is.
+    LANGUAGE = 0
+    PROTO_LANGUAGE = 1
+    DIALECT = 2
+    CREOLE = 3
+
+    def __str__(self) -> str:
+        return self.name.replace("_", "-").title()
+
 class Language:
     """One conlang inside a Project, with its own Phoneme Inventory."""
 
-    def __init__(self, id: int, name: str, new_id: Callable[[], int]):
+    def __init__(self, id: int, name: str, new_id: Callable[[], int], kind: LanguageKind=LanguageKind.LANGUAGE):
         # Languages are made by Project.add_language, which hands out the ID.
         self._id = id
         self.name = name
+        self.kind = kind
         self.inventory = PhonemeInventory(new_id)
 
     @property
@@ -36,10 +49,17 @@ class Project:
     def languages(self) -> list[Language]:
         return list(self._languages)
 
-    def add_language(self, name: str) -> Language:
-        language = Language(self._new_id(), name, self._new_id)
+    def add_language(self, name: str, kind: LanguageKind=LanguageKind.LANGUAGE) -> Language:
+        language = Language(self._new_id(), name, self._new_id, kind)
         self._languages.append(language)
         return language
+
+    def remove_language(self, language: Language):
+        """Remove a Language and everything in it. Its IDs are never handed out again.
+
+        :raises ValueError: If the Language isn't in this Project.
+        """
+        self._languages.remove(language)
 
     def _new_id(self) -> int:
         id = self._next_id
@@ -76,7 +96,7 @@ class Project:
         info.name = strings.index(self.name)
         info.next_id = self._next_id
         for language in self._languages:
-            contents.add_record(ChunkType.LANGUAGES, pb.Language(id=language.id, name=strings.index(language.name)))
+            contents.add_record(ChunkType.LANGUAGES, pb.Language(id=language.id, name=strings.index(language.name), kind=language.kind))
             for phoneme in language.inventory:
                 contents.add_record(ChunkType.PHONEMES, pb.Phoneme(id=phoneme.id, language_id=language.id, symbol=strings.index(phoneme.symbol)))
         return contents
@@ -89,7 +109,9 @@ class Project:
         # First, rebuild the Languages, then put each Phoneme back into its Language.
         languages = {}
         for record in contents.records(ChunkType.LANGUAGES):
-            language = Language(record.id, strings[record.name], project._new_id)
+            # A kind from a newer version that we don't know about falls back to a plain Language.
+            kind = LanguageKind(record.kind) if record.kind in LanguageKind._value2member_map_ else LanguageKind.LANGUAGE
+            language = Language(record.id, strings[record.name], project._new_id, kind)
             languages[record.id] = language
             project._languages.append(language)
         for record in contents.records(ChunkType.PHONEMES):
@@ -100,4 +122,4 @@ class Project:
         project._next_id = max([info.next_id, 1] + [id + 1 for id in contents.record_ids()])
         return project
 
-__all__ = ["Language", "Project", "ProjectFileError", "CorruptFileError"]
+__all__ = ["Language", "LanguageKind", "Project", "ProjectFileError", "CorruptFileError"]

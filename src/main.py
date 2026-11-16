@@ -1,6 +1,6 @@
 # main.py
 
-from PyQt6.QtWidgets import QApplication, QFileDialog, QPushButton, QGridLayout, QHBoxLayout, QInputDialog, QLabel, QMainWindow, QMenu, QMessageBox, QScrollArea, QSizePolicy, QTextEdit, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QApplication, QComboBox, QFileDialog, QPushButton, QGridLayout, QHBoxLayout, QInputDialog, QLabel, QMainWindow, QMenu, QMessageBox, QScrollArea, QSizePolicy, QTextEdit, QVBoxLayout, QWidget
 from PyQt6.QtGui import QCloseEvent, QFont, QIcon
 from PyQt6.QtCore import Qt
 from pathlib import Path
@@ -12,7 +12,7 @@ import logging
 import pyperclip
 
 from about import About
-from wordweaver_project import Project, ProjectFileError
+from wordweaver_project import Language, LanguageKind, Project, ProjectFileError
 from phonology_selector import PhonologySelector
 
 class App(QMainWindow):
@@ -24,6 +24,8 @@ class App(QMainWindow):
 
         # Set class defaults
         self.project = project
+        # The Language being edited, picked from the Languages bar.
+        self.language: Language | None = None
 
         # Construct GUI
         self.logger.debug("Constructing GUI")
@@ -63,23 +65,42 @@ class App(QMainWindow):
         self.project_name.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
         self.project_view_layout.addWidget(self.project_name, 0, 0, 1, 2)
 
+        # Add the Languages bar, for picking which Language to edit and managing them.
+        languages_bar = QWidget(self.project_view)
+        languages_layout = QHBoxLayout(languages_bar)
+        languages_layout.addWidget(QLabel("Language:", languages_bar))
+        self.language_picker = QComboBox(languages_bar)
+        self.language_picker.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.language_picker.currentIndexChanged.connect(self._on_language_picked)
+        languages_layout.addWidget(self.language_picker)
+        self.kind_picker = QComboBox(languages_bar)
+        for kind in LanguageKind:
+            self.kind_picker.addItem(str(kind))
+        self.kind_picker.currentIndexChanged.connect(self._on_kind_picked)
+        languages_layout.addWidget(self.kind_picker)
+        for text, slot in (("Add", self.add_language), ("Rename", self.rename_language), ("Remove", self.remove_language), ("Rename Project", self.rename_project)):
+            button = QPushButton(text, languages_bar)
+            button.clicked.connect(slot)
+            languages_layout.addWidget(button)
+        self.project_view_layout.addWidget(languages_bar, 1, 0, 1, 2)
+
         phonology_label = QLabel("Phonology", self.project_view)
         self.phonology_text = QTextEdit(self.project_view)
         self.phonology_text.setReadOnly(True)
         phonology_edit_button = QPushButton("Edit Phonology", self.project_view)
         phonology_edit_button.clicked.connect(self.edit_phonology)
-        self.project_view_layout.addWidget(phonology_label, 1, 0)
-        self.project_view_layout.addWidget(self.phonology_text, 2, 0)
-        self.project_view_layout.addWidget(phonology_edit_button, 3, 0)
+        self.project_view_layout.addWidget(phonology_label, 2, 0)
+        self.project_view_layout.addWidget(self.phonology_text, 3, 0)
+        self.project_view_layout.addWidget(phonology_edit_button, 4, 0)
 
         lexicon_label = QLabel("Lexicon", self.project_view)
         self.lexicon_text = QTextEdit(self.project_view)
         self.lexicon_text.setReadOnly(True)
         lexicon_edit_button = QPushButton("Edit Lexicon", self.project_view)
         lexicon_edit_button.clicked.connect(self.edit_lexicon)
-        self.project_view_layout.addWidget(lexicon_label, 1, 1)
-        self.project_view_layout.addWidget(self.lexicon_text, 2, 1)
-        self.project_view_layout.addWidget(lexicon_edit_button, 3, 1)
+        self.project_view_layout.addWidget(lexicon_label, 2, 1)
+        self.project_view_layout.addWidget(self.lexicon_text, 3, 1)
+        self.project_view_layout.addWidget(lexicon_edit_button, 4, 1)
 
         self._update_project_view()
 
@@ -159,18 +180,74 @@ class App(QMainWindow):
             self._update_project_view()
 
     def _update_project_view(self):
-        if self.project is not None:
-            self.project_name.setText(self.project.name)
-            self.phonology_text.setText(', '.join(self.language.inventory.symbols))
-            # TODO: show the Lexicon once Languages have one.
-            self.lexicon_text.setText("")
-
-    @property
-    def language(self):
-        # The UI only shows one Language per Project for now, so make sure there is one.
+        if self.project is None:
+            self.language = None
+            return
+        self.project_name.setText(self.project.name)
+        # First, make sure there's a Language to edit, and that the picked one is still in the Project.
         if not self.project.languages:
             self.project.add_language(self.project.name)
-        return self.project.languages[0]
+        if self.language not in self.project.languages:
+            self.language = self.project.languages[0]
+        # Now refill the pickers without their signals firing halfway through.
+        self.language_picker.blockSignals(True)
+        self.language_picker.clear()
+        for language in self.project.languages:
+            self.language_picker.addItem(language.name, language.id)
+        self.language_picker.setCurrentIndex(self.project.languages.index(self.language))
+        self.language_picker.blockSignals(False)
+        self.kind_picker.blockSignals(True)
+        self.kind_picker.setCurrentIndex(list(LanguageKind).index(self.language.kind))
+        self.kind_picker.blockSignals(False)
+        # Finally, show the picked Language.
+        self.phonology_text.setText(', '.join(self.language.inventory.symbols))
+        # TODO: show the Lexicon once Languages have one.
+        self.lexicon_text.setText("")
+
+    def _on_language_picked(self, index: int):
+        if self.project is None or index < 0:
+            return
+        # The phonology window edits one Language, so close it before switching.
+        if hasattr(self, "phonology_selector"):
+            self.phonology_selector.close()
+        self.language = self.project.languages[index]
+        self._update_project_view()
+
+    def _on_kind_picked(self, index: int):
+        if self.language is not None and index >= 0:
+            self.language.kind = list(LanguageKind)[index]
+
+    def add_language(self):
+        name, ok = QInputDialog.getText(self, "Add Language", "Enter a name for the new Language:")
+        if ok and name:
+            self.language = self.project.add_language(name)
+            self._update_project_view()
+            self.logger.info(f"Added Language: {name}")
+
+    def rename_language(self):
+        name, ok = QInputDialog.getText(self, "Rename Language", "Enter a new name for the Language:", text=self.language.name)
+        if ok and name:
+            self.language.name = name
+            self._update_project_view()
+
+    def remove_language(self):
+        if len(self.project.languages) == 1:
+            QMessageBox.information(self, "Can't Remove Language", "A Project needs at least one Language.")
+            return
+        answer = QMessageBox.question(self, "Remove Language", f"Remove {self.language.name} and everything in it?")
+        if answer == QMessageBox.StandardButton.Yes:
+            if hasattr(self, "phonology_selector"):
+                self.phonology_selector.close()
+            self.project.remove_language(self.language)
+            self.logger.info(f"Removed Language: {self.language.name}")
+            self.language = None
+            self._update_project_view()
+
+    def rename_project(self):
+        name, ok = QInputDialog.getText(self, "Rename Project", "Enter a new name for the Project:", text=self.project.name)
+        if ok and name:
+            self.project.name = name
+            self._update_project_view()
 
     def new_project(self):
         # Prompt the user for a project name

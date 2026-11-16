@@ -8,7 +8,7 @@ import sys
 from os import path
 sys.path.append(path.abspath(path.join(path.dirname(__file__), '../src')))
 
-from wordweaver_project import Project, ProjectFileError
+from wordweaver_project import LanguageKind, Project, ProjectFileError
 
 DEFAULT_PROJECT = path.abspath(path.join(path.dirname(__file__), '../src/default.wwproj'))
 STARTER_PHONEMES = ["n", "p", "b", "d", "k", "ɾ", "f", "s", "l", "a", "e", "i", "o", "u"]
@@ -124,6 +124,52 @@ class TestProject(unittest.TestCase):
             f_out.write(b"just some text")
         with self.assertRaises(ProjectFileError):
             Project.load(self.file)
+
+    def test_several_languages_round_trip(self):
+        project = Project("Family")
+        proto = project.add_language("Proto-Family", LanguageKind.PROTO_LANGUAGE)
+        proto.inventory.set_symbols(["p", "t", "a"])
+        daughter = project.add_language("Daughter")
+        daughter.inventory.set_symbols(["f", "θ", "a", "e"])
+        creole = project.add_language("Trade Talk", LanguageKind.CREOLE)
+        creole.inventory.set_symbols(["m", "a"])
+        loaded = self.round_trip(project)
+        self.assertEqual(
+            [(l.name, l.kind, l.inventory.symbols) for l in loaded.languages],
+            [
+                ("Proto-Family", LanguageKind.PROTO_LANGUAGE, ["p", "t", "a"]),
+                ("Daughter", LanguageKind.LANGUAGE, ["f", "θ", "a", "e"]),
+                ("Trade Talk", LanguageKind.CREOLE, ["m", "a"]),
+            ],
+        )
+
+    def test_rename_and_remove_languages(self):
+        project = Project("Old Name")
+        first = project.add_language("First")
+        second = project.add_language("Second")
+        removed_id = second.id
+        project.remove_language(second)
+        project.name = "New Name"
+        first.name = "Renamed"
+        first.kind = LanguageKind.DIALECT
+        loaded = self.round_trip(project)
+        self.assertEqual(loaded.name, "New Name")
+        self.assertEqual([(l.name, l.kind) for l in loaded.languages], [("Renamed", LanguageKind.DIALECT)])
+        # The removed Language's ID was the newest one, so a reused ID would show up right after loading.
+        self.assertGreater(loaded.add_language("Third").id, removed_id)
+
+    def test_many_languages(self):
+        project = Project("Big Family")
+        for i in range(300):
+            project.add_language(f"Language {i}").inventory.add("a")
+        loaded = self.round_trip(project)
+        self.assertEqual([l.name for l in loaded.languages], [f"Language {i}" for i in range(300)])
+
+    def test_remove_missing_language(self):
+        project = Project("Test Project")
+        other = Project("Other").add_language("Elsewhere")
+        with self.assertRaises(ValueError):
+            project.remove_language(other)
 
     def test_default_project(self):
         project = Project.load(DEFAULT_PROJECT)

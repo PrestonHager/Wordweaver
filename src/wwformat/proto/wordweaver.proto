@@ -28,9 +28,19 @@ message ProjectInfo {
   uint64 next_id = 2;
 }
 
+// A label for a Language. It doesn't change how the Language works.
+// LANGUAGE is 0 so a Language saved without a kind loads as a plain Language.
+enum LanguageKind {
+  LANGUAGE_KIND_LANGUAGE = 0;
+  LANGUAGE_KIND_PROTO_LANGUAGE = 1;
+  LANGUAGE_KIND_DIALECT = 2;
+  LANGUAGE_KIND_CREOLE = 3;
+}
+
 message Language {
   uint64 id = 1;
   uint32 name = 2;
+  LanguageKind kind = 3;
 }
 
 // Chunk LANGUAGES.
