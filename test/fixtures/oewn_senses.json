@@ -1,0 +1,9 @@
+[
+  {"id": "oewn-09236472-n", "lemmas": ["bank"], "pos": "n", "gloss": "sloping land (especially the slope beside a body of water)"},
+  {"id": "oewn-08437235-n", "lemmas": ["depository financial institution", "bank", "banking concern", "banking company"], "pos": "n", "gloss": "a financial institution that accepts deposits and channels the money into lending activities"},
+  {"id": "oewn-04146942-n", "lemmas": ["savings bank", "coin bank", "money box", "bank"], "pos": "n", "gloss": "a container (usually with a slot in the top) for keeping money at home"},
+  {"id": "oewn-02315835-v", "lemmas": ["deposit", "bank"], "pos": "v", "gloss": "put into a bank account"},
+  {"id": "oewn-14869913-n", "lemmas": ["water", "H2O"], "pos": "n", "gloss": "binary compound that occurs at room temperature as a clear colorless odorless tasteless liquid"},
+  {"id": "oewn-09434308-n", "lemmas": ["river"], "pos": "n", "gloss": "a large natural stream of water (larger than a creek)"},
+  {"id": "oewn-04103160-n", "lemmas": ["road", "route"], "pos": "n", "gloss": "an open way (generally public) for travel or transportation"}
+]

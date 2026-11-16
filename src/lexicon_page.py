@@ -132,9 +132,9 @@ class LexiconPage(QWidget):
         return self.language.lexicon.get(item.data(Qt.ItemDataRole.UserRole))
 
     def add_entry(self):
-        if self.language is None:
+        if self.project is None or self.language is None:
             return
-        editor = EntryEditor(self.language, parent=self)
+        editor = EntryEditor(self.language, parent=self, gloss_language=self.project.gloss_language)
         accepted = editor.exec() == QDialog.DialogCode.Accepted
         # Refresh either way, since the Homophone warning can open and change another Entry.
         self._update_lexicon_list()
@@ -145,7 +145,7 @@ class LexiconPage(QWidget):
         entry = self._picked_entry()
         if entry is None:
             return
-        EntryEditor(self.language, entry, parent=self).exec()
+        EntryEditor(self.language, entry, parent=self, gloss_language=self.project.gloss_language).exec()
         self._update_lexicon_list()
 
     def remove_entry(self):

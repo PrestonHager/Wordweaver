@@ -8,7 +8,7 @@ import sys
 from os import path
 sys.path.append(path.abspath(path.join(path.dirname(__file__), '../src')))
 
-from lexicon import Form
+from lexicon import ConceptReference, ConceptSource, Form
 from wordweaver_project import Project
 
 class TestLexicon(unittest.TestCase):
@@ -245,6 +245,58 @@ class TestLexicon(unittest.TestCase):
             self.lexicon.add("ta" * (i % 5 + 1), [f"gloss {i}"])
         loaded = self.round_trip().languages[0].lexicon
         self.assertEqual(self.entries(loaded), self.entries(self.lexicon))
+
+    def test_concept_references_are_optional(self):
+        entry = self.lexicon.add("sat", ["bank"])
+        self.assertIsNone(entry.definitions[0].concept_reference)
+        loaded = self.round_trip().languages[0].lexicon
+        self.assertIsNone(next(iter(loaded)).definitions[0].concept_reference)
+
+    def test_concept_reference_round_trip(self):
+        # Two Homophones for the two "bank"s, each linked to its own sense.
+        river = ConceptReference(ConceptSource.OPEN_ENGLISH_WORDNET, "oewn-09236472-n")
+        money = ConceptReference(ConceptSource.OPEN_ENGLISH_WORDNET, "oewn-08437235-n")
+        concept = ConceptReference(ConceptSource.CONCEPTICON, "1234")
+        shore = self.lexicon.add("sat", ["bank"], description="Beside a river.")
+        vault = self.lexicon.add("sat", ["bank"])
+        unlinked = self.lexicon.add_definition(vault, ["treasury"])
+        linked_later = self.lexicon.add_definition(vault, ["hoard"])
+        self.lexicon.set_concept_reference(shore, shore.definitions[0], river)
+        self.lexicon.set_concept_reference(vault, vault.definitions[0], money)
+        self.lexicon.set_concept_reference(vault, linked_later, concept)
+        loaded = self.round_trip().languages[0].lexicon
+        references = [[d.concept_reference for d in e.definitions] for e in loaded]
+        self.assertEqual(references, [[river], [money, None, concept]])
+        self.assertEqual(loaded.get(shore.id).definitions[0].description, "Beside a river.")
+        self.assertIsNone(unlinked.concept_reference)
+
+    def test_relink_and_unlink(self):
+        entry = self.lexicon.add("sat", ["bank"])
+        definition = entry.definitions[0]
+        river = ConceptReference(ConceptSource.OPEN_ENGLISH_WORDNET, "oewn-09236472-n")
+        money = ConceptReference(ConceptSource.OPEN_ENGLISH_WORDNET, "oewn-08437235-n")
+        self.lexicon.set_concept_reference(entry, definition, river)
+        self.lexicon.set_concept_reference(entry, definition, money)
+        self.assertEqual(definition.concept_reference, money)
+        # Editing other fields leaves the link alone.
+        self.lexicon.edit_definition(entry, definition, glosses=["money bank"])
+        self.assertEqual(self.round_trip().languages[0].lexicon.get(entry.id).definitions[0].concept_reference, money)
+        self.lexicon.clear_concept_reference(entry, definition)
+        self.lexicon.clear_concept_reference(entry, definition)
+        self.assertIsNone(definition.concept_reference)
+        self.assertIsNone(self.round_trip().languages[0].lexicon.get(entry.id).definitions[0].concept_reference)
+
+    def test_concept_reference_must_be_on_the_entry(self):
+        entry = self.lexicon.add("sat", ["bank"])
+        other = self.lexicon.add("ta", ["river"])
+        river = ConceptReference(ConceptSource.OPEN_ENGLISH_WORDNET, "oewn-09236472-n")
+        with self.assertRaises(KeyError):
+            self.lexicon.set_concept_reference(other, entry.definitions[0], river)
+        with self.assertRaises(KeyError):
+            self.lexicon.clear_concept_reference(other, entry.definitions[0])
+        with self.assertRaises(ValueError):
+            self.lexicon.set_concept_reference(entry, entry.definitions[0], "oewn:oewn-09236472-n")
+        self.assertIsNone(entry.definitions[0].concept_reference)
 
 class TestForm(unittest.TestCase):
     def test_parse_matches_longest_symbol(self):

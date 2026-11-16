@@ -105,6 +105,11 @@ _Avoid_: Meaning (fine in casual talk), sense, translation
 A short word or phrase in the user's native language that helps describe a Definition.
 _Avoid_: Translation, key
 
+**Gloss Language**:
+The Project-level setting for which natural language Glosses are written in, as a code like `en`.
+It defaults to English and decides which open dictionary is searched for Concept References.
+_Avoid_: Native language (fine in casual talk), locale
+
 **Concept Reference**:
 An optional link from a Definition to one exact sense in an open dictionary, such as an Open English WordNet synset or a Concepticon concept.
 _Avoid_: Dictionary link, source

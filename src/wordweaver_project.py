@@ -1,15 +1,33 @@
 # wordweaver_project.py
 
+import re
 from collections.abc import Callable
 from enum import IntEnum
 from pathlib import Path
 
-from lexicon import Definition, Entry, Form, Lexicon
+from lexicon import ConceptReference, ConceptSource, Definition, Entry, Form, Lexicon
 from lexicon_csv import export_csv
 from phoneme_classes import DEFAULT_CLASS_ID_BLOCK, PhonemeClass, PhonemeClasses
 from phonology import Phoneme, PhonemeInventory
 from tags import Tag, Tags
 from wwformat import ChunkType, CorruptFileError, FileContents, NewerVersionError, ProjectFileError, UnknownChunkError, pb
+
+DEFAULT_GLOSS_LANGUAGE = "en"
+
+# A loose check for BCP 47 codes: an ISO 639 language, then any subtags like a region or script.
+_LANGUAGE_CODE = re.compile(r"[a-z]{2,3}(-[a-z0-9]{1,8})*")
+
+def normalize_language_code(code: str) -> str:
+    """Tidy a BCP 47 code like " EN-gb " into "en-GB".
+
+    :raises ValueError: If it doesn't look like a language code.
+    """
+    code = code.strip().replace("_", "-").lower()
+    if not _LANGUAGE_CODE.fullmatch(code):
+        raise ValueError(f"{code!r} isn't a language code like \"en\"")
+    # Regions are written in capitals by convention, like "en-GB".
+    primary, *subtags = code.split("-")
+    return "-".join([primary] + [tag.upper() if len(tag) == 2 else tag for tag in subtags])
 
 class LanguageKind(IntEnum):
     """A label for a Language. It's only a description and doesn't change how the Language works."""
@@ -80,6 +98,17 @@ class Project:
         self._unknown_chunks = []
         # Tags are shared by every Language, and removing one takes it off every Entry.
         self.tags = Tags(self._new_id, self._untag_everywhere)
+        self._gloss_language = DEFAULT_GLOSS_LANGUAGE
+
+    @property
+    def gloss_language(self) -> str:
+        """The language Glosses are written in, as a BCP 47 code like "en". It decides which dictionary is searched."""
+        return self._gloss_language
+
+    @gloss_language.setter
+    def gloss_language(self, code: str):
+        """:raises ValueError: If `code` doesn't look like a BCP 47 language code."""
+        self._gloss_language = normalize_language_code(code)
 
     @property
     def languages(self) -> list[Language]:
@@ -153,6 +182,7 @@ class Project:
         info = contents.get(ChunkType.PROJECT)
         info.name = strings.index(self.name)
         info.next_id = self._next_id
+        info.gloss_language = strings.index(self.gloss_language)
         for tag in self.tags:
             contents.add_record(ChunkType.TAGS, pb.Tag(id=tag.id, name=strings.index(tag.name)))
         for language in self._languages:
@@ -174,14 +204,19 @@ class Project:
                 form = [strings.index(symbol) for symbol in entry.form.phonemes]
                 contents.add_record(ChunkType.ENTRIES, pb.Entry(id=entry.id, language_id=language.id, form=form, tag_ids=entry.tag_ids))
                 for position, definition in enumerate(entry.definitions):
-                    contents.add_record(ChunkType.DEFINITIONS, pb.Definition(
+                    record = pb.Definition(
                         id=definition.id,
                         entry_id=entry.id,
                         glosses=[strings.index(gloss) for gloss in definition.glosses],
                         position=position,
                         terms=[strings.index(term) for term in definition.terms],
                         description=strings.index(definition.description),
-                    ))
+                    )
+                    reference = definition.concept_reference
+                    if reference is not None:
+                        record.concept_source = reference.source
+                        record.concept_id = strings.index(reference.id)
+                    contents.add_record(ChunkType.DEFINITIONS, record)
         contents.unknown_chunks = list(self._unknown_chunks)
         return contents
 
@@ -190,6 +225,11 @@ class Project:
         strings = contents.strings
         info = contents.get(ChunkType.PROJECT)
         project = cls(strings[info.name])
+        # Files saved before the Gloss Language existed have none, so they stay English.
+        try:
+            project.gloss_language = strings[info.gloss_language] or DEFAULT_GLOSS_LANGUAGE
+        except ValueError as e:
+            raise CorruptFileError(f"The Gloss Language {strings[info.gloss_language]!r} isn't a language code") from e
         # First, rebuild the Languages, then put each Phoneme back into its Language.
         # First, make sure new IDs can't collide with loaded ones, even if next_id was missing.
         reserved = [r.default_class_ids_start + DEFAULT_CLASS_ID_BLOCK for r in contents.records(ChunkType.LANGUAGES) if r.default_class_ids_start]
@@ -233,6 +273,7 @@ class Project:
                 [strings[g] for g in record.glosses],
                 [strings[t] for t in record.terms],
                 strings[record.description],
+                _load_concept_reference(record, strings),
             )
             definitions.setdefault(record.entry_id, []).append(definition)
         entry_ids = set()
@@ -251,4 +292,15 @@ class Project:
         project._unknown_chunks = list(contents.unknown_chunks)
         return project
 
-__all__ = ["Language", "LanguageKind", "Project", "ProjectFileError", "CorruptFileError", "NewerVersionError", "UnknownChunkError", "Tag"]
+def _load_concept_reference(record, strings) -> ConceptReference | None:
+    # No source means no reference.
+    if record.concept_source == pb.CONCEPT_SOURCE_NONE:
+        return None
+    # NOTE: a source from a newer version that we don't know about is dropped, like an unknown Language Kind.
+    if record.concept_source not in ConceptSource._value2member_map_:
+        return None
+    if not strings[record.concept_id]:
+        raise CorruptFileError(f"Definition {record.id} has a Concept Reference without an ID")
+    return ConceptReference(ConceptSource(record.concept_source), strings[record.concept_id])
+
+__all__ = ["DEFAULT_GLOSS_LANGUAGE", "Language", "LanguageKind", "Project", "ProjectFileError", "CorruptFileError", "NewerVersionError", "UnknownChunkError", "Tag", "normalize_language_code"]

@@ -3,6 +3,7 @@
 """Export a Lexicon to CSV, with one row per Definition.
 
 Cells with several values (Glosses, technical terms, and Tags) are joined with "; ".
+A Concept Reference is written as `source:id`, like `oewn:oewn-09213565-n`.
 Inside a value, a backslash is written as "\\\\" and a semicolon as "\\;", so any value round-trips through split_values.
 """
 
@@ -73,7 +74,8 @@ def split_values(cell: str) -> list[str]:
     return values
 
 def _concept_reference(definition: Definition) -> str:
-    # TODO: fill this in once Definitions have Concept References (#47).
-    return ""
+    # Write the reference as source:id, like oewn:oewn-09213565-n, so ConceptReference.parse can read it back.
+    reference = definition.concept_reference
+    return "" if reference is None else str(reference)
 
 __all__ = ["BOM", "HEADER", "SEPARATOR", "export_csv", "join_values", "split_values"]

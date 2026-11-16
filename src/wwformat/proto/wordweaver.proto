@@ -26,6 +26,8 @@ message ProjectInfo {
   uint32 name = 1;
   // The next unused record ID, so IDs are never reused after a delete.
   uint64 next_id = 2;
+  // The Gloss Language as a BCP 47 code, like "en". Empty means English, so older files load as English.
+  uint32 gloss_language = 3;
 }
 
 // A label for a Language. It doesn't change how the Language works.
@@ -98,6 +100,15 @@ message EntryTable {
   repeated Entry records = 1;
 }
 
+// The open dictionary a Concept Reference points into.
+// NONE is 0, so a Definition saved without a reference loads without one.
+enum ConceptSource {
+  CONCEPT_SOURCE_NONE = 0;
+  CONCEPT_SOURCE_OPEN_ENGLISH_WORDNET = 1;
+  CONCEPT_SOURCE_OPEN_MULTILINGUAL_WORDNET = 2;
+  CONCEPT_SOURCE_CONCEPTICON = 3;
+}
+
 // An Entry's Definitions are kept in `position` order, then ID order for any ties.
 message Definition {
   uint64 id = 1;
@@ -109,6 +120,9 @@ message Definition {
   repeated uint32 terms = 5;
   // A free-text description.
   uint32 description = 6;
+  // An optional Concept Reference: the source, plus that source's own ID, like "oewn-09213565-n".
+  ConceptSource concept_source = 7;
+  uint32 concept_id = 8;
 }
 
 // Chunk DEFINITIONS.

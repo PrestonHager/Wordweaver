@@ -1,6 +1,6 @@
 # main.py
 
-from PyQt6.QtWidgets import QApplication, QButtonGroup, QComboBox, QFileDialog, QHBoxLayout, QInputDialog, QMainWindow, QMenu, QMessageBox, QStackedWidget, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QApplication, QButtonGroup, QComboBox, QDialog, QFileDialog, QHBoxLayout, QInputDialog, QMainWindow, QMenu, QMessageBox, QStackedWidget, QVBoxLayout, QWidget
 from PyQt6.QtGui import QCloseEvent, QIcon
 from PyQt6.QtCore import Qt
 from pathlib import Path
@@ -16,6 +16,7 @@ from icons import bind_icon, icon as make_icon
 from lexicon_page import LexiconPage
 from pages import OverviewPage, WelcomePage
 from phonology_page import PhonologyPage
+from project_settings import ProjectSettings
 from theme import theme
 from widgets import Button, label
 from wordweaver_project import Language, LanguageKind, Project, ProjectFileError
@@ -155,6 +156,7 @@ class App(QMainWindow):
             ("save", "&Save Project", "save", "Ctrl+S", self.save),
             ("save_as", "S&ave Project As", "save-all", "Ctrl+Shift+S", self.save_as),
             ("export_csv", "&Export Lexicon to CSV…", None, "", self.export_lexicon_csv),
+            ("settings", "Project Se&ttings…", None, "", self.edit_project_settings),
             None,
             ("about", "A&bout", "info", "F1", self.open_about),
             ("exit", "&Exit", "log-out", "Alt+F4", self.close),
@@ -189,7 +191,7 @@ class App(QMainWindow):
     def _update_main_view(self):
         # First, turn the menu actions on or off for whether a Project is open.
         has_project = self.project is not None
-        for key in ("close", "save", "save_as", "export_csv", "copy", "overview", "phonology", "lexicon"):
+        for key in ("close", "save", "save_as", "export_csv", "settings", "copy", "overview", "phonology", "lexicon"):
             self.menu_actions[key].setEnabled(has_project)
         self.menu_actions["paste"].setEnabled(has_project and pyperclip.paste() != '')
         # Then show the welcome page or the workspace.
@@ -387,6 +389,12 @@ class App(QMainWindow):
             return
         self.statusBar().showMessage(f"Exported the Lexicon to {file}", 4000)
         self.logger.info(f"Exported the Lexicon of \"{self.language.name}\" to {file}")
+
+    def edit_project_settings(self):
+        if self.project is None:
+            return
+        if ProjectSettings(self.project, parent=self).exec() == QDialog.DialogCode.Accepted:
+            self.logger.info(f"Set the Gloss Language of \"{self.project.name}\" to {self.project.gloss_language}")
 
     def open_about(self):
         if not hasattr(self, "about_window"):

@@ -5,9 +5,11 @@ from dataclasses import dataclass, field
 from PyQt6.QtWidgets import (QDialog, QDialogButtonBox, QFormLayout, QHBoxLayout, QLabel, QLineEdit, QListWidget,
                              QMessageBox, QPlainTextEdit, QPushButton, QVBoxLayout, QWidget)
 
-from lexicon import Definition, Entry, Form
+from lexicon import ConceptReference, Definition, Entry, Form
+from sense_picker import SensePicker
+from senses import Sense, SenseLookup, lookup_for
 from tag_widgets import TagPicker
-from wordweaver_project import Language
+from wordweaver_project import DEFAULT_GLOSS_LANGUAGE, Language
 
 @dataclass
 class _DefinitionDraft:
@@ -16,23 +18,40 @@ class _DefinitionDraft:
     glosses: list[str] = field(default_factory=list)
     terms: list[str] = field(default_factory=list)
     description: str = ""
+    concept_reference: ConceptReference | None = None
+    # The linked sense's details, if it was picked in this editor. Saved references only keep their ID.
+    sense: Sense | None = None
 
     def label(self, number: int) -> str:
         glosses = "; ".join(g.strip() for g in self.glosses if g.strip())
         return f"{number}. {glosses or '(no Glosses yet)'}"
 
+    def reference_text(self) -> str:
+        if self.concept_reference is None:
+            return "None linked"
+        if self.sense is not None:
+            return f"{self.sense.label()}\n{self.concept_reference}"
+        return str(self.concept_reference)
+
 class EntryEditor(QDialog):
     """A dialog for adding a new Entry to a Language's Lexicon, or editing one that's already there."""
 
-    def __init__(self, language: Language, entry: Entry | None=None, parent: QWidget | None=None):
+    def __init__(self, language: Language, entry: Entry | None=None, parent: QWidget | None=None,
+                 gloss_language: str=DEFAULT_GLOSS_LANGUAGE, senses: SenseLookup | None=None):
+        """
+        :param gloss_language: str: The Project's Gloss Language, which picks the dictionary to search.
+        :param senses: SenseLookup | None: The dictionary to search, instead of the one for the Gloss Language.
+        """
         super().__init__(parent)
         self.language = language
         self.entry = entry
+        self.gloss_language = gloss_language
+        self._senses = senses
         self.setWindowTitle("Edit Entry" if entry is not None else "Add Entry")
         if entry is None:
             self._drafts = [_DefinitionDraft()]
         else:
-            self._drafts = [_DefinitionDraft(d, list(d.glosses), list(d.terms), d.description) for d in entry.definitions]
+            self._drafts = [_DefinitionDraft(d, list(d.glosses), list(d.terms), d.description, d.concept_reference) for d in entry.definitions]
         self._current = -1
 
         layout = QVBoxLayout(self)
@@ -72,6 +91,18 @@ class EntryEditor(QDialog):
         self.description_input = QPlainTextEdit(self)
         self.description_input.setPlaceholderText("Optional, describe the meaning in your own words")
         definition_layout.addRow("Description:", self.description_input)
+        # The Concept Reference is optional, so it's just a label with buttons to link or unlink a sense.
+        reference_row = QHBoxLayout()
+        self.reference_label = QLabel(self)
+        self.reference_label.setWordWrap(True)
+        reference_row.addWidget(self.reference_label, 1)
+        self.link_button = QPushButton("Link Sense…", self)
+        self.link_button.clicked.connect(self.link_sense)
+        reference_row.addWidget(self.link_button)
+        self.unlink_button = QPushButton("Unlink", self)
+        self.unlink_button.clicked.connect(self.unlink_sense)
+        reference_row.addWidget(self.unlink_button)
+        definition_layout.addRow("Concept Reference:", reference_row)
         layout.addLayout(definition_layout)
 
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel, self)
@@ -115,6 +146,47 @@ class EntryEditor(QDialog):
         self.glosses_input.blockSignals(False)
         self.terms_input.setPlainText("\n".join(draft.terms))
         self.description_input.setPlainText(draft.description)
+        self._show_reference()
+
+    def _show_reference(self):
+        if not 0 <= self._current < len(self._drafts):
+            return
+        draft = self._drafts[self._current]
+        self.reference_label.setText(draft.reference_text())
+        self.unlink_button.setEnabled(draft.concept_reference is not None)
+
+    def _lookup(self) -> SenseLookup | None:
+        # Getting the lookup doesn't load any data, that waits for the first search.
+        return self._senses if self._senses is not None else lookup_for(self.gloss_language)
+
+    def link_sense(self):
+        if not 0 <= self._current < len(self._drafts):
+            return
+        lookup = self._lookup()
+        if lookup is None:
+            QMessageBox.information(self, "No Dictionary Yet",
+                                    f"There's no dictionary to search for the Gloss Language \"{self.gloss_language}\" yet.\n"
+                                    "For now, only English (en) can link senses. You can change the Gloss Language in Project Settings.")
+            return
+        self._store_fields()
+        draft = self._drafts[self._current]
+        # Start the search with the first Gloss, since that's usually the word you'd look up.
+        first_gloss = next((g.strip() for g in draft.glosses if g.strip()), "")
+        picker = SensePicker(lookup, first_gloss, self)
+        if first_gloss:
+            picker.search()
+        if picker.exec() == QDialog.DialogCode.Accepted and picker.sense is not None:
+            draft.concept_reference = picker.sense.reference
+            draft.sense = picker.sense
+            self._show_reference()
+
+    def unlink_sense(self):
+        if not 0 <= self._current < len(self._drafts):
+            return
+        draft = self._drafts[self._current]
+        draft.concept_reference = None
+        draft.sense = None
+        self._show_reference()
 
     def _on_glosses_changed(self):
         # Keep the list label in step with the Glosses as you type.
@@ -172,6 +244,10 @@ class EntryEditor(QDialog):
                 draft.definition = lexicon.add_definition(self.entry, draft.glosses, draft.terms, draft.description)
             else:
                 lexicon.edit_definition(self.entry, draft.definition, draft.glosses, draft.terms, draft.description)
+            if draft.concept_reference is None:
+                lexicon.clear_concept_reference(self.entry, draft.definition)
+            else:
+                lexicon.set_concept_reference(self.entry, draft.definition, draft.concept_reference)
         kept = [draft.definition for draft in self._drafts]
         for definition in self.entry.definitions:
             if all(definition is not k for k in kept):
@@ -196,7 +272,7 @@ class EntryEditor(QDialog):
             return True
         # Open the picked match in its own editor, then come back here so you can decide again.
         if warning.opened is not None:
-            EntryEditor(self.language, warning.opened, parent=self).exec()
+            EntryEditor(self.language, warning.opened, parent=self, gloss_language=self.gloss_language, senses=self._senses).exec()
         return False
 
 class HomophoneWarning(QDialog):

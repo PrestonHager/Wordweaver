@@ -2,7 +2,8 @@
 
 import unicodedata
 from collections.abc import Callable, Iterable, Iterator
-from enum import Enum
+from dataclasses import dataclass
+from enum import Enum, IntEnum
 
 from tags import Tag, Tags
 
@@ -73,18 +74,77 @@ class SortOrder(Enum):
     def __str__(self) -> str:
         return self.value
 
+class ConceptSource(IntEnum):
+    """An open dictionary that a Concept Reference can point into."""
+    # The values match the ConceptSource enum in the .proto, so they can be saved as is.
+    OPEN_ENGLISH_WORDNET = 1
+    # TODO: Open Multilingual Wordnet comes in #48 and Concepticon in #49. They're here so their values stay reserved.
+    OPEN_MULTILINGUAL_WORDNET = 2
+    CONCEPTICON = 3
+
+    @property
+    def prefix(self) -> str:
+        """A short name for the source, used when a reference is written out as text."""
+        return _SOURCE_PREFIXES[self]
+
+    @classmethod
+    def from_prefix(cls, prefix: str) -> "ConceptSource":
+        """:raises ValueError: If no source has that prefix."""
+        for source, known in _SOURCE_PREFIXES.items():
+            if known == prefix:
+                return source
+        raise ValueError(f"No Concept Reference source is called {prefix!r}")
+
+_SOURCE_PREFIXES = {
+    ConceptSource.OPEN_ENGLISH_WORDNET: "oewn",
+    ConceptSource.OPEN_MULTILINGUAL_WORDNET: "omw",
+    ConceptSource.CONCEPTICON: "concepticon",
+}
+
+@dataclass(frozen=True)
+class ConceptReference:
+    """A link from a Definition to one exact sense in an open dictionary, like an Open English WordNet synset.
+
+    It's the source plus that source's own stable ID, such as `oewn-09213565-n`.
+    """
+    source: ConceptSource
+    id: str
+
+    def __post_init__(self):
+        if not isinstance(self.source, ConceptSource):
+            raise ValueError(f"{self.source!r} isn't a Concept Reference source")
+        if not isinstance(self.id, str) or not self.id.strip():
+            raise ValueError("A Concept Reference needs an ID")
+        # The dataclass is frozen, so this is how we tidy the ID.
+        object.__setattr__(self, "id", self.id.strip())
+
+    @classmethod
+    def parse(cls, text: str) -> "ConceptReference":
+        """Read a reference written as `source:id`, like `oewn:oewn-09213565-n`.
+
+        :raises ValueError: If the text isn't in that shape, or the source isn't known.
+        """
+        prefix, colon, id = text.partition(":")
+        if not colon:
+            raise ValueError(f"{text!r} isn't a Concept Reference")
+        return cls(ConceptSource.from_prefix(prefix.strip()), id)
+
+    def __str__(self) -> str:
+        return f"{self.source.prefix}:{self.id}"
+
 class Definition:
     """One precise meaning of an Entry.
 
-    It has an ordered list of Glosses, and optionally some technical linguistic terms and a free-text description.
+    It has an ordered list of Glosses, and optionally some technical linguistic terms, a free-text description, and a Concept Reference.
     """
 
-    def __init__(self, id: int, glosses: Iterable[str], terms: Iterable[str]=(), description: str=""):
+    def __init__(self, id: int, glosses: Iterable[str], terms: Iterable[str]=(), description: str="", concept_reference: ConceptReference | None=None):
         # Definitions are made and changed by the Lexicon, which hands out the ID.
         self._id = id
         self._glosses = tuple(glosses)
         self._terms = tuple(terms)
         self._description = description
+        self._concept_reference = concept_reference
 
     @property
     def id(self) -> int:
@@ -102,6 +162,11 @@ class Definition:
     @property
     def description(self) -> str:
         return self._description
+
+    @property
+    def concept_reference(self) -> ConceptReference | None:
+        """The exact dictionary sense this Definition means, if one is linked."""
+        return self._concept_reference
 
     def __repr__(self) -> str:
         return f"<Definition {self.id}: {'; '.join(self.glosses)}>"
@@ -223,6 +288,25 @@ class Lexicon:
             definition._terms = _clean_terms(terms)
         if description is not None:
             definition._description = description.strip()
+
+    def set_concept_reference(self, entry: Entry, definition: Definition, reference: ConceptReference):
+        """Link a Definition to one exact sense in an open dictionary, replacing any link it had.
+
+        :raises KeyError: If the Entry isn't in this Lexicon, or the Definition isn't on the Entry.
+        :raises ValueError: If `reference` isn't a ConceptReference.
+        """
+        self._check_definition(entry, definition)
+        if not isinstance(reference, ConceptReference):
+            raise ValueError(f"{reference!r} isn't a Concept Reference")
+        definition._concept_reference = reference
+
+    def clear_concept_reference(self, entry: Entry, definition: Definition):
+        """Unlink a Definition from its dictionary sense. Nothing happens if it wasn't linked.
+
+        :raises KeyError: If the Entry isn't in this Lexicon, or the Definition isn't on the Entry.
+        """
+        self._check_definition(entry, definition)
+        definition._concept_reference = None
 
     def remove_definition(self, entry: Entry, definition: Definition):
         """Remove one of an Entry's Definitions. Its ID is never handed out again.
@@ -385,4 +469,4 @@ def _clean_terms(terms: Iterable[str]) -> tuple[str, ...]:
     # Technical terms are optional, so blank ones are just dropped.
     return tuple(t.strip() for t in terms if t.strip())
 
-__all__ = ["Definition", "Entry", "Form", "Lexicon", "SearchField", "SortOrder"]
+__all__ = ["ConceptReference", "ConceptSource", "Definition", "Entry", "Form", "Lexicon", "SearchField", "SortOrder"]

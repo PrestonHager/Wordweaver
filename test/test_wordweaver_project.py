@@ -13,6 +13,7 @@ from ipapy import UNICODE_TO_IPA
 from phonology import is_valid_phoneme
 from phonology_const import NON_PULMONIC_CONSONANTS, PULMONIC_CONSONANTS, VOWELS
 from wordweaver_project import LanguageKind, Project, ProjectFileError
+from wwformat import ChunkType, FileContents
 
 DEFAULT_PROJECT = path.abspath(path.join(path.dirname(__file__), '../src/default.wwproj'))
 STARTER_PHONEMES = ["n", "p", "b", "d", "k", "ɾ", "f", "s", "l", "a", "e", "i", "o", "u"]
@@ -38,6 +39,34 @@ class TestProject(unittest.TestCase):
         self.assertEqual(len(loaded.languages), 1)
         self.assertEqual(loaded.languages[0].name, "Proto-Test")
         self.assertEqual(loaded.languages[0].inventory.symbols, ["p", "d", "n", "ǀ", "a", "i", "ə", "u", "ɯ"])
+
+    def test_gloss_language_defaults_to_english(self):
+        project = Project("Test Project")
+        self.assertEqual(project.gloss_language, "en")
+        self.assertEqual(self.round_trip(project).gloss_language, "en")
+
+    def test_gloss_language_round_trip(self):
+        project = Project("Test Project")
+        project.gloss_language = " PT_br "
+        self.assertEqual(project.gloss_language, "pt-BR")
+        self.assertEqual(self.round_trip(project).gloss_language, "pt-BR")
+
+    def test_bad_gloss_language(self):
+        project = Project("Test Project")
+        for code in ("", "english", "e", "en--GB", "1en"):
+            with self.subTest(code=code):
+                with self.assertRaises(ValueError):
+                    project.gloss_language = code
+        self.assertEqual(project.gloss_language, "en")
+
+    def test_file_without_gloss_language_loads_as_english(self):
+        # Write a file the way versions before the Gloss Language did, with nothing in that field.
+        contents = FileContents()
+        contents.get(ChunkType.PROJECT).name = contents.strings.index("Old Project")
+        contents.write(self.file)
+        loaded = Project.load(self.file)
+        self.assertEqual(loaded.name, "Old Project")
+        self.assertEqual(loaded.gloss_language, "en")
 
     def test_empty_project(self):
         loaded = self.round_trip(Project(""))
