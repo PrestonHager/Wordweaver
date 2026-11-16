@@ -42,3 +42,8 @@ exclude = ["**/__pycache__", ".venv", ".claude", "build", "dist", "docs", "tools
 extraPaths = ["src"]
 venvPath = "."
 venv = ".venv"
+# Tests look things up and use them straight away. If one comes back None the test fails anyway, so don't flag it.
+executionEnvironments = [
+    { root = "test", extraPaths = ["src"], reportOptionalMemberAccess = false },
+    { root = "." },
+]

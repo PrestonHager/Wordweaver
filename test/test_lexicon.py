@@ -305,7 +305,7 @@ class TestLexicon(unittest.TestCase):
         with self.assertRaises(KeyError):
             self.lexicon.clear_concept_reference(other, entry.definitions[0])
         with self.assertRaises(ValueError):
-            self.lexicon.set_concept_reference(entry, entry.definitions[0], "oewn:oewn-09236472-n")
+            self.lexicon.set_concept_reference(entry, entry.definitions[0], "oewn:oewn-09236472-n")  # pyright: ignore[reportArgumentType]  Wrong on purpose.
         self.assertIsNone(entry.definitions[0].concept_reference)
 
 class TestForm(unittest.TestCase):
