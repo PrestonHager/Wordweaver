@@ -9,6 +9,7 @@ from platformdirs import user_cache_path, user_log_path
 # user_log_dir, and user_runtime_dir (aka temp folder)
 
 import logging
+import os
 import pyperclip
 
 from about import About
@@ -127,7 +128,7 @@ class App(QMainWindow):
         for key, text, icon_name in NAV:
             button = Button(text, icon_name, "nav", parent=sidebar)
             button.setCheckable(True)
-            button.clicked.connect(lambda _checked, k=key: self._open_page(k))
+            button.clicked.connect(lambda _checked=False, k=key: self._open_page(k))
             self.nav.addButton(button)
             self.nav_buttons[key] = button
             layout.addWidget(button)
@@ -551,6 +552,10 @@ def main():
         project = None
     # Create an application and run it
     logger.debug("Create application")
+    if "QT_QPA_FONTDIR" not in os.environ and sys.platform == "win32":
+        windows_fonts = Path(os.environ.get("WINDIR", r"C:\Windows")) / "Fonts"
+        if windows_fonts.is_dir():
+            os.environ["QT_QPA_FONTDIR"] = str(windows_fonts)
     app = QApplication(sys.argv)
     icon = QIcon()
     icon.addFile(str(basedir.joinpath(Path("icons/wordweaver.ico")).absolute()))

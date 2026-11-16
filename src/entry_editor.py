@@ -70,7 +70,7 @@ class FormWarnings(QWidget):
             row_layout.setContentsMargins(0, 0, 0, 0)
             row_layout.addWidget(label(f"/{symbol}/ isn't in the Phoneme Inventory.", "error", row), 1)
             button = QPushButton("Add to Inventory", row)
-            button.clicked.connect(lambda _checked, s=symbol: self.add_phoneme(s))
+            button.clicked.connect(lambda _checked=False, s=symbol: self.add_phoneme(s))
             row_layout.addWidget(button)
             self.add_buttons[symbol] = button
             self._layout.addWidget(row)
@@ -376,7 +376,7 @@ class HomophoneWarning(QDialog):
         for entry in matches:
             self.match_list.addItem(f"/{entry.form}/  {'; '.join(entry.glosses)}")
         self.match_list.setCurrentRow(0)
-        self.match_list.itemDoubleClicked.connect(lambda _item: self.open_match())
+        self.match_list.itemDoubleClicked.connect(self.open_match)
         layout.addWidget(self.match_list)
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Cancel, self)
         open_button = QPushButton("Open Entry", self)

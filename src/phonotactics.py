@@ -99,13 +99,15 @@ class SyllableStructure:
     def positions(self) -> list[Position]:
         """The positions in order, each with its Phoneme Class and which part of the syllable it's in."""
         parsed = parse_notation(self._notation)
-        classes = [self._phonotactics._classes.with_label(label) for label, _optional in parsed]
+        classes = [self._phonotactics._classes.with_label(position[0]) for position in parsed]
         # The Nucleus is the first run of positions for vowel Classes, everything before it is the Onset, and everything after is the Coda.
-        start = next((i for i, c in enumerate(classes) if c is not None and c.holds_vowels), None)
+        def is_vowel_class(phoneme_class: PhonemeClass | None) -> bool:
+            return phoneme_class is not None and phoneme_class.holds_vowels
+        start = next((i for i, c in enumerate(classes) if is_vowel_class(c)), None)
         if start is None:
             return [Position(label, optional, c, None) for (label, optional), c in zip(parsed, classes)]
         end = start
-        while end < len(classes) and classes[end] is not None and classes[end].holds_vowels:
+        while end < len(classes) and is_vowel_class(classes[end]):
             end += 1
         parts = [SyllablePart.ONSET] * start + [SyllablePart.NUCLEUS] * (end - start) + [SyllablePart.CODA] * (len(classes) - end)
         return [Position(label, optional, c, part) for (label, optional), c, part in zip(parsed, classes, parts)]
@@ -206,7 +208,7 @@ class Phonotactics:
         """
         self._structures.remove(structure)
 
-    def syllabify(self, form: Form | str) -> list[Syllable] | None:
+    def syllabify(self, form: Form | str | tuple[str, ...]) -> list[Syllable] | None:
         """Split a Form into syllables by maximal Onset, or return None if it can't be split.
 
         Each syllable has to fit one of the Syllable Structures. When there's more than one way to split it,
@@ -220,10 +222,17 @@ class Phonotactics:
         for structure in self._structures:
             positions = structure.positions
             if self._problem(parse_notation(structure.notation), positions) is None:
-                usable.append((structure, positions, [set(p.phoneme_class.symbols) for p in positions]))
+                phoneme_sets = []
+                for position in positions:
+                    phoneme_class = position.phoneme_class
+                    if phoneme_class is None:
+                        break
+                    phoneme_sets.append(set(phoneme_class.symbols))
+                else:
+                    usable.append((structure, positions, phoneme_sets))
         if not usable:
             return [] if count == 0 else None
-        longest = max(len(positions) for _structure, positions, _sets in usable)
+        longest = max(len(item[1]) for item in usable)
         matches: dict[tuple[int, int], Syllable | None] = {}
 
         def match(start: int, end: int) -> Syllable | None:
@@ -279,7 +288,7 @@ class Phonotactics:
         return None
 
     def _problem(self, parsed: list[tuple[str, bool]], positions: list[Position]) -> str | None:
-        unknown = [label for (label, _optional), p in zip(parsed, positions) if p.phoneme_class is None]
+        unknown = [position[0] for position, parsed_position in zip(parsed, positions) if parsed_position.phoneme_class is None]
         if unknown:
             return f"No Phoneme Class is labelled {', '.join(dict.fromkeys(unknown))}"
         nucleus = [p for p in positions if p.part is SyllablePart.NUCLEUS]

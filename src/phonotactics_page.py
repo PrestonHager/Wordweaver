@@ -1,7 +1,7 @@
 # phonotactics_page.py
 
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtWidgets import QCheckBox, QFrame, QHBoxLayout, QLineEdit, QListWidget, QListWidgetItem, QScrollArea, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QCheckBox, QFrame, QHBoxLayout, QLayout, QLineEdit, QListWidget, QListWidgetItem, QScrollArea, QVBoxLayout, QWidget
 
 from phonotactics import Position, SyllablePart, SyllableStructure, parse_notation, write_notation, write_syllables
 from widgets import Button, Card, FlowLayout, PageHeader, label
@@ -11,18 +11,40 @@ class StructureView(QWidget):
     """Draws a Syllable Structure's positions, grouped under Onset, Nucleus, and Coda. Optional positions are dashed."""
 
     def __init__(self, parent: QWidget | None = None):
-        super().__init__(parent)
+        super().__init__(parent)  # pyright: ignore[reportArgumentType]  PyQt6 stub bug, see pyproject.
         self.row = QHBoxLayout(self)
         self.row.setContentsMargins(0, 0, 0, 0)
         self.row.setSpacing(18)
         self.parts: dict[SyllablePart, list[str]] = {}
 
+    def _clear_layout(self, layout: QLayout):
+        while layout.count():
+            item = layout.takeAt(0)
+            if item is None:
+                continue
+            widget = item.widget()
+            if widget is not None:
+                widget.setParent(None)  # pyright: ignore[reportArgumentType]  PyQt6 stub bug, see pyproject.
+                widget.deleteLater()
+                continue
+            child_layout = item.layout()
+            if child_layout is not None:
+                self._clear_layout(child_layout)
+                child_layout.deleteLater()
+
     def show_positions(self, positions: list[Position]):
         # First, clear out the last structure.
         while self.row.count():
             item = self.row.takeAt(0)
-            if item.widget() is not None:
-                item.widget().deleteLater()
+            if item is not None:
+                widget = item.widget()
+                if widget is not None:
+                    widget.deleteLater()
+                else:
+                    layout = item.layout()
+                    if layout is not None:
+                        self._clear_layout(layout)
+                        layout.deleteLater()
         # Then draw each part that has positions, with its name under it.
         self.parts = {}
         for part in SyllablePart:
@@ -49,7 +71,7 @@ class StructuresCard(Card):
     """Lists a Language's Syllable Structures, with a builder to add and edit them."""
 
     # Sent whenever a structure changes, so the Form check can run again.
-    changed = pyqtSignal()
+    changed = pyqtSignal()  # pyright: ignore[reportCallIssue]  PyQt6 stub bug, see pyproject.
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
@@ -62,11 +84,11 @@ class StructuresCard(Card):
         self.count = label("0", "badge")
         title_row.addWidget(self.count)
         title_row.addStretch()
-        self.layout.addLayout(title_row)
+        self.content.addLayout(title_row)
         how_to = label("Write each structure like (C)V(C). Each letter is a Phoneme Class label, and parentheses make a position optional. "
                        "Put positions next to each other for a cluster, like (C)(C)V.", "muted", self)
         how_to.setWordWrap(True)
-        self.layout.addWidget(how_to)
+        self.content.addWidget(how_to)
 
         # Then the list of structures.
         self.list = QListWidget(self)
@@ -74,13 +96,13 @@ class StructuresCard(Card):
         self.list.setMinimumHeight(80)
         self.list.setMaximumHeight(180)
         self.list.currentItemChanged.connect(self._on_picked)
-        self.layout.addWidget(self.list)
+        self.content.addWidget(self.list)
 
         # Now the builder: a button for each label, and the notation it writes.
-        self.layout.addWidget(label("BUILDER", "section", self))
+        self.content.addWidget(label("BUILDER", "section", self))
         self.labels_box = QWidget(self)
         self.labels = FlowLayout(self.labels_box)
-        self.layout.addWidget(self.labels_box)
+        self.content.addWidget(self.labels_box)
         notation_row = QHBoxLayout()
         self.optional = QCheckBox("Optional", self)
         self.optional.setToolTip("Add the next position in parentheses")
@@ -93,9 +115,9 @@ class StructuresCard(Card):
         self.back_button = Button(icon="x", variant="ghost", tooltip="Take off the last position", parent=self)
         self.back_button.clicked.connect(self.remove_last_position)
         notation_row.addWidget(self.back_button)
-        self.layout.addLayout(notation_row)
+        self.content.addLayout(notation_row)
         self.preview = StructureView(self)
-        self.layout.addWidget(self.preview)
+        self.content.addWidget(self.preview)
 
         # Finally, the buttons and a place for errors.
         buttons = QHBoxLayout()
@@ -109,11 +131,11 @@ class StructuresCard(Card):
         self.remove_button.clicked.connect(self.remove_structure)
         buttons.addWidget(self.remove_button)
         buttons.addStretch()
-        self.layout.addLayout(buttons)
+        self.content.addLayout(buttons)
         self.error = label("", "error", self)
         self.error.setWordWrap(True)
         self.error.hide()
-        self.layout.addWidget(self.error)
+        self.content.addWidget(self.error)
 
     def set_language(self, language: Language | None):
         self.language = language
@@ -153,7 +175,7 @@ class StructuresCard(Card):
             self.labels.addWidget(button)
         self._show_selected()
 
-    def _on_picked(self, item: QListWidgetItem | None, _previous=None):
+    def _on_picked(self, item: QListWidgetItem | None):
         if item is None or self.language is None:
             self.selected = None
         else:
@@ -241,19 +263,19 @@ class FormCheckCard(Card):
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.language: Language | None = None
-        self.layout.addWidget(label("CHECK A FORM", "section"))
+        self.content.addWidget(label("CHECK A FORM", "section"))
         row = QHBoxLayout()
         self.form_input = QLineEdit(self)
         self.form_input.setObjectName("IpaInput")
         self.form_input.setPlaceholderText("Type a Form in IPA, like stata")
         self.form_input.textChanged.connect(self.check)
         row.addWidget(self.form_input, 1)
-        self.layout.addLayout(row)
+        self.content.addLayout(row)
         self.syllables = label("", "ipa", self)
-        self.layout.addWidget(self.syllables)
+        self.content.addWidget(self.syllables)
         self.result = label("", "muted", self)
         self.result.setWordWrap(True)
-        self.layout.addWidget(self.result)
+        self.content.addWidget(self.result)
 
     def set_language(self, language: Language | None):
         self.language = language
@@ -276,14 +298,16 @@ class FormCheckCard(Card):
             else:
                 self.result.setText("Fits the Phonotactics.")
         # The role changed, so the stylesheet has to look at the label again.
-        self.result.style().unpolish(self.result)
-        self.result.style().polish(self.result)
+        style = self.result.style()
+        if style is not None:
+            style.unpolish(self.result)
+            style.polish(self.result)
 
 class PhonotacticsPage(QWidget):
     """Edit one Language's Phonotactics and check Forms against them."""
 
     def __init__(self, parent: QWidget | None = None):
-        super().__init__(parent)
+        super().__init__(parent)  # pyright: ignore[reportArgumentType]  PyQt6 stub bug, see pyproject.
         self.setObjectName("Page")
         self.language: Language | None = None
 

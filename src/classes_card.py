@@ -111,7 +111,7 @@ class ClassesCard(Card):
         # Then show the picked Class.
         self._show_selected()
 
-    def _on_picked(self, item: QListWidgetItem | None, _previous=None):
+    def _on_picked(self, item: QListWidgetItem | None):
         if item is None or self.language is None:
             self.selected = None
         else:

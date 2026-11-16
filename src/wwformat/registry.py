@@ -48,7 +48,7 @@ RECORD_TABLES = {
     ChunkType.TAGS: pb.TagTable,
     ChunkType.PHONEME_CLASSES: pb.PhonemeClassTable,
     ChunkType.ALLOPHONE_RULES: pb.AllophoneRuleTable,
-    ChunkType.SYLLABLE_STRUCTURES: pb.SyllableStructureTable,
+    ChunkType.SYLLABLE_STRUCTURES: pb.SyllableStructureTable,  # pyright: ignore[reportAttributeAccessIssue]  Generated protobuf module.
 }
 
 def record_class(table: ChunkType) -> type[Message]:

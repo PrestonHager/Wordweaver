@@ -281,9 +281,11 @@ class Project:
             for phoneme_class in language.classes:
                 if phoneme_class.is_default and not (phoneme_class.is_renamed or phoneme_class.is_hand_edited or phoneme_class.is_relabeled):
                     continue
-                record = pb.PhonemeClass(id=phoneme_class.id, language_id=language.id, name=strings.index(phoneme_class.name), label=strings.index(phoneme_class.label))
+                record = pb.PhonemeClass(id=phoneme_class.id, language_id=language.id, name=strings.index(phoneme_class.name), label=strings.index(phoneme_class.label))  # pyright: ignore[reportCallIssue]  Generated protobuf stubs omit an optional field.
                 if phoneme_class.is_default:
-                    record.default_key = strings.index(phoneme_class._default.key)
+                    default = phoneme_class._default
+                    if default is not None:
+                        record.default_key = strings.index(default.key)
                 if not phoneme_class.is_default or phoneme_class.is_hand_edited:
                     record.hand_edited = True
                     record.phoneme_ids.extend(p.id for p in phoneme_class.phonemes)
@@ -310,7 +312,7 @@ class Project:
                     id=rule.id, language_id=language.id, phoneme_id=rule.phoneme.id, allophone=strings.index(rule.allophone),
                     before=_side_to_record(rule.before), after=_side_to_record(rule.after)))
             for structure in language.phonotactics.syllable_structures:
-                contents.add_record(ChunkType.SYLLABLE_STRUCTURES, pb.SyllableStructure(id=structure.id, language_id=language.id, notation=strings.index(structure.notation)))
+                contents.add_record(ChunkType.SYLLABLE_STRUCTURES, pb.SyllableStructure(id=structure.id, language_id=language.id, notation=strings.index(structure.notation)))  # pyright: ignore[reportAttributeAccessIssue]  Generated protobuf message.
         contents.unknown_chunks = list(self._unknown_chunks)
         return contents
 
@@ -365,7 +367,7 @@ class Project:
                 phoneme_class._name = strings[record.name]
             # Files from before labels leave it out, so default Classes keep their default labels.
             if record.HasField("label"):
-                phoneme_class._label = strings[record.label]
+                phoneme_class._label = strings[record.label]  # pyright: ignore[reportAttributeAccessIssue]  Generated protobuf stubs omit this field.
             if record.hand_edited:
                 phoneme_class._restore_members(record.phoneme_ids)
         # Then put back the Tags, so the Entries can point at them.

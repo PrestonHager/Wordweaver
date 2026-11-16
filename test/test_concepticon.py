@@ -128,7 +128,7 @@ class TestConcepticonSenses(unittest.TestCase):
         self.assertEqual(found[0], ("WATER", "948"))
         self.assertIn(("BOILED WATER", "3362"), found)
         # Whole words only, so a waterfall isn't water.
-        self.assertNotIn("WATERFALL", [gloss for gloss, _id in found])
+        self.assertNotIn("WATERFALL", [match[0] for match in found])
         self.assertEqual([s.id for s in self.senses.search("hand")], ["1277", "2121"])
         self.assertEqual(self.senses.search("zebra"), [])
         self.assertEqual(self.senses.search("  "), [])

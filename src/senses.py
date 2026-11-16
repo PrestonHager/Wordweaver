@@ -297,7 +297,7 @@ def _quiet():
 
 def wordnet_languages() -> list[tuple[str, str]]:
     """Every Gloss Language with a wordnet to search, as (name, code), with English first."""
-    others = sorted((name, code) for code, (name, _lexicon) in OMW_LANGUAGES.items())
+    others = sorted((language[0], code) for code, language in OMW_LANGUAGES.items())
     return [("English", "en"), *others]
 
 # One lookup per dictionary, made the first time it's asked for.

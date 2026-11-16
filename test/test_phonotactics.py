@@ -88,7 +88,9 @@ class TestPhonotactics(unittest.TestCase):
         for form in ("psta", "stast", "st"):
             with self.subTest(form=form):
                 self.assertFalse(self.passes(form))
-        syllable = self.phonotactics.syllabify("stat")[0]
+        syllables = self.phonotactics.syllabify("stat")
+        assert syllables is not None
+        syllable = syllables[0]
         self.assertEqual((syllable.onset, syllable.nucleus, syllable.coda), (("s", "t"), ("a",), ("t",)))
 
     def test_positions_can_name_any_class(self):
@@ -160,7 +162,9 @@ class TestPhonotactics(unittest.TestCase):
         nasal.label = "M"
         # The structure stays as it was written, but it can't be used until something has the label again.
         self.assertEqual(structure.notation, "CV(N)")
-        self.assertIn("N", structure.problem)
+        problem = structure.problem
+        assert problem is not None
+        self.assertIn("N", problem)
         self.assertFalse(self.passes("pan"))
         self.assertTrue(self.passes("pa"))
         nasal.label = "N"
@@ -181,7 +185,9 @@ class TestPhonotactics(unittest.TestCase):
         self.assertEqual(loaded.class_with_label("Z").name, "Sibilant")
         self.assertEqual(loaded.get_class("Fricative").label, "")
         self.assertEqual(loaded.class_with_label("C").name, "Consonant")
-        self.assertEqual(write_syllables(loaded.phonotactics.syllabify("pal")), "pal")
+        syllables = loaded.phonotactics.syllabify("pal")
+        assert syllables is not None
+        self.assertEqual(write_syllables(syllables), "pal")
         # New IDs after loading don't clash with the loaded structures.
         self.assertGreater(loaded.phonotactics.add_syllable_structure("V").id, third.id)
 

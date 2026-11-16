@@ -186,7 +186,7 @@ class TestPatches(unittest.TestCase):
         self.assertEqual(snapshot(Project.load(self.file)), before)
 
     def test_save_after_dropped_patch(self):
-        before, patch_start = self.saved_twice()
+        self.saved_twice()
         self.write_file(self.read_file()[:-2])
         # Saving over a broken patch has to rewrite the file, or the new patch would land after the broken one.
         project = Project.load(self.file)

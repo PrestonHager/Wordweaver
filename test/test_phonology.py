@@ -54,11 +54,11 @@ class TestPhonemeGenerator(unittest.TestCase):
     def test_init_invalid(self):
         # Test the init method with invalid arguments
         with self.assertRaises(ValueError):
-            phoneme_generator = PhonemeGenerator([IPAChar("invalid phoneme")], (), ())
+            PhonemeGenerator([IPAChar("invalid phoneme")], (), ())
         with self.assertRaises(ValueError):
-            phoneme_generator = PhonemeGenerator([], (PhonemeConstraint(Phonemes.VOWEL),), ())
+            PhonemeGenerator([], (PhonemeConstraint(Phonemes.VOWEL),), ())
         with self.assertRaises(ValueError):
-            phoneme_generator = PhonemeGenerator([], (), (PhonemeConstraint(Phonemes.VOWEL),))
+            PhonemeGenerator([], (), (PhonemeConstraint(Phonemes.VOWEL),))
     
     def test_generate_syllables(self):
         # Test the generate_syllables method

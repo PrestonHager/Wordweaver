@@ -19,7 +19,8 @@ _runtime_version.ValidateProtobufRuntimeVersion(
 )
 # @@protoc_insertion_point(imports)
 
-_sym_db = _symbol_database.Default()
+_sym_db = _symbol_database.Default()  # pyright: ignore  Used by generated protobuf registration.
+assert _sym_db is not None
 
 
 

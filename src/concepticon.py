@@ -127,7 +127,7 @@ class ConcepticonSenses:
                 matches.append((0, len(gloss), sense))
             elif re.search(rf"\b{re.escape(key)}\b", gloss):
                 matches.append((1, len(gloss), sense))
-        return [sense for *_rank, sense in sorted(matches, key=lambda match: match[:2])]
+        return [match[2] for match in sorted(matches, key=lambda match: match[:2])]
 
     def get(self, id: str) -> Sense | None:
         return self._all().get(id.strip())

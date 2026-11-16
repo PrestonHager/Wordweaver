@@ -86,7 +86,7 @@ class SensePicker(QDialog):
         layout.addWidget(self.status)
         self.results = QListWidget(self)
         self.results.setWordWrap(True)
-        self.results.itemDoubleClicked.connect(lambda _item: self.accept())
+        self.results.itemDoubleClicked.connect(self.accept)
         layout.addWidget(self.results)
 
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Cancel, self)
