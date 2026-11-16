@@ -3,15 +3,15 @@
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from ipapy.ipachar import IPAChar
+from ipapy.ipachar import IPAChar, IPAConsonant, IPAVowel
 
 from phonology import Phoneme, PhonemeInventory
 
-def _consonant(test: Callable[[IPAChar], bool]) -> Callable[[IPAChar], bool]:
-    return lambda c: c.is_consonant and test(c)
+def _consonant(test: Callable[[IPAConsonant], bool]) -> Callable[[IPAChar], bool]:
+    return lambda c: isinstance(c, IPAConsonant) and test(c)
 
-def _vowel(test: Callable[[IPAChar], bool]) -> Callable[[IPAChar], bool]:
-    return lambda c: c.is_vowel and test(c)
+def _vowel(test: Callable[[IPAVowel], bool]) -> Callable[[IPAChar], bool]:
+    return lambda c: isinstance(c, IPAVowel) and test(c)
 
 def is_valid_label(label: str) -> bool:
     """Check that a Phoneme Class label is one capital letter, maybe followed by small letters or digits, like C, V, or Nf.
@@ -26,7 +26,7 @@ def _is_sonorant(c: IPAChar) -> bool:
     # Vowels, nasals, approximants, trills, and flaps, but not lateral fricatives or affricates.
     if c.is_vowel:
         return True
-    return c.is_consonant and c.manner.split("-")[-1] in ("nasal", "approximant", "trill", "flap")
+    return isinstance(c, IPAConsonant) and (c.manner or "").split("-")[-1] in ("nasal", "approximant", "trill", "flap")
 
 @dataclass(frozen=True)
 class DefaultClass:
@@ -40,37 +40,38 @@ class DefaultClass:
 
 # The Classes every Language starts with, filled in from each Phoneme's IPA features.
 # NOTE: a default Class's ID is its place in this list, so only ever add to the end.
+# NOTE: ipapy has no type hints, so its features look like they could be None. That's why some have `or ""`.
 DEFAULT_CLASSES = [
     DefaultClass("consonant", "Consonant", lambda c: c.is_consonant, label="C"),
     DefaultClass("vowel", "Vowel", lambda c: c.is_vowel, label="V", vowels=True),
     DefaultClass("sonorant", "Sonorant", _is_sonorant),
     DefaultClass("obstruent", "Obstruent", lambda c: c.is_consonant and not _is_sonorant(c)),
-    DefaultClass("nasal", "Nasal", _consonant(lambda c: c.manner == "nasal"), label="N"),
-    DefaultClass("stop", "Stop", _consonant(lambda c: c.manner in ("plosive", "implosive", "ejective")), label="S"),
-    DefaultClass("fricative", "Fricative", _consonant(lambda c: c.manner.endswith("fricative")), label="F"),
-    DefaultClass("affricate", "Affricate", _consonant(lambda c: c.manner.endswith("affricate"))),
-    DefaultClass("sibilant", "Sibilant", _consonant(lambda c: c.manner.startswith("sibilant"))),
-    DefaultClass("approximant", "Approximant", _consonant(lambda c: c.manner.endswith("approximant"))),
+    DefaultClass("nasal", "Nasal", _consonant(lambda c: c.manner == "nasal")),
+    DefaultClass("stop", "Stop", _consonant(lambda c: c.manner in ("plosive", "implosive", "ejective"))),
+    DefaultClass("fricative", "Fricative", _consonant(lambda c: (c.manner or "").endswith("fricative"))),
+    DefaultClass("affricate", "Affricate", _consonant(lambda c: (c.manner or "").endswith("affricate"))),
+    DefaultClass("sibilant", "Sibilant", _consonant(lambda c: (c.manner or "").startswith("sibilant"))),
+    DefaultClass("approximant", "Approximant", _consonant(lambda c: (c.manner or "").endswith("approximant"))),
     DefaultClass("trill", "Trill", _consonant(lambda c: c.manner == "trill")),
-    DefaultClass("tap", "Tap", _consonant(lambda c: c.manner.endswith("flap"))),
-    DefaultClass("lateral", "Lateral", _consonant(lambda c: c.manner.startswith("lateral")), label="L"),
-    DefaultClass("click", "Click", _consonant(lambda c: c.manner.endswith("click"))),
+    DefaultClass("tap", "Tap", _consonant(lambda c: (c.manner or "").endswith("flap"))),
+    DefaultClass("lateral", "Lateral", _consonant(lambda c: (c.manner or "").startswith("lateral"))),
+    DefaultClass("click", "Click", _consonant(lambda c: (c.manner or "").endswith("click"))),
     DefaultClass("implosive", "Implosive", _consonant(lambda c: c.manner == "implosive")),
-    DefaultClass("ejective", "Ejective", _consonant(lambda c: "ejective" in c.manner)),
+    DefaultClass("ejective", "Ejective", _consonant(lambda c: "ejective" in (c.manner or ""))),
     DefaultClass("voiced", "Voiced", _consonant(lambda c: c.voicing == "voiced")),
     DefaultClass("voiceless", "Voiceless", _consonant(lambda c: c.voicing == "voiceless")),
-    DefaultClass("labial", "Labial", _consonant(lambda c: "labi" in c.place)),
-    DefaultClass("coronal", "Coronal", _consonant(lambda c: any(p in c.place for p in ("dent", "alveol", "retroflex", "linguo")))),
-    DefaultClass("dorsal", "Dorsal", _consonant(lambda c: any(p in c.place for p in ("palat", "velar", "uvul")))),
-    DefaultClass("laryngeal", "Laryngeal", _consonant(lambda c: c.place == "glottal" or "pharyngeal" in c.place)),
-    DefaultClass("close", "Close", _vowel(lambda c: c.height in ("close", "near-close")), vowels=True),
-    DefaultClass("mid", "Mid", _vowel(lambda c: c.height in ("close-mid", "mid", "open-mid")), vowels=True),
-    DefaultClass("open", "Open", _vowel(lambda c: c.height in ("open", "near-open")), vowels=True),
-    DefaultClass("front", "Front", _vowel(lambda c: c.backness in ("front", "near-front")), vowels=True),
-    DefaultClass("central", "Central", _vowel(lambda c: c.backness == "central"), vowels=True),
-    DefaultClass("back", "Back", _vowel(lambda c: c.backness in ("back", "near-back")), vowels=True),
-    DefaultClass("rounded", "Rounded", _vowel(lambda c: c.roundness == "rounded"), vowels=True),
-    DefaultClass("unrounded", "Unrounded", _vowel(lambda c: c.roundness == "unrounded"), vowels=True),
+    DefaultClass("labial", "Labial", _consonant(lambda c: "labi" in (c.place or ""))),
+    DefaultClass("coronal", "Coronal", _consonant(lambda c: any(p in (c.place or "") for p in ("dent", "alveol", "retroflex", "linguo")))),
+    DefaultClass("dorsal", "Dorsal", _consonant(lambda c: any(p in (c.place or "") for p in ("palat", "velar", "uvul")))),
+    DefaultClass("laryngeal", "Laryngeal", _consonant(lambda c: c.place == "glottal" or "pharyngeal" in (c.place or ""))),
+    DefaultClass("close", "Close", _vowel(lambda c: c.height in ("close", "near-close"))),
+    DefaultClass("mid", "Mid", _vowel(lambda c: c.height in ("close-mid", "mid", "open-mid"))),
+    DefaultClass("open", "Open", _vowel(lambda c: c.height in ("open", "near-open"))),
+    DefaultClass("front", "Front", _vowel(lambda c: c.backness in ("front", "near-front"))),
+    DefaultClass("central", "Central", _vowel(lambda c: c.backness == "central")),
+    DefaultClass("back", "Back", _vowel(lambda c: c.backness in ("back", "near-back"))),
+    DefaultClass("rounded", "Rounded", _vowel(lambda c: c.roundness == "rounded")),
+    DefaultClass("unrounded", "Unrounded", _vowel(lambda c: c.roundness == "unrounded")),
 ]
 
 # How many IDs each Language holds back for its default Classes, so there's room to add more later.
@@ -142,7 +143,7 @@ class PhonemeClass:
 
     @property
     def is_renamed(self) -> bool:
-        return self.is_default and self._name != self._default.name
+        return self._default is not None and self._name != self._default.name
 
     @property
     def is_hand_edited(self) -> bool:
@@ -157,20 +158,21 @@ class PhonemeClass:
         phoneme = self._inventory.get(symbol)
         if phoneme is None:
             raise KeyError(symbol)
-        self._edit_by_hand()
-        self._member_ids.add(phoneme.id)
+        members = self._edit_by_hand()
+        members.add(phoneme.id)
 
     def remove(self, symbol: str):
         """Take a Phoneme out of this Class. It stays in the inventory."""
         phoneme = self._inventory.get(symbol)
-        self._edit_by_hand()
+        members = self._edit_by_hand()
         if phoneme is not None:
-            self._member_ids.discard(phoneme.id)
+            members.discard(phoneme.id)
 
-    def _edit_by_hand(self):
+    def _edit_by_hand(self) -> set[int]:
         # The first hand edit to a default Class freezes what's in it now, so new Phonemes don't get added by themselves.
         if self._member_ids is None:
             self._member_ids = {p.id for p in self.phonemes}
+        return self._member_ids
 
     def _restore_members(self, phoneme_ids: list[int]):
         # Put back the Phonemes saved for a hand-made or hand-edited Class.
@@ -180,6 +182,8 @@ class PhonemeClass:
     def phonemes(self) -> list[Phoneme]:
         """The Class's Phonemes, in inventory order."""
         if self._member_ids is None:
+            # Only untouched default Classes have no member IDs.
+            assert self._default is not None
             return [p for p in self._inventory if self._default.test(p.ipa)]
         return [p for p in self._inventory if p.id in self._member_ids]
 
@@ -223,7 +227,7 @@ class PhonemeClasses:
         self._classes.remove(phoneme_class)
 
     def default(self, key: str) -> PhonemeClass | None:
-        return next((c for c in self._classes if c.is_default and c._default.key == key), None)
+        return next((c for c in self._classes if c._default is not None and c._default.key == key), None)
 
     def _restore(self, id: int, name: str) -> PhonemeClass:
         # Put back a user Class, keeping its ID.

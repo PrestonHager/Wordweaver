@@ -15,10 +15,10 @@ class LexiconPage(QWidget):
     """The picked Language's Entries, with buttons to add, edit, and remove them."""
 
     # Sent when the Entry editor adds a Phoneme to the Inventory from a Form warning.
-    inventory_changed = pyqtSignal()
+    inventory_changed = pyqtSignal()  # pyright: ignore[reportCallIssue]  PyQt6 stub bug, see pyproject.
 
     def __init__(self, parent: QWidget | None = None):
-        super().__init__(parent)
+        super().__init__(parent)  # pyright: ignore[reportArgumentType]  PyQt6 stub bug, see pyproject.
         self.setObjectName("Page")
         self.logger = logging.getLogger(__name__ + "." + self.__class__.__name__)
         self.project: Project | None = None
@@ -72,12 +72,12 @@ class LexiconPage(QWidget):
             self.sort_picker.addItem(str(order), order)
         self.sort_picker.currentIndexChanged.connect(lambda _index: self._update_lexicon_list())
         toolbar.addWidget(self.sort_picker)
-        self.list_card.layout.addLayout(toolbar)
+        self.list_card.content.addLayout(toolbar)
         self.lexicon_list = QListWidget(self.list_card)
         self.lexicon_list.setObjectName("EntryList")
         self.lexicon_list.itemDoubleClicked.connect(lambda _item: self.edit_entry())
         self.lexicon_list.currentItemChanged.connect(lambda _current, _previous: self._update_buttons())
-        self.list_card.layout.addWidget(self.lexicon_list, 1)
+        self.list_card.content.addWidget(self.lexicon_list, 1)
         buttons = QHBoxLayout()
         self.edit_button = Button("Edit", "pencil", parent=self.list_card)
         self.edit_button.clicked.connect(self.edit_entry)
@@ -86,7 +86,7 @@ class LexiconPage(QWidget):
         self.remove_button.clicked.connect(self.remove_entry)
         buttons.addWidget(self.remove_button)
         buttons.addStretch()
-        self.list_card.layout.addLayout(buttons)
+        self.list_card.content.addLayout(buttons)
         layout.addWidget(self.list_card, 1)
 
         # Finally, what to show when the Lexicon is empty.
@@ -121,7 +121,7 @@ class LexiconPage(QWidget):
                 meanings = [f"{number}. {meaning}" for number, meaning in enumerate(meanings, start=1)]
             form = "(no Form yet)" if entry.is_unfinished else f"/{entry.form}/"
             text = f"{form}  {'  '.join(meanings)}"
-            tag_names = [self.project.tags.get(tag_id).name for tag_id in entry.tag_ids]
+            tag_names = [tag.name for tag_id in entry.tag_ids if (tag := self.project.tags.get(tag_id)) is not None]
             if tag_names:
                 text += f"  [{', '.join(tag_names)}]"
             item = QListWidgetItem(text)
@@ -157,7 +157,7 @@ class LexiconPage(QWidget):
 
     def edit_entry(self):
         entry = self._picked_entry()
-        if entry is None:
+        if entry is None or self.project is None or self.language is None:
             return
         editor = EntryEditor(self.language, entry, parent=self, gloss_language=self.project.gloss_language)
         editor.exec()
@@ -172,7 +172,7 @@ class LexiconPage(QWidget):
 
     def remove_entry(self):
         entry = self._picked_entry()
-        if entry is None:
+        if entry is None or self.language is None:
             return
         answer = QMessageBox.question(self, "Remove Entry", f"Remove /{entry.form}/ ({'; '.join(entry.glosses)})?")
         if answer == QMessageBox.StandardButton.Yes:

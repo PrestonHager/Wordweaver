@@ -14,11 +14,11 @@ PREVIEW_SYMBOLS = 18
 class WelcomePage(QWidget):
     """What you see with no Project open."""
 
-    new_requested = pyqtSignal()
-    open_requested = pyqtSignal()
+    new_requested = pyqtSignal()  # pyright: ignore[reportCallIssue]  PyQt6 stub bug, see pyproject.
+    open_requested = pyqtSignal()  # pyright: ignore[reportCallIssue]  PyQt6 stub bug, see pyproject.
 
     def __init__(self, parent: QWidget | None = None):
-        super().__init__(parent)
+        super().__init__(parent)  # pyright: ignore[reportArgumentType]  PyQt6 stub bug, see pyproject.
         self.setObjectName("Welcome")
         layout = QVBoxLayout(self)
         layout.addStretch(2)
@@ -57,23 +57,23 @@ class LanguageCard(Card):
         top.addWidget(label(language.name, "cardTitle"), 1)
         if current:
             top.addWidget(label("Editing", "badge"))
-        self.layout.addLayout(top)
+        self.content.addLayout(top)
         # Then the Language Kind picker.
         kind = QComboBox(self)
         for k in LanguageKind:
             kind.addItem(str(k))
         kind.setCurrentIndex(list(LanguageKind).index(language.kind))
         kind.currentIndexChanged.connect(lambda i: page.kind_changed.emit(language, list(LanguageKind)[i]))
-        self.layout.addWidget(kind)
+        self.content.addWidget(kind)
         # Now a peek at the Phoneme Inventory.
         symbols = language.inventory.symbols
         count = f"{len(symbols)} Phoneme" + ("" if len(symbols) == 1 else "s")
-        self.layout.addWidget(label(count, "muted"))
+        self.content.addWidget(label(count, "muted"))
         preview = " ".join(symbols[:PREVIEW_SYMBOLS]) + (" …" if len(symbols) > PREVIEW_SYMBOLS else "")
         sounds = label(preview or "No sounds yet", "ipa" if symbols else "muted")
         sounds.setWordWrap(True)
-        self.layout.addWidget(sounds)
-        self.layout.addStretch()
+        self.content.addWidget(sounds)
+        self.content.addStretch()
         # Finally the actions.
         actions = QHBoxLayout()
         phonology = Button("Phonology", "audio-lines", parent=self)
@@ -86,20 +86,20 @@ class LanguageCard(Card):
         remove = Button(icon="trash-2", variant="danger", tooltip="Remove Language", parent=self)
         remove.clicked.connect(lambda: page.remove_requested.emit(language))
         actions.addWidget(remove)
-        self.layout.addLayout(actions)
+        self.content.addLayout(actions)
 
 class OverviewPage(QWidget):
     """The Project at a glance: every Language as a card."""
 
-    add_requested = pyqtSignal()
-    rename_project_requested = pyqtSignal()
-    phonology_requested = pyqtSignal(object)
-    rename_requested = pyqtSignal(object)
-    remove_requested = pyqtSignal(object)
-    kind_changed = pyqtSignal(object, object)
+    add_requested = pyqtSignal()  # pyright: ignore[reportCallIssue]  PyQt6 stub bug, see pyproject.
+    rename_project_requested = pyqtSignal()  # pyright: ignore[reportCallIssue]  PyQt6 stub bug, see pyproject.
+    phonology_requested = pyqtSignal(object)  # pyright: ignore[reportCallIssue]  PyQt6 stub bug, see pyproject.
+    rename_requested = pyqtSignal(object)  # pyright: ignore[reportCallIssue]  PyQt6 stub bug, see pyproject.
+    remove_requested = pyqtSignal(object)  # pyright: ignore[reportCallIssue]  PyQt6 stub bug, see pyproject.
+    kind_changed = pyqtSignal(object, object)  # pyright: ignore[reportCallIssue]  PyQt6 stub bug, see pyproject.
 
     def __init__(self, parent: QWidget | None = None):
-        super().__init__(parent)
+        super().__init__(parent)  # pyright: ignore[reportArgumentType]  PyQt6 stub bug, see pyproject.
         self.setObjectName("Page")
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)

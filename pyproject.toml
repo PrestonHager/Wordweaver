@@ -32,3 +32,18 @@ ipapy = { git = "https://github.com/PrestonHager/ipapy", rev = "v0.0.10.0" }
 dev = [
     "grpcio-tools>=1.85.1",
 ]
+
+# Pyright is what Pylance runs, so `uvx pyright` shows the same errors as VS Code.
+# NOTE: the PyQt6 6.12 stubs have two bugs, `pyqtSignal()` wants an `arguments` keyword and
+# `QWidget.__init__` types `parent` as `Self`. Lines that hit them have a narrow `pyright: ignore`.
+[tool.pyright]
+include = ["src", "test", "scripts"]
+exclude = ["**/__pycache__", ".venv", ".claude", "build", "dist", "docs", "tools"]
+extraPaths = ["src"]
+venvPath = "."
+venv = ".venv"
+# Tests look things up and use them straight away. If one comes back None the test fails anyway, so don't flag it.
+executionEnvironments = [
+    { root = "test", extraPaths = ["src"], reportOptionalMemberAccess = false },
+    { root = "." },
+]

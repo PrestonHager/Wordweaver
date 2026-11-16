@@ -1,6 +1,6 @@
 # main.py
 
-from PyQt6.QtWidgets import QApplication, QButtonGroup, QComboBox, QDialog, QFileDialog, QHBoxLayout, QInputDialog, QMainWindow, QMenu, QMessageBox, QStackedWidget, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QApplication, QButtonGroup, QComboBox, QDialog, QFileDialog, QHBoxLayout, QInputDialog, QMainWindow, QMenu, QMessageBox, QStackedWidget, QStatusBar, QVBoxLayout, QWidget
 from PyQt6.QtGui import QCloseEvent, QIcon
 from PyQt6.QtCore import Qt
 from pathlib import Path
@@ -32,7 +32,7 @@ NAV = [
 ]
 
 class App(QMainWindow):
-    def __init__(self, project: Project=None):
+    def __init__(self, project: Project | None=None):
         super().__init__()
 
         # Setup the logger
@@ -84,7 +84,9 @@ class App(QMainWindow):
             self.pages.addWidget(page)
 
         self._build_menus()
-        self.statusBar().setSizeGripEnabled(False)
+        self.status_bar = QStatusBar(self)
+        self.status_bar.setSizeGripEnabled(False)
+        self.setStatusBar(self.status_bar)
         self._open_page("overview")
         self._update_main_view()
 
@@ -149,6 +151,8 @@ class App(QMainWindow):
     def _build_menus(self):
         self.logger.debug("Creating menubar and actions")
         menubar = self.menuBar()
+        # QMainWindow makes a menu bar the first time you ask, so this is never None.
+        assert menubar is not None
         self.menu_actions = {}
 
         # Each entry is the key, label, icon, shortcut, and slot. None makes a separator.
@@ -189,6 +193,7 @@ class App(QMainWindow):
 
     def _action(self, menu: QMenu, text: str, icon_name: str | None, shortcut: str, slot):
         action = menu.addAction(text)
+        assert action is not None
         if icon_name is not None:
             bind_icon(action, icon_name, "muted", size=16)
         action.setShortcut(shortcut)
@@ -252,9 +257,9 @@ class App(QMainWindow):
         language.kind = kind
 
     def _on_inventory_changed(self):
-        # The Overview cards show the inventory, and Phonotactics uses it and the Classes, so keep them current.
-        self.overview_page.refresh(self.project, self.language)
-        self.phonotactics_page.refresh()
+        # The Overview cards show the inventory, so keep them current.
+        if self.project is not None:
+            self.overview_page.refresh(self.project, self.language)
 
     def _on_lexicon_inventory_changed(self):
         # The Lexicon added a Phoneme, so the Phonology page needs redrawing as well as the cards.
@@ -281,6 +286,8 @@ class App(QMainWindow):
 
     def rename_language(self, language: Language | None = None):
         language = language or self.language
+        if language is None:
+            return
         name, ok = QInputDialog.getText(self, "Rename Language", "Enter a new name for the Language:", text=language.name)
         if ok and name:
             language.name = name
@@ -288,6 +295,8 @@ class App(QMainWindow):
 
     def remove_language(self, language: Language | None = None):
         language = language or self.language
+        if self.project is None or language is None:
+            return
         if len(self.project.languages) == 1:
             QMessageBox.information(self, "Can't Remove Language", "A Project needs at least one Language.")
             return
@@ -300,6 +309,8 @@ class App(QMainWindow):
             self._update_project_view()
 
     def rename_project(self):
+        if self.project is None:
+            return
         name, ok = QInputDialog.getText(self, "Rename Project", "Enter a new name for the Project:", text=self.project.name)
         if ok and name:
             self.project.name = name
@@ -361,7 +372,7 @@ class App(QMainWindow):
         if self.project is not None:
             if self.project.file is not None:
                 self.project.save()
-                self.statusBar().showMessage(f"Saved to {self.project.file}", 4000)
+                self.status_bar.showMessage(f"Saved to {self.project.file}", 4000)
                 self.logger.info(f"Saved project \"{self.project.name}\" to {self.project.file}")
             else:
                 # if it doesn't, use the save as dialog.
@@ -380,7 +391,7 @@ class App(QMainWindow):
             self.logger.warning(f"Couldn't compact project: {e}")
             QMessageBox.warning(self, "Couldn't Compact Project", str(e))
             return
-        self.statusBar().showMessage(f"Compacted {self.project.file}", 4000)
+        self.status_bar.showMessage(f"Compacted {self.project.file}", 4000)
         self.logger.info(f"Compacted project \"{self.project.name}\" at {self.project.file}")
 
     def save_as(self):
@@ -391,10 +402,10 @@ class App(QMainWindow):
         dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptSave)
         dialog.setDefaultSuffix("wwproj")
         dialog.setNameFilters(("Wordweaver Project (*.wwproj)", "All Files (*)"))
-        if dialog.exec() == QFileDialog.DialogCode.Accepted:
+        if dialog.exec() == QFileDialog.DialogCode.Accepted and self.project is not None:
             self.project.file = dialog.selectedFiles()[0]
             self.project.save()
-            self.statusBar().showMessage(f"Saved to {self.project.file}", 4000)
+            self.status_bar.showMessage(f"Saved to {self.project.file}", 4000)
             self.logger.info(f"Saved project \"{self.project.name}\" to {self.project.file} and updated project file location.")
 
     def export_lexicon_csv(self):
@@ -417,7 +428,7 @@ class App(QMainWindow):
         except OSError as e:
             QMessageBox.warning(self, "Couldn't Export Lexicon", str(e))
             return
-        self.statusBar().showMessage(f"Exported the Lexicon to {file}", 4000)
+        self.status_bar.showMessage(f"Exported the Lexicon to {file}", 4000)
         self.logger.info(f"Exported the Lexicon of \"{self.language.name}\" to {file}")
 
     def seed_from_concept_list(self):
@@ -473,7 +484,7 @@ class App(QMainWindow):
     def copy(self):
         # Copy the current Language's Phoneme Inventory.
         self.phonology_page.copy()
-        self.statusBar().showMessage("Copied the Phoneme Inventory", 3000)
+        self.status_bar.showMessage("Copied the Phoneme Inventory", 3000)
 
     def paste(self):
         # Use the following command to paste

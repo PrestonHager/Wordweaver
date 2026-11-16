@@ -16,14 +16,14 @@ class About(QDialog):
         self.setWindowTitle("About Wordweaver")
         self.setMinimumWidth(380)
 
-        self.layout = QVBoxLayout(self)
-        self.layout.setContentsMargins(24, 24, 24, 20)
-        self.layout.setSpacing(6)
-        self.layout.addWidget(label("Wordweaver", "title", self))
-        self.layout.addWidget(label(f"Version {VERSION}", "muted", self))
-        self.layout.addSpacing(8)
-        self.layout.addWidget(label("A toolbox for building constructed languages.", None, self))
-        self.layout.addSpacing(16)
+        self.content = QVBoxLayout(self)
+        self.content.setContentsMargins(24, 24, 24, 20)
+        self.content.setSpacing(6)
+        self.content.addWidget(label("Wordweaver", "title", self))
+        self.content.addWidget(label(f"Version {VERSION}", "muted", self))
+        self.content.addSpacing(8)
+        self.content.addWidget(label("A toolbox for building constructed languages.", None, self))
+        self.content.addSpacing(16)
 
         buttons = QHBoxLayout()
         github = Button("View on GitHub", "external-link", parent=self)
@@ -34,7 +34,7 @@ class About(QDialog):
         close.clicked.connect(self.reject)
         close.setDefault(True)
         buttons.addWidget(close)
-        self.layout.addLayout(buttons)
+        self.content.addLayout(buttons)
 
     def accept(self):
         from webbrowser import open as web_open

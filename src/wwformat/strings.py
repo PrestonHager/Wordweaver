@@ -1,12 +1,14 @@
 # wwformat/strings.py
 
+from collections.abc import Iterable
+
 from wwformat import wordweaver_pb2 as pb
 from wwformat.errors import CorruptFileError
 
 class StringTable:
     """Stores each unique string once. Records refer to strings by index, and index 0 is always ""."""
 
-    def __init__(self, strings: list[str]=()):
+    def __init__(self, strings: Iterable[str]=()):
         self._strings = [""] + list(strings)
         self._indexes = {s: i for i, s in enumerate(self._strings)}
 
@@ -17,7 +19,7 @@ class StringTable:
             self._strings.append(string)
         return self._indexes[string]
 
-    def extend(self, strings: list[str]):
+    def extend(self, strings: Iterable[str]):
         # Patches add strings to the end, so their indexes have to land exactly where the saver put them.
         for string in strings:
             self._indexes.setdefault(string, len(self._strings))

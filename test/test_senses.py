@@ -134,7 +134,7 @@ class TestOmwSenses(unittest.TestCase):
                 return river
         with tempfile.TemporaryDirectory() as data_dir:
             omw = OmwSenses("omw-fr:2.0", "French", data_dir)
-            omw._wordnet = FakeWordnet()
+            omw._wordnet = FakeWordnet()  # pyright: ignore[reportAttributeAccessIssue]  A fake is enough here.
             self.assertEqual(omw.get("i85041").lemmas, ("rive",))
             self.assertEqual(omw.get("omw-fr-09213565-n").lemmas, ("rive",))
             self.assertIsNone(omw.get("i0"))
@@ -145,10 +145,10 @@ class TestOmwSenses(unittest.TestCase):
         self.assertIsInstance(french, OmwSenses)
         self.assertEqual(french.source, ConceptSource.OPEN_MULTILINGUAL_WORDNET)
         self.assertEqual(french.name, "Open Multilingual Wordnet (French)")
-        self.assertEqual(french._lexicon, "omw-fr:2.0")
+        self.assertEqual(french._lexicon, "omw-fr:2.0")  # pyright: ignore[reportAttributeAccessIssue]  Only OmwSenses has _lexicon.
         self.assertIs(lookup_for("fr-CA"), french)
-        self.assertEqual(lookup_for("es")._lexicon, "omw-es:2.0")
-        self.assertEqual(lookup_for("ja")._lexicon, "omw-ja:2.0")
+        self.assertEqual(lookup_for("es")._lexicon, "omw-es:2.0")  # pyright: ignore[reportAttributeAccessIssue]  Only OmwSenses has _lexicon.
+        self.assertEqual(lookup_for("ja")._lexicon, "omw-ja:2.0")  # pyright: ignore[reportAttributeAccessIssue]  Only OmwSenses has _lexicon.
         self.assertIs(lookup_for("cmn"), lookup_for("zh-Hans"))
         self.assertIsNot(lookup_for("es"), french)
         # Some languages have no open wordnet at all, so they can't link senses.
@@ -185,7 +185,7 @@ class TestConceptReference(unittest.TestCase):
         with self.assertRaises(ValueError):
             ConceptReference(ConceptSource.OPEN_ENGLISH_WORDNET, "  ")
         with self.assertRaises(ValueError):
-            ConceptReference(1, "oewn-09236472-n")
+            ConceptReference(1, "oewn-09236472-n")  # pyright: ignore[reportArgumentType]  Wrong on purpose.
         with self.assertRaises(ValueError):
             ConceptReference.parse("oewn-09236472-n")
         with self.assertRaises(ValueError):

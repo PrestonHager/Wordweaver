@@ -39,13 +39,13 @@ class TestEntryEditorFormCheck(unittest.TestCase):
 
     def test_form_in_inventory_shows_no_warning(self):
         editor = self.editor("tati")
-        self.assertFalse(editor.form_warnings.isVisibleTo(editor))
+        self.assertFalse(editor.form_warnings.isVisibleTo(editor))  # pyright: ignore[reportArgumentType]  PyQt6 stub bug, see pyproject.
         self.assertEqual(editor.form_warnings.add_buttons, {})
 
     def test_unknown_phoneme_is_flagged_as_you_type(self):
         editor = self.editor("ta")
         editor.form_input.setText("taki")
-        self.assertTrue(editor.form_warnings.isVisibleTo(editor))
+        self.assertTrue(editor.form_warnings.isVisibleTo(editor))  # pyright: ignore[reportArgumentType]  PyQt6 stub bug, see pyproject.
         self.assertEqual(list(editor.form_warnings.add_buttons), ["k"])
 
     def test_add_to_inventory_clears_the_flag_and_round_trips(self):
@@ -53,7 +53,7 @@ class TestEntryEditorFormCheck(unittest.TestCase):
         editor.form_warnings.add_buttons["k"].click()
         self.assertIn("k", self.language.inventory)
         self.assertEqual(editor.added_phonemes, ["k"])
-        self.assertFalse(editor.form_warnings.isVisibleTo(editor))
+        self.assertFalse(editor.form_warnings.isVisibleTo(editor))  # pyright: ignore[reportArgumentType]  PyQt6 stub bug, see pyproject.
         editor.accept()
         self.assertEqual(editor.result(), QDialog.DialogCode.Accepted)
         # The new Phoneme and the Entry both come back after a save and load.
@@ -64,7 +64,7 @@ class TestEntryEditorFormCheck(unittest.TestCase):
 
     def test_invalid_ipa_is_reported_and_cant_be_added(self):
         editor = self.editor("taː")
-        self.assertTrue(editor.form_warnings.isVisibleTo(editor))
+        self.assertTrue(editor.form_warnings.isVisibleTo(editor))  # pyright: ignore[reportArgumentType]  PyQt6 stub bug, see pyproject.
         self.assertEqual(editor.form_warnings.check.invalid, ("ː",))
         self.assertEqual(editor.form_warnings.add_buttons, {})
 

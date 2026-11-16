@@ -55,7 +55,7 @@ class TestApp(unittest.TestCase):
         page = self.window.phonology_page
         # A mark that isn't a sound shows an error and can't be added.
         page.symbol_input.setText("ʰ")
-        self.assertTrue(page.error.isVisibleTo(page))
+        self.assertTrue(page.error.isVisibleTo(page))  # pyright: ignore[reportArgumentType]  PyQt6 stub bug, see pyproject.
         self.assertFalse(page.add_button.isEnabled())
         page.add_symbol()
         self.assertNotIn("ʰ", self.language.inventory)

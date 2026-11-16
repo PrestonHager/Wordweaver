@@ -46,7 +46,7 @@ class TestTags(unittest.TestCase):
         for language, loaded_language in zip(self.project.languages, loaded.languages):
             self.assertEqual([(e.id, e.tag_ids) for e in loaded_language.lexicon], [(e.id, e.tag_ids) for e in language.lexicon])
         loaded_animals = loaded.tags.get(animals.id)
-        self.assertEqual([e.glosses for e in loaded.tagged(loaded_animals)], [("wolf",), ("wolf",)])
+        self.assertEqual([e.glosses for e in loaded.tagged(loaded_animals)], [("wolf",), ("wolf",)])  # pyright: ignore[reportArgumentType]  None would fail the test anyway.
         self.assertEqual(self.tag_names(loaded, loaded.languages[0].lexicon.get(wolf.id)), ["animals", "sacred words"])
 
     def test_tags_take_ids_from_the_project_counter(self):
@@ -142,7 +142,7 @@ class TestTags(unittest.TestCase):
         self.proto.lexicon.remove(entry)
         loaded = self.round_trip()
         self.assertEqual([t.name for t in loaded.tags], ["animals"])
-        self.assertEqual(loaded.tagged(loaded.tags.get(tag.id)), [])
+        self.assertEqual(loaded.tagged(loaded.tags.get(tag.id)), [])  # pyright: ignore[reportArgumentType]  None would fail the test anyway.
 
 if __name__ == "__main__":
     unittest.main()

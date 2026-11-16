@@ -84,10 +84,10 @@ pylint --rcfile=pylintrc src
 ### Changing the Project File Format
 
 The `.wwproj` format lives in `src/wwformat`, and its payloads are defined in `src/wwformat/proto/wordweaver.proto`.
-If you change the `.proto` file, regenerate `wordweaver_pb2.py` with the dev tools (`uv sync` installs them):
+If you change the `.proto` file, regenerate `wordweaver_pb2.py` and its `wordweaver_pb2.pyi` type stub with the dev tools (`uv sync` installs them):
 
 ```bash
-uv run python -m grpc_tools.protoc -I src/wwformat/proto --python_out=src/wwformat src/wwformat/proto/wordweaver.proto
+uv run python -m grpc_tools.protoc -I src/wwformat/proto --python_out=src/wwformat --pyi_out=src/wwformat src/wwformat/proto/wordweaver.proto
 ```
 
 If the change means old files won't load, rebuild the bundled default Project too:
