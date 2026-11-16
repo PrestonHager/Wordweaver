@@ -10,7 +10,7 @@ import sys
 from os import path
 sys.path.append(path.abspath(path.join(path.dirname(__file__), '../src')))
 
-from lexicon import Form
+from lexicon import ConceptReference, ConceptSource, Form
 from lexicon_csv import HEADER, join_values, split_values
 from wordweaver_project import Project
 
@@ -44,6 +44,7 @@ class TestLexiconCsv(unittest.TestCase):
         fish = self.lexicon.add("ʃəti", ["fish; trout", "back\\slash", "a, b"], terms=["count noun", "inanimate"])
         self.lexicon.tag(fish, animals)
         self.lexicon.tag(fish, sacred)
+        self.lexicon.set_concept_reference(water, water.definitions[0], ConceptReference(ConceptSource.OPEN_ENGLISH_WORDNET, "oewn-14869913-n"))
         rows = self.rows()[1:]
         self.assertEqual([row[0] for row in rows], [str(water.id), str(fish.id)])
         self.assertEqual([row[1] for row in rows], ["t͡saŋ", "ʃəti"])
@@ -51,8 +52,22 @@ class TestLexiconCsv(unittest.TestCase):
         self.assertEqual([split_values(row[3]) for row in rows], [["water", "river water"], ["fish; trout", "back\\slash", "a, b"]])
         self.assertEqual([split_values(row[4]) for row in rows], [["mass noun"], ["count noun", "inanimate"]])
         self.assertEqual([row[5] for row in rows], ["Fresh water, not \"sea\" water, from a spring.\nAlso rain.", ""])
-        self.assertEqual([row[6] for row in rows], ["", ""])
+        self.assertEqual([row[6] for row in rows], ["oewn:oewn-14869913-n", ""])
+        self.assertEqual(ConceptReference.parse(rows[0][6]), water.definitions[0].concept_reference)
         self.assertEqual([split_values(row[7]) for row in rows], [["sacred; holy, \"old\""], ["animals", "sacred; holy, \"old\""]])
+
+    def test_concept_reference_per_definition(self):
+        # The two "bank"s as Homophones, plus Polysemy with one linked and one unlinked Definition.
+        river = ConceptReference(ConceptSource.OPEN_ENGLISH_WORDNET, "oewn-09236472-n")
+        money = ConceptReference(ConceptSource.OPEN_ENGLISH_WORDNET, "oewn-08437235-n")
+        shore = self.lexicon.add("sat", ["bank"])
+        self.lexicon.set_concept_reference(shore, shore.definitions[0], river)
+        vault = self.lexicon.add("sat", ["bank"])
+        self.lexicon.add_definition(vault, ["treasury"])
+        self.lexicon.set_concept_reference(vault, vault.definitions[0], money)
+        rows = self.rows()[1:]
+        self.assertEqual([row[6] for row in rows], ["oewn:oewn-09236472-n", "oewn:oewn-08437235-n", ""])
+        self.assertEqual([ConceptReference.parse(row[6]) for row in rows if row[6]], [river, money])
 
     def test_polysemy_gives_a_row_per_definition(self):
         path_entry = self.lexicon.add("sat", ["river"], description="Running water.")
