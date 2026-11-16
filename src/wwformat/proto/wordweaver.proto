@@ -141,6 +141,37 @@ message TagTable {
   repeated Tag records = 1;
 }
 
+enum ContextKind {
+  // Nothing in particular, so anything can be there.
+  CONTEXT_ANYTHING = 0;
+  CONTEXT_WORD_BOUNDARY = 1;
+  CONTEXT_PHONEME = 2;
+  CONTEXT_PHONEME_CLASS = 3;
+}
+
+// One side of a rule's context. Sound Changes can use this too.
+message ContextSide {
+  ContextKind kind = 1;
+  // The Phoneme's or Phoneme Class's ID, for those kinds.
+  uint64 id = 2;
+}
+
+// /phoneme/ → [allophone] / before _ after
+message AllophoneRule {
+  uint64 id = 1;
+  uint64 language_id = 2;
+  uint64 phoneme_id = 3;
+  // The Allophone's IPA, which can have diacritics.
+  uint32 allophone = 4;
+  ContextSide before = 5;
+  ContextSide after = 6;
+}
+
+// Chunk ALLOPHONE_RULES.
+message AllophoneRuleTable {
+  repeated AllophoneRule records = 1;
+}
+
 // Chunk PATCH. One save's worth of changes, applied on top of everything before it.
 // Patches are generic: they replace whole messages and point at records by table and ID.
 message Patch {

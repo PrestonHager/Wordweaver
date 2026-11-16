@@ -87,6 +87,7 @@ QPushButton#Phoneme:checked {{ background: {accent}; color: {accent_text}; borde
 
 QFrame#Chip {{ background: {accent_soft}; border-radius: 13px; }}
 QFrame#Chip QLabel {{ color: {accent}; font-family: {ipa_fonts}; font-size: 16px; background: transparent; }}
+QFrame#Chip QLabel#ChipDetail {{ color: {muted}; font-size: 13px; padding-left: 4px; }}
 QFrame#Chip QPushButton {{ background: transparent; border: none; padding: 0; border-radius: 9px; }}
 QFrame#Chip QPushButton:hover {{ background: {hover}; }}
 

@@ -21,6 +21,7 @@ class ChunkType(IntEnum):
     DEFINITIONS = 11
     TAGS = 13
     PHONEME_CLASSES = 15
+    ALLOPHONE_RULES = 17
     # Patches sit at the top of the one-byte range so record tables can keep counting up from the bottom.
     # The container needs to know it too, to drop a cut-off patch.
     PATCH = PATCH_TYPE_ID
@@ -44,6 +45,7 @@ RECORD_TABLES = {
     ChunkType.DEFINITIONS: pb.DefinitionTable,
     ChunkType.TAGS: pb.TagTable,
     ChunkType.PHONEME_CLASSES: pb.PhonemeClassTable,
+    ChunkType.ALLOPHONE_RULES: pb.AllophoneRuleTable,
 }
 
 def record_class(table: ChunkType) -> type[Message]:
