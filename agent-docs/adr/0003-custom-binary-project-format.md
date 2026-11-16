@@ -12,6 +12,7 @@ The format has to be extendable, so new versions of the app can add to the model
 - **Payloads**: chunk payloads are Protocol Buffers messages, so records use tagged fields and new fields can be added without a version bump.
 - **Strings**: each unique string is stored once in a string table and referenced by index.
 - **Compression**: large chunks are compressed with an existing library (zlib to start).
+  Each payload starts with one byte saying how it's stored (0 for raw, 1 for zlib), so small chunks can stay uncompressed.
   We don't write our own compression or Huffman coding.
 - **Record IDs**: every record (Entry, Phoneme, Language Change, and so on) has a stable ID that never changes, so patches can point at it.
 
