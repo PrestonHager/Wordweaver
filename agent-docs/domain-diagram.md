@@ -82,6 +82,9 @@ classDiagram
     Entry "1" *-- "1..*" Definition
     Definition "1" o-- "*" Gloss
     Definition "1" --> "0..1" ConceptReference
+    Project "1" --> "1" GlossLanguage
+    Gloss ..> GlossLanguage : written in
+    GlossLanguage ..> ConceptReference : picks the wordnet to search
     Entry "1" --> "*" Etymon : came from
     Etymon ..> Entry : earlier Entry
     Borrowing --|> Etymon

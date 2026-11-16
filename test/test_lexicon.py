@@ -270,6 +270,16 @@ class TestLexicon(unittest.TestCase):
         self.assertEqual(loaded.get(shore.id).definitions[0].description, "Beside a river.")
         self.assertIsNone(unlinked.concept_reference)
 
+    def test_omw_reference_round_trip(self):
+        # A French Gloss Language links through Open Multilingual Wordnet, by ILI ID.
+        self.project.gloss_language = "fr"
+        river = ConceptReference(ConceptSource.OPEN_MULTILINGUAL_WORDNET, "i85041")
+        entry = self.lexicon.add("sat", ["rive"])
+        self.lexicon.set_concept_reference(entry, entry.definitions[0], river)
+        loaded = self.round_trip()
+        self.assertEqual(loaded.gloss_language, "fr")
+        self.assertEqual(loaded.languages[0].lexicon.get(entry.id).definitions[0].concept_reference, river)
+
     def test_relink_and_unlink(self):
         entry = self.lexicon.add("sat", ["bank"])
         definition = entry.definitions[0]

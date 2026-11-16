@@ -165,8 +165,9 @@ class EntryEditor(QDialog):
         lookup = self._lookup()
         if lookup is None:
             QMessageBox.information(self, "No Dictionary Yet",
-                                    f"There's no dictionary to search for the Gloss Language \"{self.gloss_language}\" yet.\n"
-                                    "For now, only English (en) can link senses. You can change the Gloss Language in Project Settings.")
+                                    f"There's no wordnet to search for the Gloss Language \"{self.gloss_language}\" yet.\n"
+                                    "You can still write the Definition without linking a sense, "
+                                    "or pick a language with a wordnet in Project Settings.")
             return
         self._store_fields()
         draft = self._drafts[self._current]

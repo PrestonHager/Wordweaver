@@ -7,7 +7,10 @@ The real data is downloaded on request, never bundled with the app.
 """
 
 import json
+import re
+import warnings
 from collections.abc import Callable, Iterable
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
@@ -47,6 +50,9 @@ class Sense:
 
     def label(self) -> str:
         """A short line to show in a list, like "bank (noun): sloping land beside a body of water"."""
+        # Some wordnets have no definition for a sense, so then the lemmas have to do.
+        if not self.gloss:
+            return f"{', '.join(self.lemmas)} ({self.pos_name})"
         return f"{', '.join(self.lemmas)} ({self.pos_name}): {self.gloss}"
 
 class SenseLookup(Protocol):
@@ -171,24 +177,152 @@ class WordNetSenses:
         wn.config.allow_multithreading = True
         return wn
 
+# Gloss Languages with a wordnet in Open Multilingual Wordnet, by their primary language subtag.
+# Each one has a name to show and the `wn` lexicon to download. English uses Open English WordNet instead.
+OMW_VERSION = "2.0"
+OMW_LANGUAGES = {
+    "ar": ("Arabic", "omw-arb"),
+    "bg": ("Bulgarian", "omw-bg"),
+    "ca": ("Catalan", "omw-ca"),
+    "da": ("Danish", "omw-da"),
+    "el": ("Greek", "omw-el"),
+    "es": ("Spanish", "omw-es"),
+    "eu": ("Basque", "omw-eu"),
+    "fi": ("Finnish", "omw-fi"),
+    "fr": ("French", "omw-fr"),
+    "gl": ("Galician", "omw-gl"),
+    "he": ("Hebrew", "omw-he"),
+    "hr": ("Croatian", "omw-hr"),
+    "id": ("Indonesian", "omw-id"),
+    "is": ("Icelandic", "omw-is"),
+    # NOTE: Italian has two wordnets in OMW. MultiWordNet is the bigger one, so we use it over ItalWordNet.
+    "it": ("Italian", "omw-it"),
+    "ja": ("Japanese", "omw-ja"),
+    "lt": ("Lithuanian", "omw-lt"),
+    "ms": ("Malay", "omw-zsm"),
+    "nb": ("Norwegian Bokmål", "omw-nb"),
+    "nl": ("Dutch", "omw-nl"),
+    "nn": ("Norwegian Nynorsk", "omw-nn"),
+    "pl": ("Polish", "omw-pl"),
+    "pt": ("Portuguese", "omw-pt"),
+    "ro": ("Romanian", "omw-ro"),
+    "sk": ("Slovak", "omw-sk"),
+    "sl": ("Slovenian", "omw-sl"),
+    "sq": ("Albanian", "omw-sq"),
+    "sv": ("Swedish", "omw-sv"),
+    "th": ("Thai", "omw-th"),
+    "zh": ("Chinese", "omw-cmn"),
+}
+# Other codes people might type for the same languages, like the ISO 639-3 codes OMW uses itself.
+_LANGUAGE_ALIASES = {"arb": "ar", "cmn": "zh", "zsm": "ms", "no": "nb", "nob": "nb", "nno": "nn"}
+
+# The Collaborative Interlingual Index, which gives every concept an ID and an English definition shared by all wordnets.
+CILI = "cili:1.0"
+_ILI_ID = re.compile(r"i\d+")
+
+def omw_gloss(definition: str | None, english_definition: str | None) -> str:
+    """The gloss to show for an OMW sense.
+
+    Most OMW wordnets have no definitions of their own, so we fall back to the ILI's English one, marked as English.
+    With neither, it's empty and the sense just shows its lemmas.
+    """
+    if definition:
+        return definition
+    if english_definition:
+        return f"(English) {english_definition}"
+    return ""
+
+class OmwSenses(WordNetSenses):
+    """One language's wordnet from Open Multilingual Wordnet, through the `wn` package.
+
+    Senses are identified by their ILI ID, like `i85041`, so a link points at the same concept in every language.
+    A synset without an ILI falls back to its own synset ID, like `omw-fr-09213565-n`.
+    """
+
+    def __init__(self, lexicon: str, name: str, data_dir: str | Path | None=None):
+        super().__init__(lexicon, data_dir, name)
+        self.source = ConceptSource.OPEN_MULTILINGUAL_WORDNET
+
+    def is_downloaded(self) -> bool:
+        with _quiet():
+            return super().is_downloaded() and self._ili_downloaded()
+
+    def download(self):
+        wn = self._wn()
+        with _quiet():
+            if not wn.lexicons(lexicon=self._lexicon):
+                super().download()
+        # The ILI file is only a few MB, and it's what gives us English definitions.
+        if not self._ili_downloaded():
+            Path(wn.download(CILI, progress_handler=None)).unlink(missing_ok=True)
+
+    def get(self, id: str) -> Sense | None:
+        wn = self._wn()
+        try:
+            if _ILI_ID.fullmatch(id):
+                synsets = self._open().synsets(ili=id)
+                return self._sense(synsets[0]) if synsets else None
+            return self._sense(self._open().synset(id))
+        except wn.Error:
+            return None
+
+    def _open(self):
+        with _quiet():
+            return super()._open()
+
+    def _sense(self, synset) -> Sense:
+        english = self._english_definition(synset.ili) if synset.ili else None
+        gloss = omw_gloss(synset.definition(), english)
+        return Sense(self.source, synset.ili or synset.id, tuple(synset.lemmas()), synset.pos, gloss)
+
+    def _english_definition(self, ili_id: str) -> str | None:
+        from wn import ili
+        found = ili.get(ili_id)
+        return found.definition() if found else None
+
+    def _ili_downloaded(self) -> bool:
+        from wn import ili
+        # Before the ILI file is added, wn still knows the IDs the wordnets use, but not their status or definitions.
+        found = ili.get("i1")
+        return found is not None and found.status == "active"
+
+@contextmanager
+def _quiet():
+    # OMW wordnets say they need the OMW English wordnet for their relations.
+    # We only use their lemmas, so wn's warning about it is just noise.
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", message="lexicon dependencies not available")
+        yield
+
+def wordnet_languages() -> list[tuple[str, str]]:
+    """Every Gloss Language with a wordnet to search, as (name, code), with English first."""
+    others = sorted((name, code) for code, (name, _lexicon) in OMW_LANGUAGES.items())
+    return [("English", "en"), *others]
+
 # One lookup per dictionary, made the first time it's asked for.
 _lookups: dict[str, SenseLookup] = {}
 
 def lookup_for(gloss_language: str) -> SenseLookup | None:
-    """The dictionary to search for a Gloss Language, or None if there isn't one for it yet.
+    """The dictionary to search for a Gloss Language, or None if there's no wordnet for it.
 
     Making the lookup doesn't load anything, that waits for the first search.
     """
     primary = gloss_language.split("-")[0].lower()
-    # TODO: other Gloss Languages search Open Multilingual Wordnet in #48.
-    if primary != "en":
+    primary = _LANGUAGE_ALIASES.get(primary, primary)
+    if primary == "en":
+        if "oewn" not in _lookups:
+            _lookups["oewn"] = WordNetSenses()
+        return _lookups["oewn"]
+    if primary not in OMW_LANGUAGES:
         return None
-    if "oewn" not in _lookups:
-        _lookups["oewn"] = WordNetSenses()
-    return _lookups["oewn"]
+    name, lexicon = OMW_LANGUAGES[primary]
+    if lexicon not in _lookups:
+        _lookups[lexicon] = OmwSenses(f"{lexicon}:{OMW_VERSION}", f"Open Multilingual Wordnet ({name})")
+    return _lookups[lexicon]
 
 def _fold(text: str) -> str:
     # Wordnets write multi-word lemmas with spaces or underscores, and case doesn't matter for a search.
     return " ".join(text.replace("_", " ").split()).casefold()
 
-__all__ = ["MemorySenses", "NotDownloadedError", "POS_NAMES", "Sense", "SenseLookup", "WordNetSenses", "lookup_for"]
+__all__ = ["CILI", "MemorySenses", "NotDownloadedError", "OMW_LANGUAGES", "OMW_VERSION", "OmwSenses", "POS_NAMES", "Sense", "SenseLookup",
+           "WordNetSenses", "lookup_for", "omw_gloss", "wordnet_languages"]
