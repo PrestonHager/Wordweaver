@@ -301,6 +301,29 @@ class Lexicon:
         self._entries[entry.id] = entry
         return entry
 
+    def add_generated(self, form: Form | str) -> Entry:
+        """Add a generated Form with a blank Definition to fill in later."""
+        entry = Entry(self._new_id(), _to_form(form), [Definition(self._new_id(), (), (), "")])
+        self._entries[entry.id] = entry
+        return entry
+
+    def add_generated_forms(self, forms: Iterable[Form]) -> list[Entry]:
+        """Add generated Forms with blank Definitions, skipping existing Forms."""
+        added = []
+        for form in forms:
+            if self.homophones_of(form):
+                continue
+            added.append(self.add_generated(form))
+        return added
+
+    def fill_unfinished(self, forms: Iterable[Form]) -> list[Entry]:
+        """Give generated Forms to unfinished Entries in Lexicon order."""
+        filled = []
+        for entry, form in zip(self.unfinished(), forms):
+            self.edit(entry, form=form)
+            filled.append(entry)
+        return filled
+
     def edit(self, entry: Entry, form: Form | str | None=None, glosses: Iterable[str] | None=None):
         """Change an Entry's Form, the Glosses of its first Definition, or both. IDs stay the same.
 
@@ -446,7 +469,7 @@ class Lexicon:
         if sort is SortOrder.FORM:
             ranked.sort(key=lambda pair: (not pair[1].form, _search_key(str(pair[1].form), SearchField.FORM)))
         elif sort is SortOrder.GLOSS:
-            ranked.sort(key=lambda pair: _search_key(pair[1].definitions[0].glosses[0], SearchField.GLOSS))
+            ranked.sort(key=lambda pair: _search_key(pair[1].glosses[0] if pair[1].glosses else "", SearchField.GLOSS))
         else:
             ranked.sort(key=lambda pair: pair[0])
         return [pair[1] for pair in ranked]

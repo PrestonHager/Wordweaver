@@ -2,7 +2,7 @@
 
 import os
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from enum import IntEnum
 from pathlib import Path
 
@@ -101,6 +101,13 @@ class Language:
         """Get every Phoneme Class a Phoneme is in."""
         return self._classes.of(symbol)
 
+    def generate_forms(self, count: int, syllables: tuple[int, int] = (1, 3),
+                       seed: int | None = None, attempt_limit: int | None = None) -> list[Form]:
+        """Generate new Forms that pass this Language's Phonotactics."""
+        return self._phonotactics.generate_forms(
+            count, syllables, seed, attempt_limit, (entry.form for entry in self.lexicon)
+        )
+
     @property
     def allophone_rules(self) -> list[AllophoneRule]:
         return list(self._allophone_rules)
@@ -168,6 +175,21 @@ class Project:
         language = Language(self._new_id(), name, self._new_id, kind, self._reserve_ids(DEFAULT_CLASS_ID_BLOCK), tags=self.tags)
         self._languages.append(language)
         return language
+
+    def generate_forms(self, language: Language, count: int, syllables: tuple[int, int] = (1, 3),
+                       seed: int | None = None, attempt_limit: int | None = None) -> list[Form]:
+        """Generate new Forms for a Language, skipping its existing Lexicon Forms."""
+        if language not in self._languages:
+            raise ValueError(f"{language.name} isn't in this Project")
+        return language.generate_forms(count, syllables, seed, attempt_limit)
+
+    def apply_generated_forms(self, language: Language, forms: Iterable[Form],
+                              fill_unfinished: bool = False) -> list[Entry]:
+        """Add generated Forms to a Language's Lexicon or fill its unfinished Entries."""
+        if language not in self._languages:
+            raise ValueError(f"{language.name} isn't in this Project")
+        return (language.lexicon.fill_unfinished(forms) if fill_unfinished
+                else language.lexicon.add_generated_forms(forms))
 
     def remove_language(self, language: Language):
         """Remove a Language and everything in it. Its IDs are never handed out again.

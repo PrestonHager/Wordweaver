@@ -142,6 +142,27 @@ class TestPhonotactics(unittest.TestCase):
         self.assertEqual(self.phonotactics.check(""), [])
         self.assertEqual(self.phonotactics.syllabify(Form()), [])
 
+    def test_generate_forms_is_seeded_and_checks_constraints(self):
+        self.phonotactics.add_syllable_structure("(C)V")
+        first = self.project.generate_forms(self.language, 20, (1, 2), seed=42)
+        second = self.project.generate_forms(self.language, 20, (1, 2), seed=42)
+        self.assertEqual(first, second)
+        self.assertEqual(len(first), 20)
+        self.assertTrue(all(not self.phonotactics.check(form) for form in first))
+
+    def test_generation_reports_impossible_rules(self):
+        self.phonotactics.add_syllable_structure("V")
+        self.phonotactics.add_constraint([ConstraintAtom("V", True)])
+        with self.assertRaisesRegex(ValueError, "Couldn't generate"):
+            self.project.generate_forms(self.language, 1, (1, 1), seed=1, attempt_limit=3)
+
+    def test_generation_backtracks_around_banned_phoneme(self):
+        self.phonotactics.add_syllable_structure("CV")
+        self.phonotactics.add_constraint([ConstraintAtom("p", False)], SyllablePart.ONSET)
+        forms = self.project.generate_forms(self.language, 1, (1, 1), seed=1, attempt_limit=1)
+        self.assertNotEqual(forms[0], Form(["p", "a"]))
+        self.assertFalse(self.phonotactics.check(forms[0]))
+
     def test_edit_and_remove_structures(self):
         structure = self.phonotactics.add_syllable_structure("CV")
         structure.notation = "CVC"

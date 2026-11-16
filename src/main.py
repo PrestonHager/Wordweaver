@@ -78,6 +78,7 @@ class App(QMainWindow):
         self.phonology_page = PhonologyPage(self.pages)
         self.phonology_page.changed.connect(self._on_inventory_changed)
         self.phonotactics_page = PhonotacticsPage(self.pages)
+        self.phonotactics_page.lexicon_changed.connect(self._on_generated_forms_applied)
         self.lexicon_page = LexiconPage(self.pages)
         self.lexicon_page.inventory_changed.connect(self._on_lexicon_inventory_changed)
         self.page_widgets = {"overview": self.overview_page, "phonology": self.phonology_page, "phonotactics": self.phonotactics_page, "lexicon": self.lexicon_page}
@@ -90,6 +91,10 @@ class App(QMainWindow):
         self.setStatusBar(self.status_bar)
         self._open_page("overview")
         self._update_main_view()
+
+    def _on_generated_forms_applied(self):
+        if self.project is not None and self.language is not None:
+            self.lexicon_page.refresh(self.project, self.language)
 
     def _build_sidebar(self, parent: QWidget) -> QWidget:
         sidebar = QWidget(parent)

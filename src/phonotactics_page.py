@@ -1,8 +1,9 @@
 # phonotactics_page.py
 
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtWidgets import QCheckBox, QComboBox, QFrame, QHBoxLayout, QLayout, QLineEdit, QListWidget, QListWidgetItem, QScrollArea, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QAbstractItemView, QCheckBox, QComboBox, QFrame, QHBoxLayout, QLayout, QLineEdit, QListWidget, QListWidgetItem, QScrollArea, QSpinBox, QVBoxLayout, QWidget
 
+from lexicon import Form
 from phonotactics import ConstraintAtom, ConstraintMode, Position, SyllablePart, SyllablePosition, SyllableStructure, parse_notation, write_notation, write_syllables
 from widgets import Button, Card, FlowLayout, PageHeader, label
 from wordweaver_project import Language
@@ -303,6 +304,134 @@ class FormCheckCard(Card):
             style.unpolish(self.result)
             style.polish(self.result)
 
+class WordGeneratorCard(Card):
+    """Generates new Forms from the Language's Syllable Structures."""
+
+    lexicon_changed = pyqtSignal()  # pyright: ignore[reportCallIssue] PyQt6 stub bug, see pyproject.
+
+    def __init__(self, parent: QWidget | None = None):
+        super().__init__(parent)
+        self.language: Language | None = None
+        self.content.addWidget(label("WORD GENERATOR", "section"))
+        self.content.addWidget(label("Make Forms that fit the Syllable Structures and Phonotactic Constraints.", "muted", self))
+        options = QHBoxLayout()
+        self.count = QSpinBox(self)
+        self.count.setRange(1, 1000)
+        self.count.setValue(20)
+        self.count.setPrefix("Forms: ")
+        options.addWidget(self.count)
+        self.minimum = QSpinBox(self)
+        self.minimum.setRange(1, 20)
+        self.minimum.setValue(1)
+        self.minimum.setPrefix("Min syllables: ")
+        options.addWidget(self.minimum)
+        self.maximum = QSpinBox(self)
+        self.maximum.setRange(1, 20)
+        self.maximum.setValue(3)
+        self.maximum.setPrefix("Max syllables: ")
+        options.addWidget(self.maximum)
+        self.seed = QLineEdit(self)
+        self.seed.setPlaceholderText("Seed (optional)")
+        options.addWidget(self.seed, 1)
+        self.generate_button = Button("Generate", "plus", "primary", parent=self)
+        self.generate_button.clicked.connect(self.generate)
+        options.addWidget(self.generate_button)
+        self.content.addLayout(options)
+        self.forms = QListWidget(self)
+        self.forms.setObjectName("EntryList")
+        self.forms.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
+        self.content.addWidget(self.forms)
+        actions = QHBoxLayout()
+        add_selected = Button("Add Selected", "plus", parent=self)
+        add_selected.clicked.connect(self.add_selected)
+        actions.addWidget(add_selected)
+        add_all = Button("Add All", "plus", parent=self)
+        add_all.clicked.connect(self.add_all)
+        actions.addWidget(add_all)
+        fill = Button("Fill Unfinished", "save", parent=self)
+        fill.setToolTip("Fill unfinished Entries with selected Forms, or all Forms when none are selected")
+        fill.clicked.connect(self.fill_unfinished)
+        actions.addWidget(fill)
+        actions.addStretch()
+        self.content.addLayout(actions)
+        self.error = label("", "error", self)
+        self.error.setWordWrap(True)
+        self.error.hide()
+        self.content.addWidget(self.error)
+
+    def set_language(self, language: Language | None):
+        self.language = language
+        self.forms.clear()
+        self._show_error(None)
+
+    def generate(self):
+        if self.language is None:
+            return
+        try:
+            seed_text = self.seed.text().strip()
+            seed = int(seed_text) if seed_text else None
+            forms = self.language.generate_forms(
+                self.count.value(), (self.minimum.value(), self.maximum.value()), seed
+            )
+        except ValueError as error:
+            self.forms.clear()
+            self._show_error(str(error))
+            return
+        self._show_error(None)
+        self.forms.clear()
+        for form in forms:
+            syllables = self.language.phonotactics.syllabify(form)
+            item = QListWidgetItem(write_syllables(syllables) if syllables is not None else str(form), self.forms)
+            item.setData(Qt.ItemDataRole.UserRole, form)
+
+    def _picked_forms(self) -> list[Form]:
+        items = self.forms.selectedItems()
+        if not items:
+            items = [item for i in range(self.forms.count()) if (item := self.forms.item(i)) is not None]
+        return [form for item in items
+                if (form := item.data(Qt.ItemDataRole.UserRole)) is not None]
+
+    def add_selected(self):
+        self._add_forms(self._picked_forms())
+
+    def add_all(self):
+        forms = []
+        for i in range(self.forms.count()):
+            item = self.forms.item(i)
+            if item is not None:
+                form = item.data(Qt.ItemDataRole.UserRole)
+                if form is not None:
+                    forms.append(form)
+        self._add_forms(forms)
+
+    def _add_forms(self, forms: list[Form]):
+        if self.language is None or not forms:
+            return
+        self.language.lexicon.add_generated_forms(forms)
+        self._remove_forms(forms)
+        self.lexicon_changed.emit()
+
+    def fill_unfinished(self):
+        if self.language is None:
+            return
+        forms = self._picked_forms()
+        if not forms:
+            return
+        applied = min(len(forms), len(self.language.lexicon.unfinished()))
+        self.language.lexicon.fill_unfinished(forms)
+        self._remove_forms(forms[:applied])
+        self.lexicon_changed.emit()
+
+    def _remove_forms(self, forms: list[Form]):
+        for index in reversed(range(self.forms.count())):
+            item = self.forms.item(index)
+            if item is not None and item.data(Qt.ItemDataRole.UserRole) in forms:
+                self.forms.takeItem(index)
+
+    def _show_error(self, message: str | None):
+        self.error.setText(message or "")
+        self.error.setVisible(message is not None)
+
 class ConstraintsCard(Card):
     """Builds Phonotactic Constraints from Phonemes and Phoneme Classes."""
 
@@ -436,6 +565,8 @@ class ConstraintsCard(Card):
 class PhonotacticsPage(QWidget):
     """Edit one Language's Phonotactics and check Forms against them."""
 
+    lexicon_changed = pyqtSignal()  # pyright: ignore[reportCallIssue] PyQt6 stub bug, see pyproject.
+
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)  # pyright: ignore[reportArgumentType]  PyQt6 stub bug, see pyproject.
         self.setObjectName("Page")
@@ -464,6 +595,9 @@ class PhonotacticsPage(QWidget):
         self.structures_card.changed.connect(self.check_card.check)
         self.constraints_card.changed.connect(self.check_card.check)
         layout.addWidget(self.check_card)
+        self.generator_card = WordGeneratorCard(body)
+        self.generator_card.lexicon_changed.connect(self.lexicon_changed)
+        layout.addWidget(self.generator_card)
         layout.addStretch()
 
     def set_language(self, language: Language | None):
@@ -472,11 +606,13 @@ class PhonotacticsPage(QWidget):
         self.structures_card.set_language(language)
         self.constraints_card.set_language(language)
         self.check_card.set_language(language)
+        self.generator_card.set_language(language)
 
     def refresh(self):
         # Classes and the inventory live on the Phonology page, so redraw anything that uses them.
         self.structures_card.refresh()
         self.constraints_card.refresh()
         self.check_card.check()
+        self.generator_card.set_language(self.language)
 
-__all__ = ["ConstraintsCard", "PhonotacticsPage", "StructureView"]
+__all__ = ["ConstraintsCard", "FormCheckCard", "PhonotacticsPage", "StructureView", "WordGeneratorCard"]
