@@ -31,10 +31,10 @@ def ensure_downloaded(lookup: SenseLookup, parent: QWidget) -> bool:
     except Exception as e:
         QMessageBox.warning(parent, "Couldn't Open Dictionary", f"{lookup.name} couldn't be opened.\n\n{e}")
         return False
-    answer = QMessageBox.question(parent, "Download Dictionary",
-                                  f"{lookup.name} isn't downloaded yet.\n\n"
-                                  "It needs an internet connection and takes a minute or two, and it only happens once. "
-                                  "It uses about 100 MB of disk space.\n\nDownload it now?")
+    # A lookup can say how big its download is. Otherwise we assume it's a wordnet.
+    note = getattr(lookup, "download_note", "It needs an internet connection and takes a minute or two, and it only happens once. "
+                                            "It uses about 100 MB of disk space.")
+    answer = QMessageBox.question(parent, "Download Dictionary", f"{lookup.name} isn't downloaded yet.\n\n{note}\n\nDownload it now?")
     if answer != QMessageBox.StandardButton.Yes:
         return False
     # First, show a busy dialog, since the download can't tell us how far along it is.

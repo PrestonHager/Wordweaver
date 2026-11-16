@@ -22,6 +22,15 @@ Your complete toolbox for creating conlangs.
 Download the latest release from the [releases page][0] and run the installer.
 Open the application by searching for "Word Weaver" in the start menu or library.
 
+## Data and Credits
+
+The Swadesh 100 concept list in `src/concept_lists/` and the Concepticon concepts you can link to come from Concepticon.
+They're licensed under [CC BY 4.0][3].
+
+> List, Johann Mattis & Tjuka, Annika & Blum, Frederic & Kučerová, Alžběta & Ugarte, Carlos Barrientos & Rzymski, Christoph & Greenhill, Simon & Forkel, Robert (eds.) 2025. Concepticon v3.4.0. A Resource for the Linking of Concept Lists. Leipzig: Max Planck Institute for Evolutionary Anthropology. https://concepticon.clld.org
+
+To add another Concepticon list, run `uv run python scripts/make_concept_list.py <list ID> "<name>"`, like `Swadesh-1971-100 "Swadesh 100 (1971)"`.
+
 ## Development
 
 As an open-source project, we depend on the community for feedback such as bug reports and feature requests, as well as contributions such as code and documentation.
@@ -128,3 +137,4 @@ Instructions coming soon!
 [0]: https://github.com/PrestonHager/Wordweaver/releases
 [1]: https://www.python.org/downloads/
 [2]: https://github.com/PrestonHager/Wordweaver
+[3]: https://creativecommons.org/licenses/by/4.0/

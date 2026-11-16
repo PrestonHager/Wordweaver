@@ -1,7 +1,7 @@
 # lexicon_page.py
 
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtWidgets import QComboBox, QDialog, QHBoxLayout, QLineEdit, QListWidget, QListWidgetItem, QMessageBox, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QCheckBox, QComboBox, QDialog, QHBoxLayout, QLineEdit, QListWidget, QListWidgetItem, QMessageBox, QVBoxLayout, QWidget
 
 import logging
 
@@ -60,6 +60,12 @@ class LexiconPage(QWidget):
         self.tag_filter.currentIndexChanged.connect(lambda _index: self._update_lexicon_list())
         toolbar.addWidget(self.tag_filter)
         toolbar.addSpacing(8)
+        # Unfinished Entries have no Form yet, like the ones seeded from a concept list.
+        self.unfinished_filter = QCheckBox("Unfinished only", self.list_card)
+        self.unfinished_filter.setToolTip("Only show Entries that don't have a Form yet")
+        self.unfinished_filter.toggled.connect(lambda _checked: self._update_lexicon_list())
+        toolbar.addWidget(self.unfinished_filter)
+        toolbar.addSpacing(8)
         toolbar.addWidget(label("Sort", "muted", self.list_card))
         self.sort_picker = QComboBox(self.list_card)
         for order in SortOrder:
@@ -103,6 +109,9 @@ class LexiconPage(QWidget):
         tag = self.tag_filter.picked_tag(self.project.tags)
         # Now search inside that Tag, and let the Lexicon decide the order.
         entries = self.language.lexicon.search(self.search_box.text(), self.search_field_picker.currentData(), tag=tag, sort=self.sort_picker.currentData())
+        # Next, keep only the unfinished Entries, if that's ticked.
+        if self.unfinished_filter.isChecked():
+            entries = [entry for entry in entries if entry.is_unfinished]
         # Then show each Entry as its Form, Glosses, and Tags, and keep its ID on the item to find it again.
         # With Polysemy, number each Definition so you can tell them apart.
         self.lexicon_list.clear()
@@ -110,7 +119,8 @@ class LexiconPage(QWidget):
             meanings = ["; ".join(d.glosses) for d in entry.definitions]
             if len(meanings) > 1:
                 meanings = [f"{number}. {meaning}" for number, meaning in enumerate(meanings, start=1)]
-            text = f"/{entry.form}/  {'  '.join(meanings)}"
+            form = "(no Form yet)" if entry.is_unfinished else f"/{entry.form}/"
+            text = f"{form}  {'  '.join(meanings)}"
             tag_names = [self.project.tags.get(tag_id).name for tag_id in entry.tag_ids]
             if tag_names:
                 text += f"  [{', '.join(tag_names)}]"
