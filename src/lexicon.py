@@ -78,8 +78,8 @@ class ConceptSource(IntEnum):
     """An open dictionary that a Concept Reference can point into."""
     # The values match the ConceptSource enum in the .proto, so they can be saved as is.
     OPEN_ENGLISH_WORDNET = 1
-    # TODO: Open Multilingual Wordnet comes in #48 and Concepticon in #49. They're here so their values stay reserved.
     OPEN_MULTILINGUAL_WORDNET = 2
+    # TODO: Concepticon comes in #49. It's here so its value stays reserved.
     CONCEPTICON = 3
 
     @property

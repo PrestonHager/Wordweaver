@@ -4,21 +4,11 @@ import re
 
 from PyQt6.QtWidgets import QComboBox, QDialog, QDialogButtonBox, QFormLayout, QLabel, QMessageBox, QVBoxLayout, QWidget
 
+from senses import wordnet_languages
 from wordweaver_project import Project, normalize_language_code
 
-# Some common Gloss Languages to pick from. You can also type any other BCP 47 code.
-GLOSS_LANGUAGES = (
-    ("English", "en"),
-    ("Spanish", "es"),
-    ("French", "fr"),
-    ("German", "de"),
-    ("Portuguese", "pt"),
-    ("Italian", "it"),
-    ("Dutch", "nl"),
-    ("Polish", "pl"),
-    ("Japanese", "ja"),
-    ("Chinese", "zh"),
-)
+# The Gloss Languages that have a wordnet to search. You can also type any other BCP 47 code.
+GLOSS_LANGUAGES = tuple(wordnet_languages())
 
 class ProjectSettings(QDialog):
     """A dialog for settings that cover the whole Project, like the Gloss Language."""
@@ -38,7 +28,8 @@ class ProjectSettings(QDialog):
         form_layout.addRow("Gloss Language:", self.gloss_language_input)
         layout.addLayout(form_layout)
         note = QLabel("The language you write Glosses in. It picks which dictionary is searched when you link a sense.\n"
-                      "For now only English (en) has a dictionary to search.", self)
+                      "The languages in the list have a wordnet. You can type any other code too, "
+                      "but then there's no dictionary to link senses from.", self)
         note.setWordWrap(True)
         layout.addWidget(note)
 

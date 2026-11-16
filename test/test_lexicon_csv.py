@@ -69,6 +69,14 @@ class TestLexiconCsv(unittest.TestCase):
         self.assertEqual([row[6] for row in rows], ["oewn:oewn-09236472-n", "oewn:oewn-08437235-n", ""])
         self.assertEqual([ConceptReference.parse(row[6]) for row in rows if row[6]], [river, money])
 
+    def test_omw_reference(self):
+        river = ConceptReference(ConceptSource.OPEN_MULTILINGUAL_WORDNET, "i85041")
+        entry = self.lexicon.add("sat", ["rive"])
+        self.lexicon.set_concept_reference(entry, entry.definitions[0], river)
+        rows = self.rows()
+        self.assertEqual(rows[1][6], "omw:i85041")
+        self.assertEqual(ConceptReference.parse(rows[1][6]), river)
+
     def test_polysemy_gives_a_row_per_definition(self):
         path_entry = self.lexicon.add("sat", ["river"], description="Running water.")
         self.lexicon.add_definition(path_entry, ["road", "path"], terms=["metaphor"])
