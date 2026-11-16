@@ -17,6 +17,19 @@ class StringTable:
             self._strings.append(string)
         return self._indexes[string]
 
+    def extend(self, strings: list[str]):
+        # Patches add strings to the end, so their indexes have to land exactly where the saver put them.
+        for string in strings:
+            self._indexes.setdefault(string, len(self._strings))
+            self._strings.append(string)
+
+    def since(self, length: int) -> list[str]:
+        """Get the strings added after the table was `length` long."""
+        return self._strings[length:]
+
+    def copy(self) -> "StringTable":
+        return StringTable(self._strings[1:])
+
     def __getitem__(self, index: int) -> str:
         if not 0 <= index < len(self._strings):
             raise CorruptFileError(f"String index {index} isn't in the string table")

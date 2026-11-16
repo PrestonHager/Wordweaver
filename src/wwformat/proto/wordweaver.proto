@@ -26,6 +26,8 @@ message ProjectInfo {
   uint32 name = 1;
   // The next unused record ID, so IDs are never reused after a delete.
   uint64 next_id = 2;
+  // The Gloss Language as a BCP 47 code, like "en". Empty means English, so older files load as English.
+  uint32 gloss_language = 3;
 }
 
 // A label for a Language. It doesn't change how the Language works.
@@ -83,6 +85,62 @@ message PhonemeClassTable {
   repeated PhonemeClass records = 1;
 }
 
+message Entry {
+  uint64 id = 1;
+  uint64 language_id = 2;
+  // The Form, one IPA symbol per Phoneme, in order.
+  repeated uint32 form = 3;
+  // The IDs of the Entry's Tags, in the order they were added.
+  // They live on the Entry, so tagging one Entry only changes that Entry's record.
+  repeated uint64 tag_ids = 4;
+}
+
+// Chunk ENTRIES.
+message EntryTable {
+  repeated Entry records = 1;
+}
+
+// The open dictionary a Concept Reference points into.
+// NONE is 0, so a Definition saved without a reference loads without one.
+enum ConceptSource {
+  CONCEPT_SOURCE_NONE = 0;
+  CONCEPT_SOURCE_OPEN_ENGLISH_WORDNET = 1;
+  CONCEPT_SOURCE_OPEN_MULTILINGUAL_WORDNET = 2;
+  CONCEPT_SOURCE_CONCEPTICON = 3;
+}
+
+// An Entry's Definitions are kept in `position` order, then ID order for any ties.
+message Definition {
+  uint64 id = 1;
+  uint64 entry_id = 2;
+  repeated uint32 glosses = 3;
+  // Where the Definition goes among its Entry's Definitions, starting at 0.
+  uint32 position = 4;
+  // Technical linguistic terms, in order.
+  repeated uint32 terms = 5;
+  // A free-text description.
+  uint32 description = 6;
+  // An optional Concept Reference: the source, plus that source's own ID, like "oewn-09213565-n".
+  ConceptSource concept_source = 7;
+  uint32 concept_id = 8;
+}
+
+// Chunk DEFINITIONS.
+message DefinitionTable {
+  repeated Definition records = 1;
+}
+
+// A Tag belongs to the Project, so every Language can use it.
+message Tag {
+  uint64 id = 1;
+  uint32 name = 2;
+}
+
+// Chunk TAGS.
+message TagTable {
+  repeated Tag records = 1;
+}
+
 enum ContextKind {
   // Nothing in particular, so anything can be there.
   CONTEXT_ANYTHING = 0;
@@ -112,4 +170,33 @@ message AllophoneRule {
 // Chunk ALLOPHONE_RULES.
 message AllophoneRuleTable {
   repeated AllophoneRule records = 1;
+}
+
+// Chunk PATCH. One save's worth of changes, applied on top of everything before it.
+// Patches are generic: they replace whole messages and point at records by table and ID.
+message Patch {
+  // New strings, added to the end of the string table.
+  repeated string strings = 1;
+  repeated ChunkReplace singles = 2;
+  repeated RecordUpsert upserts = 3;
+  repeated RecordDelete deletes = 4;
+}
+
+// Replace a single-message chunk, like PROJECT, with a new message.
+message ChunkReplace {
+  uint32 chunk_type = 1;
+  bytes message = 2;
+}
+
+// Insert a record, or replace the record with the same ID.
+message RecordUpsert {
+  // The chunk type of the record's table.
+  uint32 table = 1;
+  // The serialized record message.
+  bytes record = 2;
+}
+
+message RecordDelete {
+  uint32 table = 1;
+  uint64 id = 2;
 }

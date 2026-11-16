@@ -82,6 +82,9 @@ classDiagram
     Entry "1" *-- "1..*" Definition
     Definition "1" o-- "*" Gloss
     Definition "1" --> "0..1" ConceptReference
+    Project "1" --> "1" GlossLanguage
+    Gloss ..> GlossLanguage : written in
+    GlossLanguage ..> ConceptReference : picks the wordnet to search
     Entry "1" --> "*" Etymon : came from
     Etymon ..> Entry : earlier Entry
     Borrowing --|> Etymon
@@ -94,6 +97,8 @@ classDiagram
     Entry "*" --> "0..1" PartOfSpeech
     Entry "*" --> "0..1" InflectionClass
     Entry "*" --> "*" Tag
+    ConceptList ..> Lexicon : seeds unfinished Entries
+    ConceptList ..> ConceptReference : links each seeded Entry
     InflectionClass "1" *-- "*" Inflection
     Language "1" *-- "*" GrammaticalCategory
     GrammaticalCategory "1" *-- "*" Value

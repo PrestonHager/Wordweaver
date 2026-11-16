@@ -12,6 +12,7 @@ dependencies = [
     "pyperclip>=1.11.0",
     "pyqt6>=6.12.1",
     "sphinx>=9.2.0",
+    "wn>=1.1.1",
 ]
 
 [project.scripts]

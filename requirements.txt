@@ -5,3 +5,4 @@ protobuf>=7.35.1
 ipapy @ git+https://github.com/PrestonHager/ipapy@v0.0.10.0
 sphinx
 PyInstaller
+wn

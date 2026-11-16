@@ -1,11 +1,11 @@
 # pages.py
 #
-# The Welcome, Overview, and Lexicon pages. Phonology has its own file since it's bigger.
+# The Welcome and Overview pages. Phonology and the Lexicon have their own files since they're bigger.
 
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QComboBox, QFrame, QHBoxLayout, QScrollArea, QVBoxLayout, QWidget
 
-from widgets import Button, Card, EmptyState, FlowLayout, PageHeader, label
+from widgets import Button, Card, FlowLayout, PageHeader, label
 from wordweaver_project import Language, LanguageKind, Project
 
 # How many symbols a Language card shows before cutting off.
@@ -141,16 +141,4 @@ class OverviewPage(QWidget):
         add.clicked.connect(self.add_requested)
         self.cards.addWidget(add)
 
-class LexiconPage(QWidget):
-    """A placeholder until Languages have a Lexicon."""
-
-    def __init__(self, parent: QWidget | None = None):
-        super().__init__(parent)
-        self.setObjectName("Page")
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(32, 28, 32, 32)
-        layout.addWidget(PageHeader("Lexicon", "The words in this Language.", self))
-        layout.addWidget(EmptyState("book-open", "The Lexicon is on its way",
-                                    "Soon you'll add Entries here, with their forms and Definitions.", self), 1)
-
-__all__ = ["WelcomePage", "OverviewPage", "LexiconPage"]
+__all__ = ["WelcomePage", "OverviewPage"]

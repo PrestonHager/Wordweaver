@@ -6,6 +6,7 @@
 from wwformat.contents import FileContents
 from wwformat.errors import CorruptFileError, NewerVersionError, ProjectFileError, UnknownChunkError
 from wwformat.registry import ChunkType
+from wwformat.strings import StringTable
 from wwformat import wordweaver_pb2 as pb
 
-__all__ = ["FileContents", "CorruptFileError", "NewerVersionError", "ProjectFileError", "UnknownChunkError", "ChunkType", "pb"]
+__all__ = ["FileContents", "CorruptFileError", "NewerVersionError", "ProjectFileError", "UnknownChunkError", "ChunkType", "StringTable", "pb"]

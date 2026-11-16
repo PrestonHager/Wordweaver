@@ -1,0 +1,17 @@
+{
+  "id": "Test-Swadesh-6",
+  "name": "Test Swadesh 6",
+  "source": "Six concepts from https://github.com/concepticon/concepticon-data/blob/v3.4.0/concepticondata/conceptlists/Swadesh-1955-100.tsv",
+  "version": "Concepticon v3.4.0",
+  "license": "CC-BY-4.0",
+  "license_url": "https://creativecommons.org/licenses/by/4.0/",
+  "attribution": "List, Johann Mattis et al. (eds.) 2025. Concepticon v3.4.0. https://concepticon.clld.org",
+  "concepts": [
+    {"number": "1", "id": "98", "gloss": "ALL", "english": "all", "definition": "The totality of."},
+    {"number": "2", "id": "646", "gloss": "ASH", "english": "ashes", "definition": "The incombustible matter remaining after a substance has been incinerated."},
+    {"number": "26", "id": "323", "gloss": "FAT (ORGANIC SUBSTANCE)", "english": "fat (grease)", "definition": "Esters of three fatty acid chains and the alcohol glycerol which form a semi-solid substance in room temperature and occur in animals and plants."},
+    {"number": "37", "id": "1277", "gloss": "HAND", "english": "hand", "definition": "That part of the fore limb below the forearm or wrist in primates (including humans)."},
+    {"number": "42", "id": "1209", "gloss": "I", "english": "I", "definition": "The speaker or writer referring to himself or herself alone."},
+    {"number": "94", "id": "948", "gloss": "WATER", "english": "", "definition": "Common liquid (H₂O) which forms rain, rivers, the sea, etc., and which makes up a large part of the bodies of organisms."}
+  ]
+}

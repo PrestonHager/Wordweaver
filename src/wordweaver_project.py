@@ -1,13 +1,35 @@
 # wordweaver_project.py
 
+import os
+import re
 from collections.abc import Callable
 from enum import IntEnum
 from pathlib import Path
 
 from allophones import WORD_BOUNDARY, AllophoneRule, AllophoneRules, ContextSide
+from lexicon import ConceptReference, ConceptSource, Definition, Entry, Form, Lexicon
+from lexicon_csv import export_csv
 from phoneme_classes import DEFAULT_CLASS_ID_BLOCK, PhonemeClass, PhonemeClasses
 from phonology import Phoneme, PhonemeInventory
-from wwformat import ChunkType, CorruptFileError, FileContents, NewerVersionError, ProjectFileError, UnknownChunkError, pb
+from tags import Tag, Tags
+from wwformat import ChunkType, CorruptFileError, FileContents, NewerVersionError, ProjectFileError, StringTable, UnknownChunkError, pb
+
+DEFAULT_GLOSS_LANGUAGE = "en"
+
+# A loose check for BCP 47 codes: an ISO 639 language, then any subtags like a region or script.
+_LANGUAGE_CODE = re.compile(r"[a-z]{2,3}(-[a-z0-9]{1,8})*")
+
+def normalize_language_code(code: str) -> str:
+    """Tidy a BCP 47 code like " EN-gb " into "en-GB".
+
+    :raises ValueError: If it doesn't look like a language code.
+    """
+    code = code.strip().replace("_", "-").lower()
+    if not _LANGUAGE_CODE.fullmatch(code):
+        raise ValueError(f"{code!r} isn't a language code like \"en\"")
+    # Regions are written in capitals by convention, like "en-GB".
+    primary, *subtags = code.split("-")
+    return "-".join([primary] + [tag.upper() if len(tag) == 2 else tag for tag in subtags])
 
 class LanguageKind(IntEnum):
     """A label for a Language. It's only a description and doesn't change how the Language works."""
@@ -21,15 +43,16 @@ class LanguageKind(IntEnum):
         return self.name.replace("_", "-").title()
 
 class Language:
-    """One conlang inside a Project, with its own Phoneme Inventory."""
+    """One conlang inside a Project, with its own Phoneme Inventory and Lexicon."""
 
-    def __init__(self, id: int, name: str, new_id: Callable[[], int], kind: LanguageKind, default_class_ids_start: int):
+    def __init__(self, id: int, name: str, new_id: Callable[[], int], kind: LanguageKind, default_class_ids_start: int, tags: Tags | None=None):
         # Languages are made by Project.add_language, which hands out the IDs.
         self._id = id
         self.name = name
         self.kind = kind
         self.inventory = PhonemeInventory(new_id)
         self._classes = PhonemeClasses(self.inventory, new_id, default_class_ids_start)
+        self.lexicon = Lexicon(new_id, tags=tags)
         self._allophone_rules = AllophoneRules(self.inventory, self._classes, new_id)
 
     @property
@@ -96,13 +119,30 @@ class Project:
         self._next_id = 1
         # Ancillary chunks from a newer app that we skipped on load, held so saving doesn't lose them.
         self._unknown_chunks = []
+        # Tags are shared by every Language, and removing one takes it off every Entry.
+        self.tags = Tags(self._new_id, self._untag_everywhere)
+        self._gloss_language = DEFAULT_GLOSS_LANGUAGE
+        # What the file held after the last save or load, so saves can append only the changes.
+        self._saved: FileContents | None = None
+        self._saved_path: str | None = None
+        self._saved_stat: tuple[int, int] | None = None
+
+    @property
+    def gloss_language(self) -> str:
+        """The language Glosses are written in, as a BCP 47 code like "en". It decides which dictionary is searched."""
+        return self._gloss_language
+
+    @gloss_language.setter
+    def gloss_language(self, code: str):
+        """:raises ValueError: If `code` doesn't look like a BCP 47 language code."""
+        self._gloss_language = normalize_language_code(code)
 
     @property
     def languages(self) -> list[Language]:
         return list(self._languages)
 
     def add_language(self, name: str, kind: LanguageKind=LanguageKind.LANGUAGE) -> Language:
-        language = Language(self._new_id(), name, self._new_id, kind, self._reserve_ids(DEFAULT_CLASS_ID_BLOCK))
+        language = Language(self._new_id(), name, self._new_id, kind, self._reserve_ids(DEFAULT_CLASS_ID_BLOCK), tags=self.tags)
         self._languages.append(language)
         return language
 
@@ -112,6 +152,24 @@ class Project:
         :raises ValueError: If the Language isn't in this Project.
         """
         self._languages.remove(language)
+
+    def tagged(self, tag: Tag) -> list[Entry]:
+        """Find every Entry with a Tag, in every Language."""
+        return [entry for language in self._languages for entry in language.lexicon.tagged(tag)]
+
+    def export_lexicon_csv(self, language: Language) -> str:
+        """Return a Language's Lexicon as CSV text, with one row per Definition. See lexicon_csv for the columns.
+
+        :raises ValueError: If the Language isn't in this Project.
+        """
+        if language not in self._languages:
+            raise ValueError(f"Language {language.id} isn't in this Project")
+        return export_csv(language.lexicon, self.tags)
+
+    def _untag_everywhere(self, tag: Tag):
+        for language in self._languages:
+            for entry in language.lexicon.tagged(tag):
+                language.lexicon.untag(entry, tag)
 
     def _new_id(self) -> int:
         return self._reserve_ids(1)
@@ -131,7 +189,23 @@ class Project:
             self.file = file
         if self.file is None:
             raise ValueError("The Project doesn't have a file to save to")
-        self._to_contents().write(self.file)
+        if self._saved is not None and self._saved_path == os.path.abspath(self.file) and self._saved_stat == _stat(self.file):
+            # The file already holds what we last saved, so we only append what changed since then.
+            contents = self._to_contents(self._saved.strings.copy())
+            patch = contents.patch_from(self._saved)
+            if patch is not None:
+                FileContents.append(self.file, patch)
+        else:
+            # The first save to a file writes the whole Project.
+            contents = self._to_contents(StringTable())
+            contents.write(self.file)
+        self._remember_saved(contents)
+
+    def _remember_saved(self, contents: FileContents):
+        # Keep what's in the file, so the next save can tell what changed.
+        self._saved = contents
+        self._saved_path = os.path.abspath(self.file)
+        self._saved_stat = _stat(self.file)
 
     @classmethod
     def load(cls, file: str | Path) -> "Project":
@@ -140,17 +214,24 @@ class Project:
         :raises FileNotFoundError: If the file doesn't exist.
         :raises ProjectFileError: If the file isn't a Project file, or is damaged.
         """
-        project = cls._from_contents(FileContents.read(file))
+        contents = FileContents.read(file)
+        project = cls._from_contents(contents)
         project.file = file
+        # A broken patch is still sitting at the end of the file, so the next save has to write the whole file.
+        if not contents.dropped_patch:
+            project._remember_saved(contents)
         return project
 
-    def _to_contents(self) -> FileContents:
+    def _to_contents(self, strings: StringTable) -> FileContents:
         # Each record goes in its own table, pointing at its parent by ID.
-        contents = FileContents()
+        contents = FileContents(strings)
         strings = contents.strings
         info = contents.get(ChunkType.PROJECT)
         info.name = strings.index(self.name)
         info.next_id = self._next_id
+        info.gloss_language = strings.index(self.gloss_language)
+        for tag in self.tags:
+            contents.add_record(ChunkType.TAGS, pb.Tag(id=tag.id, name=strings.index(tag.name)))
         for language in self._languages:
             contents.add_record(ChunkType.LANGUAGES, pb.Language(id=language.id, name=strings.index(language.name), kind=language.kind, default_class_ids_start=language._classes.default_ids_start))
             for phoneme in language.inventory:
@@ -166,6 +247,23 @@ class Project:
                     record.hand_edited = True
                     record.phoneme_ids.extend(p.id for p in phoneme_class.phonemes)
                 contents.add_record(ChunkType.PHONEME_CLASSES, record)
+            for entry in language.lexicon:
+                form = [strings.index(symbol) for symbol in entry.form.phonemes]
+                contents.add_record(ChunkType.ENTRIES, pb.Entry(id=entry.id, language_id=language.id, form=form, tag_ids=entry.tag_ids))
+                for position, definition in enumerate(entry.definitions):
+                    record = pb.Definition(
+                        id=definition.id,
+                        entry_id=entry.id,
+                        glosses=[strings.index(gloss) for gloss in definition.glosses],
+                        position=position,
+                        terms=[strings.index(term) for term in definition.terms],
+                        description=strings.index(definition.description),
+                    )
+                    reference = definition.concept_reference
+                    if reference is not None:
+                        record.concept_source = reference.source
+                        record.concept_id = strings.index(reference.id)
+                    contents.add_record(ChunkType.DEFINITIONS, record)
             for rule in language.allophone_rules:
                 contents.add_record(ChunkType.ALLOPHONE_RULES, pb.AllophoneRule(
                     id=rule.id, language_id=language.id, phoneme_id=rule.phoneme.id, allophone=strings.index(rule.allophone),
@@ -178,6 +276,11 @@ class Project:
         strings = contents.strings
         info = contents.get(ChunkType.PROJECT)
         project = cls(strings[info.name])
+        # Files saved before the Gloss Language existed have none, so they stay English.
+        try:
+            project.gloss_language = strings[info.gloss_language] or DEFAULT_GLOSS_LANGUAGE
+        except ValueError as e:
+            raise CorruptFileError(f"The Gloss Language {strings[info.gloss_language]!r} isn't a language code") from e
         # First, rebuild the Languages, then put each Phoneme back into its Language.
         # First, make sure new IDs can't collide with loaded ones, even if next_id was missing.
         reserved = [r.default_class_ids_start + DEFAULT_CLASS_ID_BLOCK for r in contents.records(ChunkType.LANGUAGES) if r.default_class_ids_start]
@@ -189,7 +292,7 @@ class Project:
             kind = LanguageKind(record.kind) if record.kind in LanguageKind._value2member_map_ else LanguageKind.LANGUAGE
             # Files from before Phoneme Classes don't have default Class IDs yet, so give them some now.
             class_ids_start = record.default_class_ids_start or project._reserve_ids(DEFAULT_CLASS_ID_BLOCK)
-            language = Language(record.id, strings[record.name], project._new_id, kind, class_ids_start)
+            language = Language(record.id, strings[record.name], project._new_id, kind, class_ids_start, tags=project.tags)
             languages[record.id] = language
             project._languages.append(language)
         for record in contents.records(ChunkType.PHONEMES):
@@ -209,6 +312,34 @@ class Project:
                 phoneme_class._name = strings[record.name]
             if record.hand_edited:
                 phoneme_class._restore_members(record.phoneme_ids)
+        # Then put back the Tags, so the Entries can point at them.
+        for record in contents.records(ChunkType.TAGS):
+            project.tags._restore(Tag(record.id, strings[record.name]))
+        # Then gather each Entry's Definitions, and put the Entries back into their Lexicons.
+        # The records come in ID order, so sorting by position keeps ID order for ties, like in files saved before positions.
+        definitions: dict[int, list[Definition]] = {}
+        for record in sorted(contents.records(ChunkType.DEFINITIONS), key=lambda record: record.position):
+            definition = Definition(
+                record.id,
+                [strings[g] for g in record.glosses],
+                [strings[t] for t in record.terms],
+                strings[record.description],
+                _load_concept_reference(record, strings),
+            )
+            definitions.setdefault(record.entry_id, []).append(definition)
+        entry_ids = set()
+        for record in contents.records(ChunkType.ENTRIES):
+            if record.language_id not in languages:
+                raise CorruptFileError(f"Entry {record.id} belongs to a Language that isn't in the file")
+            if record.id not in definitions:
+                raise CorruptFileError(f"Entry {record.id} doesn't have a Definition")
+            if any(project.tags.get(tag_id) is None for tag_id in record.tag_ids):
+                raise CorruptFileError(f"Entry {record.id} has a Tag that isn't in the file")
+            form = Form(strings[symbol] for symbol in record.form)
+            languages[record.language_id].lexicon._restore(Entry(record.id, form, definitions[record.id], record.tag_ids))
+            entry_ids.add(record.id)
+        if not definitions.keys() <= entry_ids:
+            raise CorruptFileError("A Definition belongs to an Entry that isn't in the file")
         # Finally, put back the Allophone Rules, now that everything they point at is loaded.
         for record in contents.records(ChunkType.ALLOPHONE_RULES):
             if record.language_id not in languages:
@@ -223,6 +354,25 @@ class Project:
             language._allophone_rules._restore(record.id, phonemes[record.phoneme_id], strings[record.allophone], before, after)
         project._unknown_chunks = list(contents.unknown_chunks)
         return project
+
+def _stat(file: str | Path) -> tuple[int, int] | None:
+    # If the file's size or modified time changed, something else wrote to it since we last did.
+    try:
+        stat = os.stat(file)
+    except FileNotFoundError:
+        return None
+    return stat.st_size, stat.st_mtime_ns
+
+def _load_concept_reference(record, strings) -> ConceptReference | None:
+    # No source means no reference.
+    if record.concept_source == pb.CONCEPT_SOURCE_NONE:
+        return None
+    # NOTE: a source from a newer version that we don't know about is dropped, like an unknown Language Kind.
+    if record.concept_source not in ConceptSource._value2member_map_:
+        return None
+    if not strings[record.concept_id]:
+        raise CorruptFileError(f"Definition {record.id} has a Concept Reference without an ID")
+    return ConceptReference(ConceptSource(record.concept_source), strings[record.concept_id])
 
 def _side_to_record(side: ContextSide) -> pb.ContextSide:
     if side is WORD_BOUNDARY:
@@ -247,4 +397,4 @@ def _side_from_record(record: pb.ContextSide, phonemes: dict[int, Phoneme], clas
     # Anything else, including a kind from a newer version, means nothing in particular.
     return None
 
-__all__ = ["WORD_BOUNDARY", "AllophoneRule", "Language", "LanguageKind", "Project", "ProjectFileError", "CorruptFileError", "NewerVersionError", "UnknownChunkError"]
+__all__ = ["DEFAULT_GLOSS_LANGUAGE", "Language", "LanguageKind", "Project", "ProjectFileError", "CorruptFileError", "NewerVersionError", "UnknownChunkError", "Tag", "normalize_language_code", "WORD_BOUNDARY", "AllophoneRule"]

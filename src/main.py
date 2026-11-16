@@ -1,6 +1,6 @@
 # main.py
 
-from PyQt6.QtWidgets import QApplication, QButtonGroup, QComboBox, QFileDialog, QHBoxLayout, QInputDialog, QMainWindow, QMenu, QMessageBox, QStackedWidget, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QApplication, QButtonGroup, QComboBox, QDialog, QFileDialog, QHBoxLayout, QInputDialog, QMainWindow, QMenu, QMessageBox, QStackedWidget, QVBoxLayout, QWidget
 from PyQt6.QtGui import QCloseEvent, QIcon
 from PyQt6.QtCore import Qt
 from pathlib import Path
@@ -12,9 +12,12 @@ import logging
 import pyperclip
 
 from about import About
+from concepticon import concept_lists
 from icons import bind_icon, icon as make_icon
-from pages import LexiconPage, OverviewPage, WelcomePage
+from lexicon_page import LexiconPage
+from pages import OverviewPage, WelcomePage
 from phonology_page import PhonologyPage
+from project_settings import ProjectSettings
 from theme import theme
 from widgets import Button, label
 from wordweaver_project import Language, LanguageKind, Project, ProjectFileError
@@ -72,6 +75,7 @@ class App(QMainWindow):
         self.phonology_page = PhonologyPage(self.pages)
         self.phonology_page.changed.connect(self._on_inventory_changed)
         self.lexicon_page = LexiconPage(self.pages)
+        self.lexicon_page.inventory_changed.connect(self._on_lexicon_inventory_changed)
         self.page_widgets = {"overview": self.overview_page, "phonology": self.phonology_page, "lexicon": self.lexicon_page}
         for page in self.page_widgets.values():
             self.pages.addWidget(page)
@@ -153,6 +157,9 @@ class App(QMainWindow):
             None,
             ("save", "&Save Project", "save", "Ctrl+S", self.save),
             ("save_as", "S&ave Project As", "save-all", "Ctrl+Shift+S", self.save_as),
+            ("export_csv", "&Export Lexicon to CSV…", None, "", self.export_lexicon_csv),
+            ("seed", "Seed from &Concept List…", None, "", self.seed_from_concept_list),
+            ("settings", "Project Se&ttings…", None, "", self.edit_project_settings),
             None,
             ("about", "A&bout", "info", "F1", self.open_about),
             ("exit", "&Exit", "log-out", "Alt+F4", self.close),
@@ -176,9 +183,10 @@ class App(QMainWindow):
         self.menu_actions["theme"] = self._action(self.view_menu, "Toggle &Dark Mode", "moon", "Ctrl+Shift+L", self.toggle_theme)
         menubar.addMenu(self.view_menu)
 
-    def _action(self, menu: QMenu, text: str, icon_name: str, shortcut: str, slot):
+    def _action(self, menu: QMenu, text: str, icon_name: str | None, shortcut: str, slot):
         action = menu.addAction(text)
-        bind_icon(action, icon_name, "muted", size=16)
+        if icon_name is not None:
+            bind_icon(action, icon_name, "muted", size=16)
         action.setShortcut(shortcut)
         action.triggered.connect(slot)
         return action
@@ -186,7 +194,7 @@ class App(QMainWindow):
     def _update_main_view(self):
         # First, turn the menu actions on or off for whether a Project is open.
         has_project = self.project is not None
-        for key in ("close", "save", "save_as", "copy", "overview", "phonology", "lexicon"):
+        for key in ("close", "save", "save_as", "export_csv", "seed", "settings", "copy", "overview", "phonology", "lexicon"):
             self.menu_actions[key].setEnabled(has_project)
         self.menu_actions["paste"].setEnabled(has_project and pyperclip.paste() != '')
         # Then show the welcome page or the workspace.
@@ -219,6 +227,7 @@ class App(QMainWindow):
         # Finally, refresh the pages for the picked Language.
         self.overview_page.refresh(self.project, self.language)
         self.phonology_page.set_language(self.language)
+        self.lexicon_page.refresh(self.project, self.language)
 
     def _open_page(self, key: str, language: Language | None = None):
         # Switch Language first if a card asked for a different one.
@@ -240,6 +249,11 @@ class App(QMainWindow):
     def _on_inventory_changed(self):
         # The Overview cards show the inventory, so keep them current.
         self.overview_page.refresh(self.project, self.language)
+
+    def _on_lexicon_inventory_changed(self):
+        # The Lexicon added a Phoneme, so the Phonology page needs redrawing as well as the cards.
+        self.phonology_page.refresh()
+        self._on_inventory_changed()
 
     def _update_theme_button(self):
         # Show the mode you'd switch to, like most apps do.
@@ -360,6 +374,71 @@ class App(QMainWindow):
             self.project.save()
             self.statusBar().showMessage(f"Saved to {self.project.file}", 4000)
             self.logger.info(f"Saved project \"{self.project.name}\" to {self.project.file} and updated project file location.")
+
+    def export_lexicon_csv(self):
+        if self.project is None or self.language is None:
+            return
+        # Ask where to save the current Language's Lexicon.
+        dialog = QFileDialog(self)
+        dialog.selectFile(f"{self.language.name} Lexicon.csv")
+        dialog.setFileMode(QFileDialog.FileMode.AnyFile)
+        dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptSave)
+        dialog.setDefaultSuffix("csv")
+        dialog.setNameFilters(("CSV File (*.csv)", "All Files (*)"))
+        if dialog.exec() != QFileDialog.DialogCode.Accepted:
+            return
+        file = dialog.selectedFiles()[0]
+        # The text already starts with a byte order mark, so plain UTF-8 keeps it, and newline="" keeps the CSV's line endings.
+        try:
+            with open(file, "w", encoding="utf-8", newline="") as f:
+                f.write(self.project.export_lexicon_csv(self.language))
+        except OSError as e:
+            QMessageBox.warning(self, "Couldn't Export Lexicon", str(e))
+            return
+        self.statusBar().showMessage(f"Exported the Lexicon to {file}", 4000)
+        self.logger.info(f"Exported the Lexicon of \"{self.language.name}\" to {file}")
+
+    def seed_from_concept_list(self):
+        if self.project is None or self.language is None:
+            return
+        try:
+            lists = concept_lists()
+        except (OSError, ValueError) as e:
+            QMessageBox.warning(self, "Couldn't Read Concept Lists", str(e))
+            return
+        if not lists:
+            QMessageBox.information(self, "No Concept Lists", "There aren't any concept lists to seed from.")
+            return
+        # First, pick a list. The names show how many concepts are in each one.
+        names = [f"{concept_list.name}, {len(concept_list)} concepts" for concept_list in lists]
+        name, ok = QInputDialog.getItem(self, "Seed from Concept List",
+                                        f"Add an Entry for each concept to {self.language.name}.\n"
+                                        "Concepts that are already linked get skipped.", names, 0, False)
+        if not ok:
+            return
+        concept_list = lists[names.index(name)]
+        # Then seed it, and open the Lexicon on just the new unfinished Entries so you can start filling in Forms.
+        added = self.language.lexicon.seed_from_concept_list(concept_list)
+        skipped = len(concept_list) - len(added)
+        if added:
+            self.lexicon_page.unfinished_filter.setChecked(True)
+        self.lexicon_page.refresh(self.project, self.language)
+        self._open_page("lexicon")
+        if not added:
+            message = f"Every concept in {concept_list.name} is already linked, so there was nothing to add."
+        else:
+            message = f"Added {len(added)} Entr{'y' if len(added) == 1 else 'ies'} from {concept_list.name}."
+            if skipped:
+                message += f" Skipped {skipped} that {'was' if skipped == 1 else 'were'} already linked."
+        message += f"\n\nConcepts from Concepticon ({concept_list.license}): {concept_list.attribution}"
+        QMessageBox.information(self, "Seeded Lexicon", message)
+        self.logger.info(f"Seeded {len(added)} Entries in \"{self.language.name}\" from {concept_list.id}")
+
+    def edit_project_settings(self):
+        if self.project is None:
+            return
+        if ProjectSettings(self.project, parent=self).exec() == QDialog.DialogCode.Accepted:
+            self.logger.info(f"Set the Gloss Language of \"{self.project.name}\" to {self.project.gloss_language}")
 
     def open_about(self):
         if not hasattr(self, "about_window"):

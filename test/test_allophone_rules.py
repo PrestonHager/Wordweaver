@@ -122,5 +122,22 @@ class TestAllophoneRules(unittest.TestCase):
         loaded = self.round_trip()
         self.assertEqual([str(r) for r in loaded.allophone_rules], ["/p/ → [ɸ]"])
 
+    def test_rules_round_trip_through_patches(self):
+        vowel = self.language.get_class("Vowel")
+        edited = self.language.add_allophone_rule("t", "ɾ", before=vowel, after=vowel)
+        removed = self.language.add_allophone_rule("k", "x")
+        self.project.save(self.file)
+        with open(self.file, "rb") as f_in:
+            base = f_in.read()
+        # Now edit one rule, remove one, and add one, then save again as a patch.
+        edited.edit("t", "ʔ", vowel, WORD_BOUNDARY)
+        self.language.remove_allophone_rule(removed)
+        added = self.language.add_allophone_rule("n", "ŋ", after="k")
+        self.project.save()
+        with open(self.file, "rb") as f_in:
+            self.assertTrue(f_in.read().startswith(base))
+        loaded = Project.load(self.file).languages[0]
+        self.assertEqual([(r.id, str(r)) for r in loaded.allophone_rules], [(edited.id, "/t/ → [ʔ] / Vowel _ #"), (added.id, "/n/ → [ŋ] / _ k")])
+
 if __name__ == "__main__":
     unittest.main()

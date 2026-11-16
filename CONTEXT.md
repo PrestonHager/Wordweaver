@@ -90,6 +90,7 @@ _Avoid_: Dictionary, word list
 **Entry**:
 One item in a Lexicon, with one Form and one or more Definitions.
 An Entry can be a Root, an Affix, or a word built from Morphemes.
+An Entry whose Form is still empty, like one seeded from a Concept List, is **unfinished**.
 _Avoid_: Word (too vague), lexeme
 
 **Form**:
@@ -105,9 +106,19 @@ _Avoid_: Meaning (fine in casual talk), sense, translation
 A short word or phrase in the user's native language that helps describe a Definition.
 _Avoid_: Translation, key
 
+**Gloss Language**:
+The Project-level setting for which natural language Glosses are written in, as a code like `en`.
+It defaults to English and decides which open dictionary is searched for Concept References.
+_Avoid_: Native language (fine in casual talk), locale
+
 **Concept Reference**:
 An optional link from a Definition to one exact sense in an open dictionary, such as an Open English WordNet synset or a Concepticon concept.
 _Avoid_: Dictionary link, source
+
+**Concept List**:
+A published list of Concepticon concepts in a set order, like the Swadesh 100.
+Seeding a Lexicon from one adds an unfinished Entry for each concept that isn't linked yet, with a Gloss and a Concept Reference.
+_Avoid_: Word list, Swadesh list (that's just one Concept List)
 
 **Polysemy**:
 When one Entry has several related Definitions, like one word meaning both "river" and "road".
