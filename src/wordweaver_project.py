@@ -11,6 +11,7 @@ from lexicon import ConceptReference, ConceptSource, Definition, Entry, Form, Le
 from lexicon_csv import export_csv
 from phoneme_classes import DEFAULT_CLASS_ID_BLOCK, PhonemeClass, PhonemeClasses
 from phonology import Phoneme, PhonemeInventory
+from phonotactics import Phonotactics, SyllableStructure, parse_notation
 from suprasegmentals import Suprasegmentals
 from tags import Tag, Tags
 from wwformat import ChunkType, CorruptFileError, FileContents, NewerVersionError, ProjectFileError, StringTable, UnknownChunkError, pb
@@ -59,22 +60,28 @@ class Language:
         self.lexicon = Lexicon(new_id, tags=tags)
         self._allophone_rules = AllophoneRules(self.inventory, self._classes, new_id)
         self.suprasegmentals = Suprasegmentals()
+        self._phonotactics = Phonotactics(self.inventory, self._classes, new_id)
 
     @property
     def id(self) -> int:
         return self._id
 
     @property
+    def phonotactics(self) -> Phonotactics:
+        """The Language's Phonotactics: its Syllable Structures, and checking Forms against them."""
+        return self._phonotactics
+
+    @property
     def classes(self) -> list[PhonemeClass]:
         """Every Phoneme Class in the Language, defaults first."""
         return list(self._classes)
 
-    def add_class(self, name: str) -> PhonemeClass:
-        """Make a new, empty Phoneme Class.
+    def add_class(self, name: str, label: str="") -> PhonemeClass:
+        """Make a new, empty Phoneme Class, with an optional short label like N for Syllable Structures.
 
-        :raises ValueError: If the name is empty or another Class has it.
+        :raises ValueError: If the name is empty or another Class has it, or the label isn't valid or is taken.
         """
-        return self._classes.add(name)
+        return self._classes.add(name, label)
 
     def remove_class(self, phoneme_class: PhonemeClass):
         """Delete one of the user's own Phoneme Classes.
@@ -85,6 +92,10 @@ class Language:
 
     def get_class(self, name: str) -> PhonemeClass | None:
         return self._classes.get(name)
+
+    def class_with_label(self, label: str) -> PhonemeClass | None:
+        """Get the Phoneme Class with a short label, like C."""
+        return self._classes.with_label(label)
 
     def classes_of(self, symbol: str) -> list[PhonemeClass]:
         """Get every Phoneme Class a Phoneme is in."""
@@ -266,9 +277,9 @@ class Project:
                 contents.add_record(ChunkType.PHONEMES, pb.Phoneme(id=phoneme.id, language_id=language.id, symbol=strings.index(phoneme.symbol), frequency=language.inventory.frequency(phoneme.symbol)))
             # Default Classes are rebuilt on load, so only save the ones the user changed.
             for phoneme_class in language.classes:
-                if phoneme_class.is_default and not (phoneme_class.is_renamed or phoneme_class.is_hand_edited):
+                if phoneme_class.is_default and not (phoneme_class.is_renamed or phoneme_class.is_hand_edited or phoneme_class.is_relabeled):
                     continue
-                record = pb.PhonemeClass(id=phoneme_class.id, language_id=language.id, name=strings.index(phoneme_class.name))
+                record = pb.PhonemeClass(id=phoneme_class.id, language_id=language.id, name=strings.index(phoneme_class.name), label=strings.index(phoneme_class.label))
                 if phoneme_class.is_default:
                     record.default_key = strings.index(phoneme_class._default.key)
                 if not phoneme_class.is_default or phoneme_class.is_hand_edited:
@@ -296,6 +307,8 @@ class Project:
                 contents.add_record(ChunkType.ALLOPHONE_RULES, pb.AllophoneRule(
                     id=rule.id, language_id=language.id, phoneme_id=rule.phoneme.id, allophone=strings.index(rule.allophone),
                     before=_side_to_record(rule.before), after=_side_to_record(rule.after)))
+            for structure in language.phonotactics.syllable_structures:
+                contents.add_record(ChunkType.SYLLABLE_STRUCTURES, pb.SyllableStructure(id=structure.id, language_id=language.id, notation=strings.index(structure.notation)))
         contents.unknown_chunks = list(self._unknown_chunks)
         return contents
 
@@ -348,6 +361,9 @@ class Project:
                 phoneme_class = classes._restore(record.id, strings[record.name])
             else:
                 phoneme_class._name = strings[record.name]
+            # Files from before labels leave it out, so default Classes keep their default labels.
+            if record.HasField("label"):
+                phoneme_class._label = strings[record.label]
             if record.hand_edited:
                 phoneme_class._restore_members(record.phoneme_ids)
         # Then put back the Tags, so the Entries can point at them.
@@ -378,7 +394,7 @@ class Project:
             entry_ids.add(record.id)
         if not definitions.keys() <= entry_ids:
             raise CorruptFileError("A Definition belongs to an Entry that isn't in the file")
-        # Finally, put back the Allophone Rules, now that everything they point at is loaded.
+        # Then put back the Allophone Rules, now that everything they point at is loaded.
         for record in contents.records(ChunkType.ALLOPHONE_RULES):
             if record.language_id not in languages:
                 raise CorruptFileError(f"Allophone Rule {record.id} belongs to a Language that isn't in the file")
@@ -390,6 +406,15 @@ class Project:
             before = _side_from_record(record.before, phonemes, classes, record.id)
             after = _side_from_record(record.after, phonemes, classes, record.id)
             language._allophone_rules._restore(record.id, phonemes[record.phoneme_id], strings[record.allophone], before, after)
+        # And the Syllable Structures, which only need their notation to be readable.
+        for record in contents.records(ChunkType.SYLLABLE_STRUCTURES):
+            if record.language_id not in languages:
+                raise CorruptFileError(f"Syllable Structure {record.id} belongs to a Language that isn't in the file")
+            try:
+                parse_notation(strings[record.notation])
+            except ValueError as e:
+                raise CorruptFileError(f"Syllable Structure {record.id} isn't written right") from e
+            languages[record.language_id].phonotactics._restore(record.id, strings[record.notation])
         project._unknown_chunks = list(contents.unknown_chunks)
         return project
 
@@ -435,4 +460,4 @@ def _side_from_record(record: pb.ContextSide, phonemes: dict[int, Phoneme], clas
     # Anything else, including a kind from a newer version, means nothing in particular.
     return None
 
-__all__ = ["DEFAULT_GLOSS_LANGUAGE", "Language", "LanguageKind", "Project", "ProjectFileError", "CorruptFileError", "NewerVersionError", "UnknownChunkError", "Tag", "normalize_language_code", "WORD_BOUNDARY", "AllophoneRule"]
+__all__ = ["DEFAULT_GLOSS_LANGUAGE", "Language", "LanguageKind", "Project", "ProjectFileError", "CorruptFileError", "NewerVersionError", "UnknownChunkError", "Tag", "normalize_language_code", "WORD_BOUNDARY", "AllophoneRule", "SyllableStructure"]

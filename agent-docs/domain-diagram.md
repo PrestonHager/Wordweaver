@@ -64,7 +64,8 @@ classDiagram
     Phonotactics "1" *-- "*" PhonotacticConstraint
     Phonotactics "1" *-- "*" AllophoneRule
     AllophoneRule ..> Allophone : picks
-    SyllableStructure ..> PhonemeClass : Onset, Nucleus, Coda
+    SyllableStructure ..> PhonemeClass : Onset, Nucleus, Coda, by label
+    Phonotactics ..> Form : splits into syllables and checks
     SyllableStructure ..> Suprasegmental : Stress, Tone, Length
     PhonotacticConstraint ..> PhonemeClass : limits
     WordGenerator ..> Phonotactics : follows

@@ -24,19 +24,19 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x10wordweaver.proto\x12\rwordweaver.v1\"\x1e\n\x0bStringTable\x12\x0f\n\x07strings\x18\x01 \x03(\t\"D\n\x0bProjectInfo\x12\x0c\n\x04name\x18\x01 \x01(\r\x12\x0f\n\x07next_id\x18\x02 \x01(\x04\x12\x16\n\x0egloss_language\x18\x03 \x01(\r\"\x9f\x01\n\x08Language\x12\n\n\x02id\x18\x01 \x01(\x04\x12\x0c\n\x04name\x18\x02 \x01(\r\x12)\n\x04kind\x18\x03 \x01(\x0e\x32\x1b.wordweaver.v1.LanguageKind\x12\x1f\n\x17\x64\x65\x66\x61ult_class_ids_start\x18\x04 \x01(\x04\x12\x0e\n\x06stress\x18\x05 \x01(\x08\x12\r\n\x05tones\x18\x06 \x03(\r\x12\x0e\n\x06length\x18\x07 \x01(\x08\"9\n\rLanguageTable\x12(\n\x07records\x18\x01 \x03(\x0b\x32\x17.wordweaver.v1.Language\"`\n\x07Phoneme\x12\n\n\x02id\x18\x01 \x01(\x04\x12\x13\n\x0blanguage_id\x18\x02 \x01(\x04\x12\x0e\n\x06symbol\x18\x03 \x01(\r\x12\x16\n\tfrequency\x18\x04 \x01(\x01H\x00\x88\x01\x01\x42\x0c\n\n_frequency\"7\n\x0cPhonemeTable\x12\'\n\x07records\x18\x01 \x03(\x0b\x32\x16.wordweaver.v1.Phoneme\"|\n\x0cPhonemeClass\x12\n\n\x02id\x18\x01 \x01(\x04\x12\x13\n\x0blanguage_id\x18\x02 \x01(\x04\x12\x0c\n\x04name\x18\x03 \x01(\r\x12\x13\n\x0b\x64\x65\x66\x61ult_key\x18\x04 \x01(\r\x12\x13\n\x0bhand_edited\x18\x05 \x01(\x08\x12\x13\n\x0bphoneme_ids\x18\x06 \x03(\x04\"A\n\x11PhonemeClassTable\x12,\n\x07records\x18\x01 \x03(\x0b\x32\x1b.wordweaver.v1.PhonemeClass\"G\n\x05\x45ntry\x12\n\n\x02id\x18\x01 \x01(\x04\x12\x13\n\x0blanguage_id\x18\x02 \x01(\x04\x12\x0c\n\x04\x66orm\x18\x03 \x03(\r\x12\x0f\n\x07tag_ids\x18\x04 \x03(\x04\"3\n\nEntryTable\x12%\n\x07records\x18\x01 \x03(\x0b\x32\x14.wordweaver.v1.Entry\"\xbb\x01\n\nDefinition\x12\n\n\x02id\x18\x01 \x01(\x04\x12\x10\n\x08\x65ntry_id\x18\x02 \x01(\x04\x12\x0f\n\x07glosses\x18\x03 \x03(\r\x12\x10\n\x08position\x18\x04 \x01(\r\x12\r\n\x05terms\x18\x05 \x03(\r\x12\x13\n\x0b\x64\x65scription\x18\x06 \x01(\r\x12\x34\n\x0e\x63oncept_source\x18\x07 \x01(\x0e\x32\x1c.wordweaver.v1.ConceptSource\x12\x12\n\nconcept_id\x18\x08 \x01(\r\"=\n\x0f\x44\x65\x66initionTable\x12*\n\x07records\x18\x01 \x03(\x0b\x32\x19.wordweaver.v1.Definition\"\x1f\n\x03Tag\x12\n\n\x02id\x18\x01 \x01(\x04\x12\x0c\n\x04name\x18\x02 \x01(\r\"/\n\x08TagTable\x12#\n\x07records\x18\x01 \x03(\x0b\x32\x12.wordweaver.v1.Tag\"C\n\x0b\x43ontextSide\x12(\n\x04kind\x18\x01 \x01(\x0e\x32\x1a.wordweaver.v1.ContextKind\x12\n\n\x02id\x18\x02 \x01(\x04\"\xae\x01\n\rAllophoneRule\x12\n\n\x02id\x18\x01 \x01(\x04\x12\x13\n\x0blanguage_id\x18\x02 \x01(\x04\x12\x12\n\nphoneme_id\x18\x03 \x01(\x04\x12\x11\n\tallophone\x18\x04 \x01(\r\x12*\n\x06\x62\x65\x66ore\x18\x05 \x01(\x0b\x32\x1a.wordweaver.v1.ContextSide\x12)\n\x05\x61\x66ter\x18\x06 \x01(\x0b\x32\x1a.wordweaver.v1.ContextSide\"C\n\x12\x41llophoneRuleTable\x12-\n\x07records\x18\x01 \x03(\x0b\x32\x1c.wordweaver.v1.AllophoneRule\"\xa2\x01\n\x05Patch\x12\x0f\n\x07strings\x18\x01 \x03(\t\x12,\n\x07singles\x18\x02 \x03(\x0b\x32\x1b.wordweaver.v1.ChunkReplace\x12,\n\x07upserts\x18\x03 \x03(\x0b\x32\x1b.wordweaver.v1.RecordUpsert\x12,\n\x07\x64\x65letes\x18\x04 \x03(\x0b\x32\x1b.wordweaver.v1.RecordDelete\"3\n\x0c\x43hunkReplace\x12\x12\n\nchunk_type\x18\x01 \x01(\r\x12\x0f\n\x07message\x18\x02 \x01(\x0c\"-\n\x0cRecordUpsert\x12\r\n\x05table\x18\x01 \x01(\r\x12\x0e\n\x06record\x18\x02 \x01(\x0c\")\n\x0cRecordDelete\x12\r\n\x05table\x18\x01 \x01(\r\x12\n\n\x02id\x18\x02 \x01(\x04*\x81\x01\n\x0cLanguageKind\x12\x1a\n\x16LANGUAGE_KIND_LANGUAGE\x10\x00\x12 \n\x1cLANGUAGE_KIND_PROTO_LANGUAGE\x10\x01\x12\x19\n\x15LANGUAGE_KIND_DIALECT\x10\x02\x12\x18\n\x14LANGUAGE_KIND_CREOLE\x10\x03*\x9f\x01\n\rConceptSource\x12\x17\n\x13\x43ONCEPT_SOURCE_NONE\x10\x00\x12\'\n#CONCEPT_SOURCE_OPEN_ENGLISH_WORDNET\x10\x01\x12,\n(CONCEPT_SOURCE_OPEN_MULTILINGUAL_WORDNET\x10\x02\x12\x1e\n\x1a\x43ONCEPT_SOURCE_CONCEPTICON\x10\x03*n\n\x0b\x43ontextKind\x12\x14\n\x10\x43ONTEXT_ANYTHING\x10\x00\x12\x19\n\x15\x43ONTEXT_WORD_BOUNDARY\x10\x01\x12\x13\n\x0f\x43ONTEXT_PHONEME\x10\x02\x12\x19\n\x15\x43ONTEXT_PHONEME_CLASS\x10\x03\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x10wordweaver.proto\x12\rwordweaver.v1\"\x1e\n\x0bStringTable\x12\x0f\n\x07strings\x18\x01 \x03(\t\"D\n\x0bProjectInfo\x12\x0c\n\x04name\x18\x01 \x01(\r\x12\x0f\n\x07next_id\x18\x02 \x01(\x04\x12\x16\n\x0egloss_language\x18\x03 \x01(\r\"\x9f\x01\n\x08Language\x12\n\n\x02id\x18\x01 \x01(\x04\x12\x0c\n\x04name\x18\x02 \x01(\r\x12)\n\x04kind\x18\x03 \x01(\x0e\x32\x1b.wordweaver.v1.LanguageKind\x12\x1f\n\x17\x64\x65\x66\x61ult_class_ids_start\x18\x04 \x01(\x04\x12\x0e\n\x06stress\x18\x05 \x01(\x08\x12\r\n\x05tones\x18\x06 \x03(\r\x12\x0e\n\x06length\x18\x07 \x01(\x08\"9\n\rLanguageTable\x12(\n\x07records\x18\x01 \x03(\x0b\x32\x17.wordweaver.v1.Language\"`\n\x07Phoneme\x12\n\n\x02id\x18\x01 \x01(\x04\x12\x13\n\x0blanguage_id\x18\x02 \x01(\x04\x12\x0e\n\x06symbol\x18\x03 \x01(\r\x12\x16\n\tfrequency\x18\x04 \x01(\x01H\x00\x88\x01\x01\x42\x0c\n\n_frequency\"7\n\x0cPhonemeTable\x12\'\n\x07records\x18\x01 \x03(\x0b\x32\x16.wordweaver.v1.Phoneme\"\x9a\x01\n\x0cPhonemeClass\x12\n\n\x02id\x18\x01 \x01(\x04\x12\x13\n\x0blanguage_id\x18\x02 \x01(\x04\x12\x0c\n\x04name\x18\x03 \x01(\r\x12\x13\n\x0b\x64\x65\x66\x61ult_key\x18\x04 \x01(\r\x12\x13\n\x0bhand_edited\x18\x05 \x01(\x08\x12\x13\n\x0bphoneme_ids\x18\x06 \x03(\x04\x12\x12\n\x05label\x18\x07 \x01(\rH\x00\x88\x01\x01\x42\x08\n\x06_label\"A\n\x11PhonemeClassTable\x12,\n\x07records\x18\x01 \x03(\x0b\x32\x1b.wordweaver.v1.PhonemeClass\"G\n\x05\x45ntry\x12\n\n\x02id\x18\x01 \x01(\x04\x12\x13\n\x0blanguage_id\x18\x02 \x01(\x04\x12\x0c\n\x04\x66orm\x18\x03 \x03(\r\x12\x0f\n\x07tag_ids\x18\x04 \x03(\x04\"3\n\nEntryTable\x12%\n\x07records\x18\x01 \x03(\x0b\x32\x14.wordweaver.v1.Entry\"\xbb\x01\n\nDefinition\x12\n\n\x02id\x18\x01 \x01(\x04\x12\x10\n\x08\x65ntry_id\x18\x02 \x01(\x04\x12\x0f\n\x07glosses\x18\x03 \x03(\r\x12\x10\n\x08position\x18\x04 \x01(\r\x12\r\n\x05terms\x18\x05 \x03(\r\x12\x13\n\x0b\x64\x65scription\x18\x06 \x01(\r\x12\x34\n\x0e\x63oncept_source\x18\x07 \x01(\x0e\x32\x1c.wordweaver.v1.ConceptSource\x12\x12\n\nconcept_id\x18\x08 \x01(\r\"=\n\x0f\x44\x65\x66initionTable\x12*\n\x07records\x18\x01 \x03(\x0b\x32\x19.wordweaver.v1.Definition\"\x1f\n\x03Tag\x12\n\n\x02id\x18\x01 \x01(\x04\x12\x0c\n\x04name\x18\x02 \x01(\r\"/\n\x08TagTable\x12#\n\x07records\x18\x01 \x03(\x0b\x32\x12.wordweaver.v1.Tag\"C\n\x0b\x43ontextSide\x12(\n\x04kind\x18\x01 \x01(\x0e\x32\x1a.wordweaver.v1.ContextKind\x12\n\n\x02id\x18\x02 \x01(\x04\"\xae\x01\n\rAllophoneRule\x12\n\n\x02id\x18\x01 \x01(\x04\x12\x13\n\x0blanguage_id\x18\x02 \x01(\x04\x12\x12\n\nphoneme_id\x18\x03 \x01(\x04\x12\x11\n\tallophone\x18\x04 \x01(\r\x12*\n\x06\x62\x65\x66ore\x18\x05 \x01(\x0b\x32\x1a.wordweaver.v1.ContextSide\x12)\n\x05\x61\x66ter\x18\x06 \x01(\x0b\x32\x1a.wordweaver.v1.ContextSide\"C\n\x12\x41llophoneRuleTable\x12-\n\x07records\x18\x01 \x03(\x0b\x32\x1c.wordweaver.v1.AllophoneRule\"F\n\x11SyllableStructure\x12\n\n\x02id\x18\x01 \x01(\x04\x12\x13\n\x0blanguage_id\x18\x02 \x01(\x04\x12\x10\n\x08notation\x18\x03 \x01(\r\"K\n\x16SyllableStructureTable\x12\x31\n\x07records\x18\x01 \x03(\x0b\x32 .wordweaver.v1.SyllableStructure\"\xa2\x01\n\x05Patch\x12\x0f\n\x07strings\x18\x01 \x03(\t\x12,\n\x07singles\x18\x02 \x03(\x0b\x32\x1b.wordweaver.v1.ChunkReplace\x12,\n\x07upserts\x18\x03 \x03(\x0b\x32\x1b.wordweaver.v1.RecordUpsert\x12,\n\x07\x64\x65letes\x18\x04 \x03(\x0b\x32\x1b.wordweaver.v1.RecordDelete\"3\n\x0c\x43hunkReplace\x12\x12\n\nchunk_type\x18\x01 \x01(\r\x12\x0f\n\x07message\x18\x02 \x01(\x0c\"-\n\x0cRecordUpsert\x12\r\n\x05table\x18\x01 \x01(\r\x12\x0e\n\x06record\x18\x02 \x01(\x0c\")\n\x0cRecordDelete\x12\r\n\x05table\x18\x01 \x01(\r\x12\n\n\x02id\x18\x02 \x01(\x04*\x81\x01\n\x0cLanguageKind\x12\x1a\n\x16LANGUAGE_KIND_LANGUAGE\x10\x00\x12 \n\x1cLANGUAGE_KIND_PROTO_LANGUAGE\x10\x01\x12\x19\n\x15LANGUAGE_KIND_DIALECT\x10\x02\x12\x18\n\x14LANGUAGE_KIND_CREOLE\x10\x03*\x9f\x01\n\rConceptSource\x12\x17\n\x13\x43ONCEPT_SOURCE_NONE\x10\x00\x12\'\n#CONCEPT_SOURCE_OPEN_ENGLISH_WORDNET\x10\x01\x12,\n(CONCEPT_SOURCE_OPEN_MULTILINGUAL_WORDNET\x10\x02\x12\x1e\n\x1a\x43ONCEPT_SOURCE_CONCEPTICON\x10\x03*n\n\x0b\x43ontextKind\x12\x14\n\x10\x43ONTEXT_ANYTHING\x10\x00\x12\x19\n\x15\x43ONTEXT_WORD_BOUNDARY\x10\x01\x12\x13\n\x0f\x43ONTEXT_PHONEME\x10\x02\x12\x19\n\x15\x43ONTEXT_PHONEME_CLASS\x10\x03\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'wordweaver_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
-  _globals['_LANGUAGEKIND']._serialized_start=1791
-  _globals['_LANGUAGEKIND']._serialized_end=1920
-  _globals['_CONCEPTSOURCE']._serialized_start=1923
-  _globals['_CONCEPTSOURCE']._serialized_end=2082
-  _globals['_CONTEXTKIND']._serialized_start=2084
-  _globals['_CONTEXTKIND']._serialized_end=2194
+  _globals['_LANGUAGEKIND']._serialized_start=1971
+  _globals['_LANGUAGEKIND']._serialized_end=2100
+  _globals['_CONCEPTSOURCE']._serialized_start=2103
+  _globals['_CONCEPTSOURCE']._serialized_end=2262
+  _globals['_CONTEXTKIND']._serialized_start=2264
+  _globals['_CONTEXTKIND']._serialized_end=2374
   _globals['_STRINGTABLE']._serialized_start=35
   _globals['_STRINGTABLE']._serialized_end=65
   _globals['_PROJECTINFO']._serialized_start=67
@@ -49,34 +49,38 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_PHONEME']._serialized_end=454
   _globals['_PHONEMETABLE']._serialized_start=456
   _globals['_PHONEMETABLE']._serialized_end=511
-  _globals['_PHONEMECLASS']._serialized_start=513
-  _globals['_PHONEMECLASS']._serialized_end=637
-  _globals['_PHONEMECLASSTABLE']._serialized_start=639
-  _globals['_PHONEMECLASSTABLE']._serialized_end=704
-  _globals['_ENTRY']._serialized_start=706
-  _globals['_ENTRY']._serialized_end=777
-  _globals['_ENTRYTABLE']._serialized_start=779
-  _globals['_ENTRYTABLE']._serialized_end=830
-  _globals['_DEFINITION']._serialized_start=833
-  _globals['_DEFINITION']._serialized_end=1020
-  _globals['_DEFINITIONTABLE']._serialized_start=1022
-  _globals['_DEFINITIONTABLE']._serialized_end=1083
-  _globals['_TAG']._serialized_start=1085
-  _globals['_TAG']._serialized_end=1116
-  _globals['_TAGTABLE']._serialized_start=1118
-  _globals['_TAGTABLE']._serialized_end=1165
-  _globals['_CONTEXTSIDE']._serialized_start=1167
-  _globals['_CONTEXTSIDE']._serialized_end=1234
-  _globals['_ALLOPHONERULE']._serialized_start=1237
-  _globals['_ALLOPHONERULE']._serialized_end=1411
-  _globals['_ALLOPHONERULETABLE']._serialized_start=1413
-  _globals['_ALLOPHONERULETABLE']._serialized_end=1480
-  _globals['_PATCH']._serialized_start=1483
-  _globals['_PATCH']._serialized_end=1645
-  _globals['_CHUNKREPLACE']._serialized_start=1647
-  _globals['_CHUNKREPLACE']._serialized_end=1698
-  _globals['_RECORDUPSERT']._serialized_start=1700
-  _globals['_RECORDUPSERT']._serialized_end=1745
-  _globals['_RECORDDELETE']._serialized_start=1747
-  _globals['_RECORDDELETE']._serialized_end=1788
+  _globals['_PHONEMECLASS']._serialized_start=514
+  _globals['_PHONEMECLASS']._serialized_end=668
+  _globals['_PHONEMECLASSTABLE']._serialized_start=670
+  _globals['_PHONEMECLASSTABLE']._serialized_end=735
+  _globals['_ENTRY']._serialized_start=737
+  _globals['_ENTRY']._serialized_end=808
+  _globals['_ENTRYTABLE']._serialized_start=810
+  _globals['_ENTRYTABLE']._serialized_end=861
+  _globals['_DEFINITION']._serialized_start=864
+  _globals['_DEFINITION']._serialized_end=1051
+  _globals['_DEFINITIONTABLE']._serialized_start=1053
+  _globals['_DEFINITIONTABLE']._serialized_end=1114
+  _globals['_TAG']._serialized_start=1116
+  _globals['_TAG']._serialized_end=1147
+  _globals['_TAGTABLE']._serialized_start=1149
+  _globals['_TAGTABLE']._serialized_end=1196
+  _globals['_CONTEXTSIDE']._serialized_start=1198
+  _globals['_CONTEXTSIDE']._serialized_end=1265
+  _globals['_ALLOPHONERULE']._serialized_start=1268
+  _globals['_ALLOPHONERULE']._serialized_end=1442
+  _globals['_ALLOPHONERULETABLE']._serialized_start=1444
+  _globals['_ALLOPHONERULETABLE']._serialized_end=1511
+  _globals['_SYLLABLESTRUCTURE']._serialized_start=1513
+  _globals['_SYLLABLESTRUCTURE']._serialized_end=1583
+  _globals['_SYLLABLESTRUCTURETABLE']._serialized_start=1585
+  _globals['_SYLLABLESTRUCTURETABLE']._serialized_end=1660
+  _globals['_PATCH']._serialized_start=1663
+  _globals['_PATCH']._serialized_end=1825
+  _globals['_CHUNKREPLACE']._serialized_start=1827
+  _globals['_CHUNKREPLACE']._serialized_end=1878
+  _globals['_RECORDUPSERT']._serialized_start=1880
+  _globals['_RECORDUPSERT']._serialized_end=1925
+  _globals['_RECORDDELETE']._serialized_start=1927
+  _globals['_RECORDDELETE']._serialized_end=1968
 # @@protoc_insertion_point(module_scope)

@@ -17,6 +17,7 @@ from icons import bind_icon, icon as make_icon
 from lexicon_page import LexiconPage
 from pages import OverviewPage, WelcomePage
 from phonology_page import PhonologyPage
+from phonotactics_page import PhonotacticsPage
 from project_settings import ProjectSettings
 from theme import theme
 from widgets import Button, label
@@ -26,6 +27,7 @@ from wordweaver_project import Language, LanguageKind, Project, ProjectFileError
 NAV = [
     ("overview", "Overview", "layout-dashboard"),
     ("phonology", "Phonology", "audio-lines"),
+    ("phonotactics", "Phonotactics", "parentheses"),
     ("lexicon", "Lexicon", "book-open"),
 ]
 
@@ -74,9 +76,10 @@ class App(QMainWindow):
         self.overview_page.kind_changed.connect(self._on_kind_changed)
         self.phonology_page = PhonologyPage(self.pages)
         self.phonology_page.changed.connect(self._on_inventory_changed)
+        self.phonotactics_page = PhonotacticsPage(self.pages)
         self.lexicon_page = LexiconPage(self.pages)
         self.lexicon_page.inventory_changed.connect(self._on_lexicon_inventory_changed)
-        self.page_widgets = {"overview": self.overview_page, "phonology": self.phonology_page, "lexicon": self.lexicon_page}
+        self.page_widgets = {"overview": self.overview_page, "phonology": self.phonology_page, "phonotactics": self.phonotactics_page, "lexicon": self.lexicon_page}
         for page in self.page_widgets.values():
             self.pages.addWidget(page)
 
@@ -195,7 +198,7 @@ class App(QMainWindow):
     def _update_main_view(self):
         # First, turn the menu actions on or off for whether a Project is open.
         has_project = self.project is not None
-        for key in ("close", "save", "save_as", "compact", "export_csv", "seed", "settings", "copy", "overview", "phonology", "lexicon"):
+        for key in ("close", "save", "save_as", "compact", "export_csv", "seed", "settings", "copy", "overview", "phonology", "phonotactics", "lexicon"):
             self.menu_actions[key].setEnabled(has_project)
         self.menu_actions["paste"].setEnabled(has_project and pyperclip.paste() != '')
         # Then show the welcome page or the workspace.
@@ -228,6 +231,7 @@ class App(QMainWindow):
         # Finally, refresh the pages for the picked Language.
         self.overview_page.refresh(self.project, self.language)
         self.phonology_page.set_language(self.language)
+        self.phonotactics_page.set_language(self.language)
         self.lexicon_page.refresh(self.project, self.language)
 
     def _open_page(self, key: str, language: Language | None = None):
@@ -248,8 +252,9 @@ class App(QMainWindow):
         language.kind = kind
 
     def _on_inventory_changed(self):
-        # The Overview cards show the inventory, so keep them current.
+        # The Overview cards show the inventory, and Phonotactics uses it and the Classes, so keep them current.
         self.overview_page.refresh(self.project, self.language)
+        self.phonotactics_page.refresh()
 
     def _on_lexicon_inventory_changed(self):
         # The Lexicon added a Phoneme, so the Phonology page needs redrawing as well as the cards.

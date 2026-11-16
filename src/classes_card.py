@@ -48,7 +48,14 @@ class ClassesCard(Card):
         self.name_input.setPlaceholderText("Class name")
         self.name_input.returnPressed.connect(self.rename)
         name_row.addWidget(self.name_input, 1)
-        self.rename_button = Button("Rename", "pencil", parent=editor)
+        # The short label is what Syllable Structures use, like C in (C)V(C).
+        self.label_input = QLineEdit(editor)
+        self.label_input.setPlaceholderText("Label")
+        self.label_input.setToolTip("A short label for Syllable Structures, like C, V, or N")
+        self.label_input.setMaximumWidth(80)
+        self.label_input.returnPressed.connect(self.rename)
+        name_row.addWidget(self.label_input)
+        self.rename_button = Button("Save", "pencil", tooltip="Save the name and label", parent=editor)
         self.rename_button.clicked.connect(self.rename)
         name_row.addWidget(self.rename_button)
         self.delete_button = Button(icon="trash-2", variant="danger", tooltip="Delete this Class", parent=editor)
@@ -88,6 +95,8 @@ class ClassesCard(Card):
             if phoneme_class.is_default and size == 0 and not self.show_empty.isChecked() and phoneme_class is not self.selected:
                 continue
             text = f"{phoneme_class.name}  ({size})"
+            if phoneme_class.label:
+                text = f"{phoneme_class.label}  ·  " + text
             if not phoneme_class.is_default:
                 text += "  · yours"
             elif phoneme_class.is_hand_edited:
@@ -113,10 +122,11 @@ class ClassesCard(Card):
 
     def _show_selected(self):
         selected = self.selected
-        for widget in (self.name_input, self.rename_button, self.members_box):
+        for widget in (self.name_input, self.label_input, self.rename_button, self.members_box):
             widget.setEnabled(selected is not None)
         self.delete_button.setEnabled(selected is not None and not selected.is_default)
         self.name_input.setText(selected.name if selected is not None else "")
+        self.label_input.setText(selected.label if selected is not None else "")
         if selected is None:
             self.status.setText("Pick a Class to see its Phonemes.")
         elif not selected.is_default:
@@ -165,11 +175,17 @@ class ClassesCard(Card):
         self.changed.emit()
 
     def rename(self):
+        # Save both the name and the label, checking both first so a bad one changes neither.
         if self.selected is None:
             return
+        name, new_label = self.name_input.text().strip(), self.label_input.text().strip()
+        old_name, old_label = self.selected.name, self.selected.label
         try:
-            self.selected.name = self.name_input.text().strip()
+            self.selected.name = name
+            self.selected.label = new_label
         except ValueError as e:
+            self.selected.name = old_name
+            self.selected.label = old_label
             self._show_error(str(e))
             return
         self._show_error(None)
