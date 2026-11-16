@@ -140,3 +140,32 @@ message Tag {
 message TagTable {
   repeated Tag records = 1;
 }
+
+// Chunk PATCH. One save's worth of changes, applied on top of everything before it.
+// Patches are generic: they replace whole messages and point at records by table and ID.
+message Patch {
+  // New strings, added to the end of the string table.
+  repeated string strings = 1;
+  repeated ChunkReplace singles = 2;
+  repeated RecordUpsert upserts = 3;
+  repeated RecordDelete deletes = 4;
+}
+
+// Replace a single-message chunk, like PROJECT, with a new message.
+message ChunkReplace {
+  uint32 chunk_type = 1;
+  bytes message = 2;
+}
+
+// Insert a record, or replace the record with the same ID.
+message RecordUpsert {
+  // The chunk type of the record's table.
+  uint32 table = 1;
+  // The serialized record message.
+  bytes record = 2;
+}
+
+message RecordDelete {
+  uint32 table = 1;
+  uint64 id = 2;
+}

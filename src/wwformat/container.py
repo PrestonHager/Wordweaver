@@ -56,27 +56,58 @@ def encode_file(chunks: list[Chunk], major: int=MAJOR_VERSION, minor: int=MINOR_
     header = MAGIC.to_bytes(4, "big") + encode_varint(major) + encode_varint(minor)
     return header + b"".join(encode_chunk(chunk) for chunk in chunks)
 
-def decode_file(data: bytes) -> tuple[int, int, list[Chunk]]:
-    """Split file bytes into (major, minor, chunks), checking every chunk's CRC."""
+# Patch chunks are the only ones a crash can cut off, since they're appended to a finished file.
+# ChunkType.PATCH uses this.
+# NOTE: keep it under 128, so a cut-off patch always has its whole one-byte type ID to go on.
+PATCH_TYPE_ID = 127
+
+@dataclass
+class DecodedFile:
+    major: int
+    minor: int
+    chunks: list[Chunk]
+    # True when a broken patch at the end of the file was dropped.
+    dropped_patch: bool = False
+
+def decode_file(data: bytes) -> DecodedFile:
+    """Split file bytes into chunks, checking every chunk's CRC."""
     # First, check that this is a Wordweaver file at all.
     if len(data) < 4 or int.from_bytes(data[:4], "big") != MAGIC:
         raise ProjectFileError("This isn't a Wordweaver Project file")
     major, pos = decode_varint(data, 4)
     minor, pos = decode_varint(data, pos)
+    decoded = DecodedFile(major, minor, [])
     # Then read chunks until the end of the file.
     # The version and unknown chunk rules are checked one layer up, in FileContents.decode.
-    # TODO: dropping a cut-off patch comes in #32.
-    chunks = []
     while pos < len(data):
-        start = pos
         type_id, pos = decode_varint(data, pos)
+        try:
+            chunk, pos = _decode_chunk_body(data, pos, type_id)
+        except CorruptFileError:
+            # If the last save was cut off or garbled, drop that patch and load the file as it was before it.
+            if type_id == PATCH_TYPE_ID and _runs_to_end(data, pos):
+                decoded.dropped_patch = True
+                break
+            raise
+        decoded.chunks.append(chunk)
+    return decoded
+
+def _decode_chunk_body(data: bytes, pos: int, type_id: int) -> tuple[Chunk, int]:
+    # The type ID was already read, so `pos` is at the length. The CRC covers the type ID too.
+    start = pos - len(encode_varint(type_id))
+    length, pos = decode_varint(data, pos)
+    end = pos + length
+    if end + 4 > len(data):
+        raise CorruptFileError("The file ends in the middle of a chunk")
+    crc = int.from_bytes(data[end:end + 4], "big")
+    if zlib.crc32(data[start:end]) != crc:
+        raise CorruptFileError(f"This Project file is damaged (chunk {type_id} failed its CRC check)")
+    return Chunk(type_id, data[pos:end]), end + 4
+
+def _runs_to_end(data: bytes, pos: int) -> bool:
+    # Check that a broken chunk is the last thing in the file, so we never drop a patch with others after it.
+    try:
         length, pos = decode_varint(data, pos)
-        end = pos + length
-        if end + 4 > len(data):
-            raise CorruptFileError("The file ends in the middle of a chunk")
-        crc = int.from_bytes(data[end:end + 4], "big")
-        if zlib.crc32(data[start:end]) != crc:
-            raise CorruptFileError(f"This Project file is damaged (chunk {type_id} failed its CRC check)")
-        chunks.append(Chunk(type_id, data[pos:end]))
-        pos = end + 4
-    return major, minor, chunks
+    except CorruptFileError:
+        return True
+    return pos + length + 4 >= len(data)
