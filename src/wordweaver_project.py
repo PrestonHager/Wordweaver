@@ -11,7 +11,7 @@ from lexicon import ConceptReference, ConceptSource, Definition, Entry, Form, Le
 from lexicon_csv import export_csv
 from phoneme_classes import DEFAULT_CLASS_ID_BLOCK, PhonemeClass, PhonemeClasses
 from phonology import Phoneme, PhonemeInventory
-from phonotactics import Phonotactics, SyllableStructure, parse_notation
+from phonotactics import ConstraintAtom, ConstraintMode, Phonotactics, SyllablePart, SyllablePosition, SyllableStructure, parse_notation
 from suprasegmentals import Suprasegmentals
 from tags import Tag, Tags
 from wwformat import ChunkType, CorruptFileError, FileContents, NewerVersionError, ProjectFileError, StringTable, UnknownChunkError, pb
@@ -156,6 +156,13 @@ class Project:
     @property
     def languages(self) -> list[Language]:
         return list(self._languages)
+
+    @property
+    def is_dirty(self) -> bool:
+        """Whether the Project has changes that are not in its saved file."""
+        if self.file is None or self._saved is None:
+            return True
+        return self._to_contents(self._saved.strings.copy()).patch_from(self._saved) is not None
 
     def add_language(self, name: str, kind: LanguageKind=LanguageKind.LANGUAGE) -> Language:
         language = Language(self._new_id(), name, self._new_id, kind, self._reserve_ids(DEFAULT_CLASS_ID_BLOCK), tags=self.tags)
@@ -313,6 +320,17 @@ class Project:
                     before=_side_to_record(rule.before), after=_side_to_record(rule.after)))
             for structure in language.phonotactics.syllable_structures:
                 contents.add_record(ChunkType.SYLLABLE_STRUCTURES, pb.SyllableStructure(id=structure.id, language_id=language.id, notation=strings.index(structure.notation)))  # pyright: ignore[reportAttributeAccessIssue]  Generated protobuf message.
+            for constraint in language.phonotactics.constraints:
+                contents.add_record(ChunkType.PHONOTACTIC_CONSTRAINTS, pb.PhonotacticConstraint(
+                    id=constraint.id,
+                    language_id=language.id,
+                    atoms=[strings.index(atom.value) for atom in constraint.atoms],
+                    atom_classes=[atom.is_class for atom in constraint.atoms],
+                    part=0 if constraint.part is None else list(SyllablePart).index(constraint.part) + 1,
+                    position=int(constraint.position),
+                    across_boundaries=constraint.across_boundaries,
+                    mode=int(constraint.mode),
+                ))
         contents.unknown_chunks = list(self._unknown_chunks)
         return contents
 
@@ -419,6 +437,21 @@ class Project:
             except ValueError as e:
                 raise CorruptFileError(f"Syllable Structure {record.id} isn't written right") from e
             languages[record.language_id].phonotactics._restore(record.id, strings[record.notation])
+        for record in contents.records(ChunkType.PHONOTACTIC_CONSTRAINTS):
+            if record.language_id not in languages:
+                raise CorruptFileError(f"Phonotactic Constraint {record.id} belongs to a Language that isn't in the file")
+            if not record.atoms or len(record.atom_classes) != len(record.atoms):
+                raise CorruptFileError(f"Phonotactic Constraint {record.id} has no valid atom sequence")
+            try:
+                part = None if record.part == 0 else list(SyllablePart)[record.part - 1]
+                position = SyllablePosition(record.position)
+                mode = ConstraintMode(record.mode)
+            except (IndexError, ValueError) as e:
+                raise CorruptFileError(f"Phonotactic Constraint {record.id} has an invalid scope") from e
+            atoms = tuple(ConstraintAtom(strings[value], is_class)
+                          for value, is_class in zip(record.atoms, record.atom_classes))
+            languages[record.language_id].phonotactics._restore_constraint(
+                record.id, atoms, part, position, record.across_boundaries, mode)
         project._unknown_chunks = list(contents.unknown_chunks)
         return project
 

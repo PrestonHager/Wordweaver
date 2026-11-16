@@ -2,7 +2,7 @@
 
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
-from enum import Enum
+from enum import Enum, IntEnum
 
 from lexicon import Form
 from phoneme_classes import PhonemeClass, PhonemeClasses
@@ -16,6 +16,108 @@ class SyllablePart(Enum):
 
     def __str__(self) -> str:
         return self.value
+
+class SyllablePosition(IntEnum):
+    """Where a syllable occurs in a Form."""
+    ANY = 0
+    FIRST = 1
+    MIDDLE = 2
+    LAST = 3
+    ONLY = 4
+    NON_FIRST = 5
+
+class ConstraintMode(IntEnum):
+    """Whether a Phonotactic Constraint bans or allows its sequence."""
+    BAN = 0
+    ALLOW = 1
+
+class ConstraintAtom:
+    """One Phoneme or Phoneme Class in a Phonotactic Constraint."""
+
+    def __init__(self, value: str, is_class: bool):
+        self.value = value
+        self.is_class = is_class
+
+    def matches(self, symbol: str, phonotactics: "Phonotactics") -> bool:
+        if self.is_class:
+            phoneme_class = phonotactics._classes.with_label(self.value) or phonotactics._classes.get(self.value)
+            return phoneme_class is not None and symbol in phoneme_class
+        return symbol == self.value
+
+    def __str__(self) -> str:
+        return self.value
+
+class PhonotacticConstraint:
+    """A rule banning a sequence in a part and/or position of a Form."""
+
+    def __init__(self, id: int, phonotactics: "Phonotactics", atoms: tuple[ConstraintAtom, ...],
+                 part: SyllablePart | None, position: SyllablePosition, across_boundaries: bool,
+                 mode: ConstraintMode):
+        self._id = id
+        self._phonotactics = phonotactics
+        self.atoms = atoms
+        self.part = part
+        self.position = position
+        self.across_boundaries = across_boundaries
+        self.mode = mode
+
+    @property
+    def id(self) -> int:
+        return self._id
+
+    def __str__(self) -> str:
+        sequence = " ".join(str(atom) for atom in self.atoms)
+        location = str(self.part) if self.part is not None else "anywhere"
+        positions = {
+            SyllablePosition.ANY: "any syllable",
+            SyllablePosition.FIRST: "the first syllable",
+            SyllablePosition.MIDDLE: "a middle syllable",
+            SyllablePosition.LAST: "the last syllable",
+            SyllablePosition.ONLY: "the only syllable",
+            SyllablePosition.NON_FIRST: "a non-first syllable",
+        }
+        action = "only allow" if self.mode is ConstraintMode.ALLOW else "ban"
+        return f"{action} {sequence} in {location.lower()} of {positions[self.position]}"
+
+    def matches(self, syllables: list["Syllable"]) -> bool:
+        if not syllables or not self.atoms:
+            return False
+        selected = [
+            syllable for index, syllable in enumerate(syllables)
+            if self.position is SyllablePosition.ANY
+            or self.position is SyllablePosition.FIRST and index == 0
+            or self.position is SyllablePosition.LAST and index == len(syllables) - 1
+            or self.position is SyllablePosition.ONLY and len(syllables) == 1
+            or self.position is SyllablePosition.MIDDLE and 0 < index < len(syllables) - 1
+            or self.position is SyllablePosition.NON_FIRST and index > 0
+        ]
+        if not selected:
+            return False
+        if self.mode is ConstraintMode.ALLOW:
+            for syllable in selected:
+                sequence = syllable.phonemes if self.part is None else syllable._in(self.part)
+                if len(sequence) != len(self.atoms) or not all(
+                    atom.matches(symbol, self._phonotactics)
+                    for atom, symbol in zip(self.atoms, sequence)
+                ):
+                    return True
+            return False
+        if self.part is None:
+            if self.across_boundaries:
+                if self.position is SyllablePosition.ANY:
+                    starts = [0]
+                else:
+                    starts = [index for index, syllable in enumerate(syllables) if syllable in selected]
+                sequences = [tuple(symbol for syllable in syllables[start:] for symbol in syllable.phonemes) for start in starts]
+            else:
+                sequences = [syllable.phonemes for syllable in selected]
+        else:
+            sequences = [tuple(syllable._in(self.part)) for syllable in selected]
+        return any(
+            any(all(atom.matches(symbol, self._phonotactics) for atom, symbol in zip(self.atoms, sequence[start:start + len(self.atoms)]))
+                for start in range(len(sequence) - len(self.atoms) + 1))
+            for sequence in sequences
+        )
 
 def parse_notation(notation: str) -> list[tuple[str, bool]]:
     """Read a Syllable Structure like "(C)V(C)" into its positions, as (label, optional) pairs.
@@ -189,10 +291,35 @@ class Phonotactics:
         self._classes = classes
         self._new_id = new_id
         self._structures: list[SyllableStructure] = []
+        self._constraints: list[PhonotacticConstraint] = []
 
     @property
     def syllable_structures(self) -> list[SyllableStructure]:
         return list(self._structures)
+
+    @property
+    def constraints(self) -> list[PhonotacticConstraint]:
+        return list(self._constraints)
+
+    def add_constraint(self, atoms: list[ConstraintAtom] | tuple[ConstraintAtom, ...],
+                       part: SyllablePart | None = None, position: SyllablePosition = SyllablePosition.ANY,
+                       across_boundaries: bool = True, mode: ConstraintMode = ConstraintMode.BAN) -> PhonotacticConstraint:
+        if not atoms:
+            raise ValueError("A Phonotactic Constraint needs at least one Phoneme or Phoneme Class")
+        if any(not atom.value for atom in atoms):
+            raise ValueError("A Phonotactic Constraint can't contain an empty Phoneme or Phoneme Class")
+        for atom in atoms:
+            if atom.is_class:
+                if self._classes.with_label(atom.value) is None and self._classes.get(atom.value) is None:
+                    raise ValueError(f"{atom.value} isn't a Phoneme Class in this Language")
+            elif self._inventory.get(atom.value) is None:
+                raise ValueError(f"{atom.value} isn't a Phoneme in this Language")
+        constraint = PhonotacticConstraint(self._new_id(), self, tuple(atoms), part, position, across_boundaries, mode)
+        self._constraints.append(constraint)
+        return constraint
+
+    def remove_constraint(self, constraint: PhonotacticConstraint):
+        self._constraints.remove(constraint)
 
     def add_syllable_structure(self, notation: str) -> SyllableStructure:
         """Add a Syllable Structure written like (C)V(C).
@@ -270,8 +397,11 @@ class Phonotactics:
             if not any(s.problem is None for s in self._structures):
                 return [CantSyllabify(f"/{text}/ can't be split into syllables, since there aren't any Syllable Structures that can be used")]
             return [CantSyllabify(f"/{text}/ can't be split into syllables that fit the Syllable Structures")]
-        # NOTE: later rules, like Phonotactic Constraints, add their own Violations here.
-        return []
+        violations = []
+        for constraint in self._constraints:
+            if constraint.matches(syllables):
+                violations.append(Violation(f"/{''.join(phonemes)}/ breaks Phonotactic Constraint: {constraint}"))
+        return violations
 
     def _phonemes(self, form: Form | str | tuple[str, ...]) -> tuple[str, ...]:
         if isinstance(form, Form):
@@ -316,6 +446,13 @@ class Phonotactics:
         self._structures.append(structure)
         return structure
 
+    def _restore_constraint(self, id: int, atoms: tuple[ConstraintAtom, ...], part: SyllablePart | None,
+                            position: SyllablePosition, across_boundaries: bool,
+                            mode: ConstraintMode) -> PhonotacticConstraint:
+        constraint = PhonotacticConstraint(id, self, atoms, part, position, across_boundaries, mode)
+        self._constraints.append(constraint)
+        return constraint
+
     def __iter__(self) -> Iterator[SyllableStructure]:
         return iter(list(self._structures))
 
@@ -336,4 +473,6 @@ def _fill(phonemes: tuple[str, ...], positions: list[Position], sets: list[set[s
         return None
     return walk(0, 0)
 
-__all__ = ["CantSyllabify", "Phonotactics", "Position", "Syllable", "SyllablePart", "SyllableStructure", "Violation", "parse_notation", "write_notation", "write_syllables"]
+__all__ = ["CantSyllabify", "ConstraintAtom", "PhonotacticConstraint", "Phonotactics", "Position",
+           "Syllable", "SyllablePart", "SyllablePosition", "SyllableStructure", "ConstraintMode", "Violation",
+           "parse_notation", "write_notation", "write_syllables"]

@@ -40,6 +40,7 @@ class TestApp(unittest.TestCase):
         self.assertIs(self.window.root.currentWidget(), self.window.workspace)
         self.assertIs(self.window.pages.currentWidget(), self.window.overview_page)
         self.assertEqual(self.window.language_picker.currentText(), "Testish")
+        self.assertTrue(self.project.is_dirty)
 
     def test_chart_toggles_inventory(self):
         page = self.window.phonology_page

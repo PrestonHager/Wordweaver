@@ -366,7 +366,28 @@ class App(QMainWindow):
         self.logger.info("Closed current project")
 
     def prompt_save(self) -> bool:
-        return True
+        if self.project is None or not self.project.is_dirty:
+            return True
+        answer = QMessageBox.warning(
+            self,
+            "Unsaved Changes",
+            f"\"{self.project.name}\" has unsaved changes.",
+            QMessageBox.StandardButton.Save
+            | QMessageBox.StandardButton.Discard
+            | QMessageBox.StandardButton.Cancel,
+            QMessageBox.StandardButton.Save,
+        )
+        if answer == QMessageBox.StandardButton.Cancel:
+            return False
+        if answer == QMessageBox.StandardButton.Discard:
+            return True
+        try:
+            self.save()
+        except (OSError, ValueError) as e:
+            self.logger.warning(f"Couldn't save project: {e}")
+            QMessageBox.warning(self, "Couldn't Save Project", str(e))
+            return False
+        return not self.project.is_dirty
 
     def save(self):
         # See if the project has a file associated with it
@@ -510,7 +531,9 @@ class App(QMainWindow):
         # If there is an unsaved project, then prompt the user to save it
         if self.project is not None:
             if not self.prompt_save():
-                pass
+                if a0 is not None:
+                    a0.ignore()
+                return
             # Save the window metadata for later
             with open(user_cache_path("Wordweaver", False, ensure_exists=True).joinpath(Path(".editor")), "w") as f_out:
                 f_out.write(f"{self.project.file}")

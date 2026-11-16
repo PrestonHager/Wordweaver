@@ -99,20 +99,22 @@ class PhonemeTable(_message.Message):
     def __init__(self, records: _Optional[_Iterable[_Union[Phoneme, _Mapping]]] = ...) -> None: ...
 
 class PhonemeClass(_message.Message):
-    __slots__ = ("id", "language_id", "name", "default_key", "hand_edited", "phoneme_ids")
+    __slots__ = ("id", "language_id", "name", "default_key", "hand_edited", "phoneme_ids", "label")
     ID_FIELD_NUMBER: _ClassVar[int]
     LANGUAGE_ID_FIELD_NUMBER: _ClassVar[int]
     NAME_FIELD_NUMBER: _ClassVar[int]
     DEFAULT_KEY_FIELD_NUMBER: _ClassVar[int]
     HAND_EDITED_FIELD_NUMBER: _ClassVar[int]
     PHONEME_IDS_FIELD_NUMBER: _ClassVar[int]
+    LABEL_FIELD_NUMBER: _ClassVar[int]
     id: int
     language_id: int
     name: int
     default_key: int
     hand_edited: bool
     phoneme_ids: _containers.RepeatedScalarFieldContainer[int]
-    def __init__(self, id: _Optional[int] = ..., language_id: _Optional[int] = ..., name: _Optional[int] = ..., default_key: _Optional[int] = ..., hand_edited: _Optional[bool] = ..., phoneme_ids: _Optional[_Iterable[int]] = ...) -> None: ...
+    label: int
+    def __init__(self, id: _Optional[int] = ..., language_id: _Optional[int] = ..., name: _Optional[int] = ..., default_key: _Optional[int] = ..., hand_edited: _Optional[bool] = ..., phoneme_ids: _Optional[_Iterable[int]] = ..., label: _Optional[int] = ...) -> None: ...
 
 class PhonemeClassTable(_message.Message):
     __slots__ = ("records",)
@@ -207,6 +209,48 @@ class AllophoneRuleTable(_message.Message):
     RECORDS_FIELD_NUMBER: _ClassVar[int]
     records: _containers.RepeatedCompositeFieldContainer[AllophoneRule]
     def __init__(self, records: _Optional[_Iterable[_Union[AllophoneRule, _Mapping]]] = ...) -> None: ...
+
+class SyllableStructure(_message.Message):
+    __slots__ = ("id", "language_id", "notation")
+    ID_FIELD_NUMBER: _ClassVar[int]
+    LANGUAGE_ID_FIELD_NUMBER: _ClassVar[int]
+    NOTATION_FIELD_NUMBER: _ClassVar[int]
+    id: int
+    language_id: int
+    notation: int
+    def __init__(self, id: _Optional[int] = ..., language_id: _Optional[int] = ..., notation: _Optional[int] = ...) -> None: ...
+
+class SyllableStructureTable(_message.Message):
+    __slots__ = ("records",)
+    RECORDS_FIELD_NUMBER: _ClassVar[int]
+    records: _containers.RepeatedCompositeFieldContainer[SyllableStructure]
+    def __init__(self, records: _Optional[_Iterable[_Union[SyllableStructure, _Mapping]]] = ...) -> None: ...
+
+class PhonotacticConstraint(_message.Message):
+    __slots__ = ("id", "language_id", "atoms", "atom_classes", "part", "position", "across_boundaries", "mode")
+    ID_FIELD_NUMBER: _ClassVar[int]
+    LANGUAGE_ID_FIELD_NUMBER: _ClassVar[int]
+    ATOMS_FIELD_NUMBER: _ClassVar[int]
+    ATOM_CLASSES_FIELD_NUMBER: _ClassVar[int]
+    PART_FIELD_NUMBER: _ClassVar[int]
+    POSITION_FIELD_NUMBER: _ClassVar[int]
+    ACROSS_BOUNDARIES_FIELD_NUMBER: _ClassVar[int]
+    MODE_FIELD_NUMBER: _ClassVar[int]
+    id: int
+    language_id: int
+    atoms: _containers.RepeatedScalarFieldContainer[int]
+    atom_classes: _containers.RepeatedScalarFieldContainer[bool]
+    part: int
+    position: int
+    across_boundaries: bool
+    mode: int
+    def __init__(self, id: _Optional[int] = ..., language_id: _Optional[int] = ..., atoms: _Optional[_Iterable[int]] = ..., atom_classes: _Optional[_Iterable[bool]] = ..., part: _Optional[int] = ..., position: _Optional[int] = ..., across_boundaries: _Optional[bool] = ..., mode: _Optional[int] = ...) -> None: ...
+
+class PhonotacticConstraintTable(_message.Message):
+    __slots__ = ("records",)
+    RECORDS_FIELD_NUMBER: _ClassVar[int]
+    records: _containers.RepeatedCompositeFieldContainer[PhonotacticConstraint]
+    def __init__(self, records: _Optional[_Iterable[_Union[PhonotacticConstraint, _Mapping]]] = ...) -> None: ...
 
 class Patch(_message.Message):
     __slots__ = ("strings", "singles", "upserts", "deletes")

@@ -10,7 +10,7 @@ from os import path
 sys.path.append(path.abspath(path.join(path.dirname(__file__), '../src')))
 
 from lexicon import Form
-from phonotactics import CantSyllabify, SyllablePart, write_syllables
+from phonotactics import CantSyllabify, ConstraintAtom, ConstraintMode, SyllablePart, SyllablePosition, write_syllables
 from wordweaver_project import Project
 
 class TestPhonotactics(unittest.TestCase):
@@ -34,6 +34,7 @@ class TestPhonotactics(unittest.TestCase):
 
     def round_trip(self):
         self.project.save(self.file)
+        self.assertFalse(self.project.is_dirty)
         return Project.load(self.file).languages[0]
 
     def test_default_classes_have_labels(self):
@@ -180,6 +181,7 @@ class TestPhonotactics(unittest.TestCase):
         self.language.get_class("Sibilant").label = "Z"
         self.language.get_class("Fricative").label = ""
         loaded = self.round_trip()
+        self.assertFalse(loaded.phonotactics.constraints)
         self.assertEqual([(s.id, s.notation) for s in loaded.phonotactics.syllable_structures], [(first.id, first.notation), (third.id, third.notation)])
         self.assertEqual(loaded.class_with_label("R").symbols, ["l"])
         self.assertEqual(loaded.class_with_label("Z").name, "Sibilant")
@@ -213,6 +215,51 @@ class TestPhonotactics(unittest.TestCase):
         self.assertEqual(loaded.class_with_label("Nm").name, "Nasal")
         self.assertIsNotNone(loaded.phonotactics.syllable_structures[0].problem)
         self.assertEqual(self.split("sta"), "sta")
+
+    def test_constraints_ban_phonemes_classes_and_positions(self):
+        self.phonotactics.add_syllable_structure("CVC")
+        stop = self.language.get_class("Stop")
+        assert stop is not None
+        self.language.inventory.add("ŋ")
+        constraint = self.phonotactics.add_constraint(
+            [ConstraintAtom("ŋ", False)], SyllablePart.ONSET)
+        self.assertTrue(self.passes("pat"))
+        self.assertFalse(self.passes("ŋat"))
+        self.phonotactics.remove_constraint(constraint)
+        self.phonotactics.add_constraint([ConstraintAtom("Stop", True)], SyllablePart.CODA, SyllablePosition.LAST)
+        self.assertFalse(self.passes("pat"))
+        self.assertTrue(self.passes("pam"))
+
+    def test_constraints_can_ban_sequences_across_syllable_boundaries(self):
+        self.phonotactics.add_syllable_structure("(C)V(C)")
+        stop = self.language.get_class("Stop")
+        assert stop is not None
+        stop.label = "Sx"
+        self.phonotactics.add_constraint(
+            [ConstraintAtom("Sx", True), ConstraintAtom("Sx", True)], across_boundaries=True)
+        self.assertFalse(self.passes("patka"))
+        self.assertTrue(self.passes("pasta"))
+
+    def test_allow_constraints_can_shape_first_and_non_first_syllables(self):
+        self.phonotactics.add_syllable_structure("V")
+        self.phonotactics.add_syllable_structure("CV")
+        self.phonotactics.add_constraint([ConstraintAtom("V", True)], position=SyllablePosition.FIRST,
+                                          mode=ConstraintMode.ALLOW)
+        self.phonotactics.add_constraint([ConstraintAtom("C", True), ConstraintAtom("V", True)],
+                                          position=SyllablePosition.NON_FIRST, mode=ConstraintMode.ALLOW)
+        self.assertTrue(self.passes("apapa"))
+        self.assertFalse(self.passes("papa"))
+        self.assertFalse(self.passes("apaia"))
+
+    def test_constraints_round_trip(self):
+        self.phonotactics.add_syllable_structure("V")
+        self.phonotactics.add_constraint([ConstraintAtom("V", True)], position=SyllablePosition.FIRST,
+                                          mode=ConstraintMode.ALLOW)
+        self.project.save(self.file)
+        loaded = Project.load(self.file).languages[0].phonotactics
+        self.assertEqual(len(loaded.constraints), 1)
+        self.assertEqual(loaded.constraints[0].mode, ConstraintMode.ALLOW)
+        self.assertEqual(loaded.constraints[0].position, SyllablePosition.FIRST)
 
 if __name__ == "__main__":
     unittest.main()
