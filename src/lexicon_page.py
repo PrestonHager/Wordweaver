@@ -1,12 +1,12 @@
 # lexicon_page.py
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QDialog, QHBoxLayout, QListWidget, QListWidgetItem, QMessageBox, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QComboBox, QDialog, QHBoxLayout, QLineEdit, QListWidget, QListWidgetItem, QMessageBox, QVBoxLayout, QWidget
 
 import logging
 
 from entry_editor import EntryEditor
-from lexicon import Entry
+from lexicon import Entry, SearchField, SortOrder
 from tag_widgets import TagFilter, TagManager
 from widgets import Button, Card, EmptyState, PageHeader, label
 from wordweaver_project import Language, Project
@@ -37,14 +37,32 @@ class LexiconPage(QWidget):
 
         # Then the Entry list in a card, with buttons for the picked Entry under it.
         self.list_card = Card(self)
-        # The Tag filter sits on top, so you can work on one group of words at a time.
+        # The search box and Tag filter sit on top, so you can work on one group of words at a time.
         toolbar = QHBoxLayout()
+        self.search_box = QLineEdit(self.list_card)
+        self.search_box.setPlaceholderText("Search")
+        self.search_box.setClearButtonEnabled(True)
+        self.search_box.textChanged.connect(lambda _text: self._update_lexicon_list())
+        toolbar.addWidget(self.search_box, 1)
+        self.search_field_picker = QComboBox(self.list_card)
+        for field in SearchField:
+            self.search_field_picker.addItem(str(field), field)
+        self.search_field_picker.setCurrentIndex(list(SearchField).index(SearchField.GLOSS))
+        self.search_field_picker.currentIndexChanged.connect(lambda _index: self._update_lexicon_list())
+        toolbar.addWidget(self.search_field_picker)
+        toolbar.addSpacing(8)
         toolbar.addWidget(label("Tag", "muted", self.list_card))
         self.tag_filter = TagFilter(self.list_card)
-        self.tag_filter.setMinimumWidth(180)
+        self.tag_filter.setMinimumWidth(160)
         self.tag_filter.currentIndexChanged.connect(lambda _index: self._update_lexicon_list())
         toolbar.addWidget(self.tag_filter)
-        toolbar.addStretch()
+        toolbar.addSpacing(8)
+        toolbar.addWidget(label("Sort", "muted", self.list_card))
+        self.sort_picker = QComboBox(self.list_card)
+        for order in SortOrder:
+            self.sort_picker.addItem(str(order), order)
+        self.sort_picker.currentIndexChanged.connect(lambda _index: self._update_lexicon_list())
+        toolbar.addWidget(self.sort_picker)
         self.list_card.layout.addLayout(toolbar)
         self.lexicon_list = QListWidget(self.list_card)
         self.lexicon_list.setObjectName("EntryList")
@@ -80,7 +98,8 @@ class LexiconPage(QWidget):
         # First, refill the Tag filter, since Tags can change from the editor or the Tag manager.
         self.tag_filter.refresh(self.project.tags)
         tag = self.tag_filter.picked_tag(self.project.tags)
-        entries = self.language.lexicon.tagged(tag) if tag is not None else self.language.lexicon
+        # Now search inside that Tag, and let the Lexicon decide the order.
+        entries = self.language.lexicon.search(self.search_box.text(), self.search_field_picker.currentData(), tag=tag, sort=self.sort_picker.currentData())
         # Then show each Entry as its Form, Glosses, and Tags, and keep its ID on the item to find it again.
         # With Polysemy, number each Definition so you can tell them apart.
         self.lexicon_list.clear()
