@@ -72,6 +72,23 @@ To lint the code, use `pylint`. It may need to be installed using `pip install p
 pylint --rcfile=pylintrc src
 ```
 
+### Changing the Project File Format
+
+The `.wwproj` format lives in `src/wwformat`, and its payloads are defined in `src/wwformat/proto/wordweaver.proto`.
+If you change the `.proto` file, regenerate `wordweaver_pb2.py` with the dev tools (`uv sync` installs them):
+
+```bash
+uv run python -m grpc_tools.protoc -I src/wwformat/proto --python_out=src/wwformat src/wwformat/proto/wordweaver.proto
+```
+
+If the change means old files won't load, rebuild the bundled default Project too:
+
+```bash
+uv run python scripts/make_default_project.py
+```
+
+### Building the Documentation
+
 To build the documentation use the `sphinx-build` command as follows:
 
 ```bash

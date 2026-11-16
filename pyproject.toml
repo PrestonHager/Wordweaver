@@ -7,6 +7,7 @@ requires-python = ">=3.14"
 dependencies = [
     "ipapy",
     "platformdirs>=4.14.5",
+    "protobuf>=7.36.2",
     "pyinstaller>=6.22.3",
     "pyperclip>=1.11.0",
     "pyqt6>=6.12.1",
@@ -25,3 +26,8 @@ packages = ["src/main.py"]
 
 [tool.uv.sources]
 ipapy = { git = "https://github.com/PrestonHager/ipapy", rev = "v0.0.10.0" }
+
+[dependency-groups]
+dev = [
+    "grpcio-tools>=1.85.1",
+]
