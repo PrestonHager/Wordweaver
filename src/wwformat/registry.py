@@ -13,7 +13,7 @@ class ChunkType(IntEnum):
     PROJECT = 3
     LANGUAGES = 5
     PHONEMES = 7
-    PHONEME_CLASSES = 9
+    PHONEME_CLASSES = 15
 
 def is_critical(type_id: int) -> bool:
     return type_id % 2 == 1
