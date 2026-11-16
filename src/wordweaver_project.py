@@ -5,6 +5,7 @@ from enum import IntEnum
 from pathlib import Path
 
 from lexicon import Definition, Entry, Form, Lexicon
+from lexicon_csv import export_csv
 from phoneme_classes import DEFAULT_CLASS_ID_BLOCK, PhonemeClass, PhonemeClasses
 from phonology import Phoneme, PhonemeInventory
 from tags import Tag, Tags
@@ -99,6 +100,15 @@ class Project:
     def tagged(self, tag: Tag) -> list[Entry]:
         """Find every Entry with a Tag, in every Language."""
         return [entry for language in self._languages for entry in language.lexicon.tagged(tag)]
+
+    def export_lexicon_csv(self, language: Language) -> str:
+        """Return a Language's Lexicon as CSV text, with one row per Definition. See lexicon_csv for the columns.
+
+        :raises ValueError: If the Language isn't in this Project.
+        """
+        if language not in self._languages:
+            raise ValueError(f"Language {language.id} isn't in this Project")
+        return export_csv(language.lexicon, self.tags)
 
     def _untag_everywhere(self, tag: Tag):
         for language in self._languages:
