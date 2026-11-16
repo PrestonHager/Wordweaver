@@ -1,5 +1,6 @@
 # test/test_patches.py
 
+import os
 import unittest
 import tempfile
 
@@ -22,6 +23,13 @@ def snapshot(project: Project) -> list:
         for language in project.languages
     ]
 
+def padded_project() -> Project:
+    # Files compact once patches pass about a quarter of them, so these tests start from a file big enough to hold a few patches.
+    project = Project("Test Project")
+    for _ in range(60):
+        project.tags.add(os.urandom(16).hex())
+    return project
+
 class TestPatches(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -35,7 +43,7 @@ class TestPatches(unittest.TestCase):
             return f_in.read()
 
     def test_second_save_appends(self):
-        project = Project("Test Project")
+        project = padded_project()
         project.add_language("First").inventory.set_symbols(["p", "a"])
         project.save(self.file)
         first = self.read_file()
@@ -47,7 +55,7 @@ class TestPatches(unittest.TestCase):
         self.assertEqual(snapshot(Project.load(self.file)), snapshot(project))
 
     def test_edits_round_trip_through_patches(self):
-        project = Project("Test Project")
+        project = padded_project()
         first = project.add_language("First")
         first.inventory.set_symbols(["p", "t", "a"])
         second = project.add_language("Second", LanguageKind.DIALECT)
@@ -64,7 +72,7 @@ class TestPatches(unittest.TestCase):
         self.assertEqual(snapshot(Project.load(self.file)), snapshot(project))
 
     def test_classes_lexicon_and_tags_round_trip_through_patches(self):
-        project = Project("Test Project")
+        project = padded_project()
         language = project.add_language("Test")
         language.inventory.set_symbols(["p", "t", "a", "i"])
         stops = language.add_class("Stops")
@@ -91,7 +99,7 @@ class TestPatches(unittest.TestCase):
         self.assertEqual(snapshot(Project.load(self.file)), snapshot(project))
 
     def test_many_saves(self):
-        project = Project("Test Project")
+        project = padded_project()
         language = project.add_language("Test")
         project.save(self.file)
         for symbol in ["p", "t", "k", "a", "i", "u"]:
@@ -102,7 +110,7 @@ class TestPatches(unittest.TestCase):
         self.assertEqual(snapshot(Project.load(self.file)), snapshot(project))
 
     def test_saves_after_loading_a_patched_file(self):
-        project = Project("Test Project")
+        project = padded_project()
         project.add_language("First").inventory.set_symbols(["p", "a"])
         project.save(self.file)
         project.languages[0].inventory.add("t")
@@ -115,7 +123,7 @@ class TestPatches(unittest.TestCase):
         self.assertEqual(snapshot(Project.load(self.file)), snapshot(loaded))
 
     def test_save_without_changes_writes_nothing(self):
-        project = Project("Test Project")
+        project = padded_project()
         project.add_language("Test")
         project.save(self.file)
         before = self.read_file()
@@ -123,7 +131,7 @@ class TestPatches(unittest.TestCase):
         self.assertEqual(self.read_file(), before)
 
     def test_save_as_writes_whole_file(self):
-        project = Project("Test Project")
+        project = padded_project()
         project.add_language("Test").inventory.set_symbols(["p", "a"])
         project.save(self.file)
         project.languages[0].inventory.add("t")
@@ -135,7 +143,7 @@ class TestPatches(unittest.TestCase):
         self.assertLess(path.getsize(other), path.getsize(self.file))
 
     def test_save_after_file_changed_elsewhere(self):
-        project = Project("Test Project")
+        project = padded_project()
         project.add_language("Mine")
         project.save(self.file)
         # Another Project gets saved over the same file, like a second window would.
@@ -148,7 +156,7 @@ class TestPatches(unittest.TestCase):
 
     def saved_twice(self) -> tuple[list, int]:
         # Save once, then save an edit as a patch, and return the first state and where the patch starts.
-        project = Project("Test Project")
+        project = padded_project()
         project.add_language("Test").inventory.set_symbols(["p", "a"])
         project.save(self.file)
         before = snapshot(project)

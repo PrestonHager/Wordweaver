@@ -1,6 +1,7 @@
 # test/test_allophone_rules.py
 
 import tempfile
+import os
 import unittest
 
 # Add the parent directory to the path so we can import the module we want to test
@@ -126,6 +127,9 @@ class TestAllophoneRules(unittest.TestCase):
         vowel = self.language.get_class("Vowel")
         edited = self.language.add_allophone_rule("t", "ɾ", before=vowel, after=vowel)
         removed = self.language.add_allophone_rule("k", "x")
+        # Pad the file out, so the patch stays under the size where saving compacts by itself.
+        for _ in range(60):
+            self.project.tags.add(os.urandom(16).hex())
         self.project.save(self.file)
         with open(self.file, "rb") as f_in:
             base = f_in.read()

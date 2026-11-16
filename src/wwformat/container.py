@@ -81,6 +81,8 @@ class DecodedFile:
     chunks: list[Chunk]
     # True when a broken patch at the end of the file was dropped.
     dropped_patch: bool = False
+    # How many bytes of the file are patch chunks.
+    patch_bytes: int = 0
 
 def decode_file(data: bytes) -> DecodedFile:
     """Split file bytes into chunks, checking every chunk's CRC."""
@@ -93,6 +95,7 @@ def decode_file(data: bytes) -> DecodedFile:
     # Then read chunks until the end of the file.
     # The version and unknown chunk rules are checked one layer up, in FileContents.decode.
     while pos < len(data):
+        start = pos
         type_id, pos = decode_varint(data, pos)
         try:
             chunk, pos = _decode_chunk_body(data, pos, type_id)
@@ -103,6 +106,8 @@ def decode_file(data: bytes) -> DecodedFile:
                 break
             raise
         decoded.chunks.append(chunk)
+        if type_id == PATCH_TYPE_ID:
+            decoded.patch_bytes += pos - start
     return decoded
 
 def _decode_chunk_body(data: bytes, pos: int, type_id: int) -> tuple[Chunk, int]:
