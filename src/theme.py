@@ -99,6 +99,12 @@ QComboBox::drop-down {{ border: none; width: 24px; }}
 QComboBox::down-arrow {{ image: url("{chevron}"); width: 14px; height: 14px; }}
 QComboBox QAbstractItemView {{ background: {surface}; border: 1px solid {border}; selection-background-color: {accent_soft}; selection-color: {text}; outline: none; padding: 4px; }}
 
+QCheckBox {{ spacing: 8px; background: transparent; }}
+QCheckBox::indicator {{ width: 16px; height: 16px; border: 1px solid {muted}; border-radius: 4px; background: {surface}; }}
+QCheckBox::indicator:hover {{ border-color: {accent}; }}
+QCheckBox::indicator:checked {{ background: {accent}; border-color: {accent}; image: url("{check}"); }}
+QCheckBox::indicator:disabled {{ border-color: {border}; background: {bg}; }}
+
 QListWidget#EntryList {{ background: transparent; border: none; outline: none; font-size: 14px; }}
 QListWidget#EntryList::item {{ padding: 8px 10px; border-radius: 8px; }}
 QListWidget#EntryList::item:hover {{ background: {hover}; }}
@@ -171,7 +177,7 @@ class Theme(QObject):
         palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.ButtonText, QColor(c["muted"]))
         app.setPalette(palette)
         # Finally, the stylesheet, then let the widgets re-tint their icons.
-        app.setStyleSheet(STYLESHEET.format(ipa_fonts=IPA_FONTS, ui_fonts=UI_FONTS, chevron=_tinted_icon("chevron-down", c["muted"]), **c))
+        app.setStyleSheet(STYLESHEET.format(ipa_fonts=IPA_FONTS, ui_fonts=UI_FONTS, chevron=_tinted_icon("chevron-down", c["muted"]), check=_tinted_icon("check", c["accent_text"]), **c))
         self.changed.emit()
 
     def toggle(self, app: QApplication):
