@@ -1,7 +1,9 @@
 # about.py
 
-from PyQt6.QtWidgets import QDialog, QDialogButtonBox, QLabel, QVBoxLayout, QMainWindow
+from PyQt6.QtWidgets import QDialog, QHBoxLayout, QMainWindow, QVBoxLayout
 from pathlib import Path
+
+from widgets import Button, label
 
 with open(Path(__file__).parent.joinpath(Path("VERSION")), "r") as f:
     VERSION = f.read().strip()
@@ -10,21 +12,30 @@ GITHUB_URL = "https://github.com/PrestonHager/Wordweaver"
 class About(QDialog):
     def __init__(self, parent: QMainWindow):
         super().__init__(parent)
-        
-        self.setWindowTitle("About")
-        
-        self.layout = QVBoxLayout()
-        self.label = QLabel(f"Wordweaver is a complete toolbox for all conlanging.\n\nVersion: {VERSION}\n{GITHUB_URL}")
-        self.layout.addWidget(self.label)
-        
-        self.buttonBox = QDialogButtonBox(QDialogButtonBox.StandardButton.Open | QDialogButtonBox.StandardButton.Close)
-        self.buttonBox.accepted.connect(self.accept)
-        self.buttonBox.rejected.connect(self.reject)
-        self.layout.addWidget(self.buttonBox)
-        
-        self.setLayout(self.layout)
-        self.buttonBox.button(QDialogButtonBox.StandardButton.Close).setDefault(True)
-    
+
+        self.setWindowTitle("About Wordweaver")
+        self.setMinimumWidth(380)
+
+        self.layout = QVBoxLayout(self)
+        self.layout.setContentsMargins(24, 24, 24, 20)
+        self.layout.setSpacing(6)
+        self.layout.addWidget(label("Wordweaver", "title", self))
+        self.layout.addWidget(label(f"Version {VERSION}", "muted", self))
+        self.layout.addSpacing(8)
+        self.layout.addWidget(label("A toolbox for building constructed languages.", None, self))
+        self.layout.addSpacing(16)
+
+        buttons = QHBoxLayout()
+        github = Button("View on GitHub", "external-link", parent=self)
+        github.clicked.connect(self.accept)
+        buttons.addWidget(github)
+        buttons.addStretch()
+        close = Button("Close", variant="primary", parent=self)
+        close.clicked.connect(self.reject)
+        close.setDefault(True)
+        buttons.addWidget(close)
+        self.layout.addLayout(buttons)
+
     def accept(self):
         from webbrowser import open as web_open
         web_open(GITHUB_URL)

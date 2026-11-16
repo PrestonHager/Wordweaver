@@ -36,6 +36,13 @@ class Phoneme:
     def __str__(self) -> str:
         return self.symbol
 
+def is_valid_phoneme(symbol: str) -> bool:
+    """Check that a symbol is one IPA consonant or vowel, like /p/, /t͡s/, or /ǀ/.
+
+    Diacritics, length marks, and tone letters are valid IPA too, but they aren't sounds on their own.
+    """
+    return isinstance(UNICODE_TO_IPA.get(symbol), (IPAConsonant, IPAVowel))
+
 class PhonemeInventory:
     """The set of Phonemes a Language uses, kept in the order they were added."""
 
@@ -49,12 +56,12 @@ class PhonemeInventory:
     def add(self, symbol: str) -> Phoneme:
         """Add a Phoneme by its IPA symbol, or return the existing one if it's already in the inventory.
 
-        :raises ValueError: If the symbol isn't a valid IPA character.
+        :raises ValueError: If the symbol isn't an IPA consonant or vowel.
         """
         if symbol in self._phonemes:
             return self._phonemes[symbol]
-        if symbol not in UNICODE_TO_IPA:
-            raise ValueError(f"Invalid IPA character: {symbol}")
+        if not is_valid_phoneme(symbol):
+            raise ValueError(f"Not an IPA consonant or vowel: {symbol!r}")
         phoneme = Phoneme(self._new_id(), symbol)
         self._phonemes[symbol] = phoneme
         return phoneme
@@ -69,11 +76,11 @@ class PhonemeInventory:
     def set_symbols(self, symbols: list[str]):
         """Make the inventory hold exactly these symbols. Phonemes that stay keep their IDs.
 
-        :raises ValueError: If any symbol isn't a valid IPA character. The inventory isn't changed then.
+        :raises ValueError: If any symbol isn't an IPA consonant or vowel. The inventory isn't changed then.
         """
-        invalid = [s for s in symbols if s not in UNICODE_TO_IPA]
+        invalid = [s for s in symbols if not is_valid_phoneme(s)]
         if invalid:
-            raise ValueError(f"Invalid IPA characters: {', '.join(invalid)}")
+            raise ValueError(f"Not IPA consonants or vowels: {', '.join(repr(s) for s in invalid)}")
         for symbol in [s for s in self._phonemes if s not in symbols]:
             self.remove(symbol)
         for symbol in symbols:
@@ -216,7 +223,7 @@ class PhonemeGenerator:
     def print_word(self, syllable_list: list[IPAChar], seperator: str=''):
         print(seperator.join([''.join([j.unicode_repr for j in i]) for i in syllable_list]))
 
-__all__ = ["Phoneme", "PhonemeInventory", "Phonemes", "PhonemeConstraint", "PhonemeGenerator"]
+__all__ = ["Phoneme", "PhonemeInventory", "is_valid_phoneme", "Phonemes", "PhonemeConstraint", "PhonemeGenerator"]
 
 if __name__ == "__main__":
     from ipapy import UNICODE_TO_IPA

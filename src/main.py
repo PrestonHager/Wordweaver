@@ -1,7 +1,7 @@
 # main.py
 
-from PyQt6.QtWidgets import QApplication, QComboBox, QFileDialog, QPushButton, QGridLayout, QHBoxLayout, QInputDialog, QLabel, QMainWindow, QMenu, QMessageBox, QScrollArea, QSizePolicy, QTextEdit, QVBoxLayout, QWidget
-from PyQt6.QtGui import QCloseEvent, QFont, QIcon
+from PyQt6.QtWidgets import QApplication, QButtonGroup, QComboBox, QFileDialog, QHBoxLayout, QInputDialog, QMainWindow, QMenu, QMessageBox, QStackedWidget, QVBoxLayout, QWidget
+from PyQt6.QtGui import QCloseEvent, QIcon
 from PyQt6.QtCore import Qt
 from pathlib import Path
 from platformdirs import user_cache_path, user_log_path
@@ -12,8 +12,19 @@ import logging
 import pyperclip
 
 from about import About
+from icons import bind_icon, icon as make_icon
+from pages import LexiconPage, OverviewPage, WelcomePage
+from phonology_page import PhonologyPage
+from theme import theme
+from widgets import Button, label
 from wordweaver_project import Language, LanguageKind, Project, ProjectFileError
-from phonology_selector import PhonologySelector
+
+# The sidebar pages, in order: key, label, and Lucide icon.
+NAV = [
+    ("overview", "Overview", "layout-dashboard"),
+    ("phonology", "Phonology", "audio-lines"),
+    ("lexicon", "Lexicon", "book-open"),
+]
 
 class App(QMainWindow):
     def __init__(self, project: Project=None):
@@ -24,223 +35,248 @@ class App(QMainWindow):
 
         # Set class defaults
         self.project = project
-        # The Language being edited, picked from the Languages bar.
+        # The Language being edited, picked from the sidebar.
         self.language: Language | None = None
 
         # Construct GUI
         self.logger.debug("Constructing GUI")
         self.setWindowTitle("Wordweaver")
+        self.resize(1240, 800)
+        self.setMinimumSize(900, 600)
 
-        self.setGeometry(100, 100, 640, 480)
+        # The window holds two things: the welcome page with no Project, and the workspace with one.
+        self.root = QStackedWidget(self)
+        self.setCentralWidget(self.root)
+        self.welcome = WelcomePage(self.root)
+        self.welcome.new_requested.connect(self.new_project)
+        self.welcome.open_requested.connect(self.open_project)
+        self.root.addWidget(self.welcome)
 
-        widget = QWidget(self)
-        self.setCentralWidget(widget)
-        self.layout = QVBoxLayout(widget)
+        self.workspace = QWidget(self.root)
+        workspace_layout = QHBoxLayout(self.workspace)
+        workspace_layout.setContentsMargins(0, 0, 0, 0)
+        workspace_layout.setSpacing(0)
+        workspace_layout.addWidget(self._build_sidebar(self.workspace))
+        self.pages = QStackedWidget(self.workspace)
+        workspace_layout.addWidget(self.pages, 1)
+        self.root.addWidget(self.workspace)
 
-        # Add text and header
-        header = QLabel("Wordweaver", self)
-        header.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        header.setFont(QFont("Arial", 32, QFont.Weight.Bold))
-        header.setContentsMargins(0, 0, 0, 20)
-        header.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
-        self.layout.addWidget(header)
+        # Now the pages the sidebar switches between.
+        self.overview_page = OverviewPage(self.pages)
+        self.overview_page.add_requested.connect(self.add_language)
+        self.overview_page.rename_project_requested.connect(self.rename_project)
+        self.overview_page.phonology_requested.connect(lambda language: self._open_page("phonology", language))
+        self.overview_page.rename_requested.connect(self.rename_language)
+        self.overview_page.remove_requested.connect(self.remove_language)
+        self.overview_page.kind_changed.connect(self._on_kind_changed)
+        self.phonology_page = PhonologyPage(self.pages)
+        self.phonology_page.changed.connect(self._on_inventory_changed)
+        self.lexicon_page = LexiconPage(self.pages)
+        self.page_widgets = {"overview": self.overview_page, "phonology": self.phonology_page, "lexicon": self.lexicon_page}
+        for page in self.page_widgets.values():
+            self.pages.addWidget(page)
 
-        # Add a welcome message if no project is open
-        self.welcome_text = QLabel("Your complete toolbox for all things conglang.\nStart by creating a new project or opening an existing one.", self)
-        self.welcome_text.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.welcome_text.setContentsMargins(20, 0, 0, 20)
-        self.welcome_text.setWordWrap(True)
-        if self.project is not None:
-            self.welcome_text.hide()
-        self.layout.addWidget(self.welcome_text)
+        self._build_menus()
+        self.statusBar().setSizeGripEnabled(False)
+        self._open_page("overview")
+        self._update_main_view()
 
-        # Create the project view if there is a project
-        self.project_view = QWidget(self)
-        self.project_view_layout = QGridLayout(self.project_view)
+    def _build_sidebar(self, parent: QWidget) -> QWidget:
+        sidebar = QWidget(parent)
+        sidebar.setObjectName("Sidebar")
+        sidebar.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
+        sidebar.setFixedWidth(232)
+        layout = QVBoxLayout(sidebar)
+        layout.setContentsMargins(14, 18, 14, 14)
+        layout.setSpacing(4)
 
-        self.project_name = QLabel("Untitled Project", self.project_view)
-        self.project_name.setFont(QFont("Arial", 22, QFont.Weight.Bold))
-        self.project_name.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.project_name.setContentsMargins(0, 0, 0, 20)
-        self.project_name.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
-        self.project_view_layout.addWidget(self.project_name, 0, 0, 1, 2)
+        # First, the app and Project names at the top.
+        app_name = label("Wordweaver", None, sidebar)
+        app_name.setObjectName("AppName")
+        layout.addWidget(app_name)
+        self.sidebar_project = label("", "muted", sidebar)
+        layout.addWidget(self.sidebar_project)
+        layout.addSpacing(18)
 
-        # Add the Languages bar, for picking which Language to edit and managing them.
-        languages_bar = QWidget(self.project_view)
-        languages_layout = QHBoxLayout(languages_bar)
-        languages_layout.addWidget(QLabel("Language:", languages_bar))
-        self.language_picker = QComboBox(languages_bar)
-        self.language_picker.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        # Then the Language picker, with a button to add another.
+        layout.addWidget(label("LANGUAGE", "section", sidebar))
+        picker_row = QHBoxLayout()
+        picker_row.setSpacing(6)
+        self.language_picker = QComboBox(sidebar)
         self.language_picker.currentIndexChanged.connect(self._on_language_picked)
-        languages_layout.addWidget(self.language_picker)
-        self.kind_picker = QComboBox(languages_bar)
-        for kind in LanguageKind:
-            self.kind_picker.addItem(str(kind))
-        self.kind_picker.currentIndexChanged.connect(self._on_kind_picked)
-        languages_layout.addWidget(self.kind_picker)
-        for text, slot in (("Add", self.add_language), ("Rename", self.rename_language), ("Remove", self.remove_language), ("Rename Project", self.rename_project)):
-            button = QPushButton(text, languages_bar)
-            button.clicked.connect(slot)
-            languages_layout.addWidget(button)
-        self.project_view_layout.addWidget(languages_bar, 1, 0, 1, 2)
+        picker_row.addWidget(self.language_picker, 1)
+        add = Button(icon="plus", variant="ghost", tooltip="Add Language", parent=sidebar)
+        add.clicked.connect(self.add_language)
+        picker_row.addWidget(add)
+        layout.addLayout(picker_row)
+        layout.addSpacing(18)
 
-        phonology_label = QLabel("Phonology", self.project_view)
-        self.phonology_text = QTextEdit(self.project_view)
-        self.phonology_text.setReadOnly(True)
-        phonology_edit_button = QPushButton("Edit Phonology", self.project_view)
-        phonology_edit_button.clicked.connect(self.edit_phonology)
-        self.project_view_layout.addWidget(phonology_label, 2, 0)
-        self.project_view_layout.addWidget(self.phonology_text, 3, 0)
-        self.project_view_layout.addWidget(phonology_edit_button, 4, 0)
+        # Now the page buttons, only one of which is checked at a time.
+        self.nav = QButtonGroup(sidebar)
+        self.nav.setExclusive(True)
+        self.nav_buttons = {}
+        for key, text, icon_name in NAV:
+            button = Button(text, icon_name, "nav", parent=sidebar)
+            button.setCheckable(True)
+            button.clicked.connect(lambda _checked, k=key: self._open_page(k))
+            self.nav.addButton(button)
+            self.nav_buttons[key] = button
+            layout.addWidget(button)
+        layout.addStretch()
 
-        lexicon_label = QLabel("Lexicon", self.project_view)
-        self.lexicon_text = QTextEdit(self.project_view)
-        self.lexicon_text.setReadOnly(True)
-        lexicon_edit_button = QPushButton("Edit Lexicon", self.project_view)
-        lexicon_edit_button.clicked.connect(self.edit_lexicon)
-        self.project_view_layout.addWidget(lexicon_label, 2, 1)
-        self.project_view_layout.addWidget(self.lexicon_text, 3, 1)
-        self.project_view_layout.addWidget(lexicon_edit_button, 4, 1)
+        # Finally, the theme toggle and About at the bottom.
+        bottom = QHBoxLayout()
+        self.theme_button = Button(variant="ghost", parent=sidebar)
+        self.theme_button.setFixedSize(32, 32)
+        self.theme_button.clicked.connect(self.toggle_theme)
+        bottom.addWidget(self.theme_button)
+        about = Button(icon="info", variant="ghost", tooltip="About Wordweaver", parent=sidebar)
+        about.clicked.connect(self.open_about)
+        bottom.addWidget(about)
+        bottom.addStretch()
+        layout.addLayout(bottom)
+        theme.changed.connect(self._update_theme_button)
+        self._update_theme_button()
+        return sidebar
 
-        self._update_project_view()
-
-        if self.project is None:
-            self.project_view.hide()
-        self.layout.addWidget(self.project_view)
-
-        # Add menu buttons
+    def _build_menus(self):
         self.logger.debug("Creating menubar and actions")
         menubar = self.menuBar()
+        self.menu_actions = {}
 
+        # Each entry is the key, label, icon, shortcut, and slot. None makes a separator.
         self.file_menu = QMenu("&File", self)
-        new_action = self.file_menu.addAction("&New Project")
-        new_action.triggered.connect(self.new_project)
-        new_action.setShortcut("Ctrl+N")
-        open_action = self.file_menu.addAction("&Open Project")
-        open_action.triggered.connect(self.open_project)
-        open_action.setShortcut("Ctrl+O")
-        close_action = self.file_menu.addAction("&Close Project")
-        close_action.triggered.connect(self.close_project)
-        close_action.setShortcut("Ctrl+W")
-        close_action.setEnabled(self.project is not None)
-        self.file_menu.addSeparator()
-        save_action = self.file_menu.addAction("&Save Project")
-        save_action.triggered.connect(self.save)
-        save_action.setShortcut("Ctrl+S")
-        save_action.setEnabled(self.project is not None)
-        save_as_action = self.file_menu.addAction("S&ave Project As")
-        save_as_action.triggered.connect(self.save_as)
-        save_as_action.setShortcut("Ctrl+Shift+S")
-        save_as_action.setEnabled(self.project is not None)
-        self.file_menu.addSeparator()
-        about_action = self.file_menu.addAction("A&bout")
-        about_action.triggered.connect(self.open_about)
-        about_action.setShortcut("F1")
-        exit_action = self.file_menu.addAction("&Exit")
-        exit_action.triggered.connect(self.close)
-        exit_action.setShortcut("Alt+F4")
+        for entry in (
+            ("new", "&New Project", "file-plus", "Ctrl+N", self.new_project),
+            ("open", "&Open Project", "folder-open", "Ctrl+O", self.open_project),
+            ("close", "&Close Project", "x", "Ctrl+W", self.close_project),
+            None,
+            ("save", "&Save Project", "save", "Ctrl+S", self.save),
+            ("save_as", "S&ave Project As", "save-all", "Ctrl+Shift+S", self.save_as),
+            None,
+            ("about", "A&bout", "info", "F1", self.open_about),
+            ("exit", "&Exit", "log-out", "Alt+F4", self.close),
+        ):
+            if entry is None:
+                self.file_menu.addSeparator()
+            else:
+                self.menu_actions[entry[0]] = self._action(self.file_menu, *entry[1:])
         menubar.addMenu(self.file_menu)
 
         self.edit_menu = QMenu("&Edit", self)
-        copy_action = self.edit_menu.addAction("&Copy")
-        copy_action.triggered.connect(self.copy)
-        copy_action.setShortcut("Ctrl+C")
-        copy_action.setEnabled(self.project is not None)
-        paste_action = self.edit_menu.addAction("&Paste")
-        paste_action.triggered.connect(self.paste)
-        paste_action.setShortcut("Ctrl+V")
-        paste_action.setEnabled(self.project is not None and pyperclip.paste() != '')
+        self.menu_actions["copy"] = self._action(self.edit_menu, "&Copy Phoneme Inventory", "copy", "Ctrl+Shift+C", self.copy)
+        self.menu_actions["paste"] = self._action(self.edit_menu, "&Paste", "clipboard-paste", "Ctrl+V", self.paste)
         # TODO: implement undo and redo
-        # self.edit_menu.addSeparator()
-        # undo_action = self.edit_menu.addAction("&Undo")
-        # undo_action.triggered.connect(self.undo)
-        # undo_action.setShortcut("Ctrl+Z")
-        # redo_action = self.edit_menu.addAction("&Redo")
-        # redo_action.triggered.connect(self.redo)
-        # redo_action.setShortcut("Ctrl+Y")
         menubar.addMenu(self.edit_menu)
 
+        self.view_menu = QMenu("&View", self)
+        for number, (key, text, icon_name) in enumerate(NAV, start=1):
+            self.menu_actions[key] = self._action(self.view_menu, f"&{text}", icon_name, f"Ctrl+{number}", lambda _=False, k=key: self._open_page(k))
+        self.view_menu.addSeparator()
+        self.menu_actions["theme"] = self._action(self.view_menu, "Toggle &Dark Mode", "moon", "Ctrl+Shift+L", self.toggle_theme)
+        menubar.addMenu(self.view_menu)
+
+    def _action(self, menu: QMenu, text: str, icon_name: str, shortcut: str, slot):
+        action = menu.addAction(text)
+        bind_icon(action, icon_name, "muted", size=16)
+        action.setShortcut(shortcut)
+        action.triggered.connect(slot)
+        return action
+
     def _update_main_view(self):
-        # Set menu action states
-        # Close project
-        self.file_menu.actions()[2].setEnabled(self.project is not None)
-        # Save project and save as
-        self.file_menu.actions()[4].setEnabled(self.project is not None)
-        self.file_menu.actions()[5].setEnabled(self.project is not None)
-        # Copy and paste
-        self.edit_menu.actions()[0].setEnabled(self.project is not None)
-        self.edit_menu.actions()[1].setEnabled(self.project is not None and pyperclip.paste() != '')
-        # Set project view and welcome message visibility
-        if self.project is None:
-            self.welcome_text.show()
-            self.project_view.hide()
-        else:
-            self.welcome_text.hide()
-            self.project_view.show()
-            self._update_project_view()
+        # First, turn the menu actions on or off for whether a Project is open.
+        has_project = self.project is not None
+        for key in ("close", "save", "save_as", "copy", "overview", "phonology", "lexicon"):
+            self.menu_actions[key].setEnabled(has_project)
+        self.menu_actions["paste"].setEnabled(has_project and pyperclip.paste() != '')
+        # Then show the welcome page or the workspace.
+        if not has_project:
+            self.language = None
+            self.root.setCurrentWidget(self.welcome)
+            self.setWindowTitle("Wordweaver")
+            return
+        self.root.setCurrentWidget(self.workspace)
+        self._update_project_view()
 
     def _update_project_view(self):
         if self.project is None:
             self.language = None
             return
-        self.project_name.setText(self.project.name)
+        self.setWindowTitle(f"{self.project.name} - Wordweaver")
+        self.sidebar_project.setText(self.project.name)
         # First, make sure there's a Language to edit, and that the picked one is still in the Project.
         if not self.project.languages:
             self.project.add_language(self.project.name)
         if self.language not in self.project.languages:
             self.language = self.project.languages[0]
-        # Now refill the pickers without their signals firing halfway through.
+        # Now refill the picker without its signal firing halfway through.
         self.language_picker.blockSignals(True)
         self.language_picker.clear()
         for language in self.project.languages:
             self.language_picker.addItem(language.name, language.id)
         self.language_picker.setCurrentIndex(self.project.languages.index(self.language))
         self.language_picker.blockSignals(False)
-        self.kind_picker.blockSignals(True)
-        self.kind_picker.setCurrentIndex(list(LanguageKind).index(self.language.kind))
-        self.kind_picker.blockSignals(False)
-        # Finally, show the picked Language.
-        self.phonology_text.setText(', '.join(self.language.inventory.symbols))
-        # TODO: show the Lexicon once Languages have one.
-        self.lexicon_text.setText("")
+        # Finally, refresh the pages for the picked Language.
+        self.overview_page.refresh(self.project, self.language)
+        self.phonology_page.set_language(self.language)
+
+    def _open_page(self, key: str, language: Language | None = None):
+        # Switch Language first if a card asked for a different one.
+        if language is not None and language is not self.language:
+            self.language = language
+            self._update_project_view()
+        self.pages.setCurrentWidget(self.page_widgets[key])
+        self.nav_buttons[key].setChecked(True)
 
     def _on_language_picked(self, index: int):
         if self.project is None or index < 0:
             return
-        # The phonology window edits one Language, so close it before switching.
-        if hasattr(self, "phonology_selector"):
-            self.phonology_selector.close()
         self.language = self.project.languages[index]
         self._update_project_view()
 
-    def _on_kind_picked(self, index: int):
-        if self.language is not None and index >= 0:
-            self.language.kind = list(LanguageKind)[index]
+    def _on_kind_changed(self, language: Language, kind: LanguageKind):
+        language.kind = kind
+
+    def _on_inventory_changed(self):
+        # The Overview cards show the inventory, so keep them current.
+        self.overview_page.refresh(self.project, self.language)
+
+    def _update_theme_button(self):
+        # Show the mode you'd switch to, like most apps do.
+        dark = theme.is_dark
+        self.theme_button.setIcon(make_icon("sun" if dark else "moon"))
+        self.theme_button.setToolTip("Switch to light mode" if dark else "Switch to dark mode")
+
+    def toggle_theme(self):
+        theme.toggle(QApplication.instance())
 
     def add_language(self):
+        if self.project is None:
+            return
         name, ok = QInputDialog.getText(self, "Add Language", "Enter a name for the new Language:")
         if ok and name:
             self.language = self.project.add_language(name)
             self._update_project_view()
             self.logger.info(f"Added Language: {name}")
 
-    def rename_language(self):
-        name, ok = QInputDialog.getText(self, "Rename Language", "Enter a new name for the Language:", text=self.language.name)
+    def rename_language(self, language: Language | None = None):
+        language = language or self.language
+        name, ok = QInputDialog.getText(self, "Rename Language", "Enter a new name for the Language:", text=language.name)
         if ok and name:
-            self.language.name = name
+            language.name = name
             self._update_project_view()
 
-    def remove_language(self):
+    def remove_language(self, language: Language | None = None):
+        language = language or self.language
         if len(self.project.languages) == 1:
             QMessageBox.information(self, "Can't Remove Language", "A Project needs at least one Language.")
             return
-        answer = QMessageBox.question(self, "Remove Language", f"Remove {self.language.name} and everything in it?")
+        answer = QMessageBox.question(self, "Remove Language", f"Remove {language.name} and everything in it?")
         if answer == QMessageBox.StandardButton.Yes:
-            if hasattr(self, "phonology_selector"):
-                self.phonology_selector.close()
-            self.project.remove_language(self.language)
-            self.logger.info(f"Removed Language: {self.language.name}")
-            self.language = None
+            self.project.remove_language(language)
+            self.logger.info(f"Removed Language: {language.name}")
+            if language is self.language:
+                self.language = None
             self._update_project_view()
 
     def rename_project(self):
@@ -263,9 +299,10 @@ class App(QMainWindow):
                 self.project = Project(name)
             self.project.name = name
             self.project.file = None
+            self._open_page("overview")
             self._update_main_view()
             self.logger.info(f"Created new project: {name}")
-    
+
     def open_project(self):
         # If there is an unsaved project, then prompt the user to save it
         if self.project is not None:
@@ -282,6 +319,8 @@ class App(QMainWindow):
                 self.logger.warning(f"Couldn't open project: {e}")
                 QMessageBox.warning(self, "Couldn't Open Project", str(e))
                 return
+            self.language = None
+            self._open_page("overview")
             self._update_main_view()
             self.logger.info(f"Opened project: {self.project.name}")
 
@@ -302,6 +341,7 @@ class App(QMainWindow):
         if self.project is not None:
             if self.project.file is not None:
                 self.project.save()
+                self.statusBar().showMessage(f"Saved to {self.project.file}", 4000)
                 self.logger.info(f"Saved project \"{self.project.name}\" to {self.project.file}")
             else:
                 # if it doesn't, use the save as dialog.
@@ -318,8 +358,9 @@ class App(QMainWindow):
         if dialog.exec() == QFileDialog.DialogCode.Accepted:
             self.project.file = dialog.selectedFiles()[0]
             self.project.save()
+            self.statusBar().showMessage(f"Saved to {self.project.file}", 4000)
             self.logger.info(f"Saved project \"{self.project.name}\" to {self.project.file} and updated project file location.")
-    
+
     def open_about(self):
         if not hasattr(self, "about_window"):
             self.about_window = About(self)
@@ -329,8 +370,9 @@ class App(QMainWindow):
         self.about_window.closeEvent = self._close_about_window
 
     def copy(self):
-        # Copy the current phonology text
-        pyperclip.copy(self.phonology_text.toPlainText())
+        # Copy the current Language's Phoneme Inventory.
+        self.phonology_page.copy()
+        self.statusBar().showMessage("Copied the Phoneme Inventory", 3000)
 
     def paste(self):
         # Use the following command to paste
@@ -342,27 +384,8 @@ class App(QMainWindow):
     def redo(self):
         pass
 
-    def edit_phonology(self):
-        if not hasattr(self, "phonology_selector"):
-            self.phonology_selector = PhonologySelector(self.language)
-            self.logger.debug("Created new phonology selector window")
-        self.phonology_selector.show()
-        self.phonology_selector.activateWindow()
-        self.phonology_selector.closeEvent = self._close_phonology_selector
-
-    def edit_lexicon(self):
-        pass
-
     def _close_about_window(self, a0: QCloseEvent | None) -> None:
         delattr(self, "about_window")
-        return super().closeEvent(a0)
-
-    def _close_phonology_selector(self, a0: QCloseEvent | None) -> None:
-        # The selector already wrote any saved changes into the Language.
-        self._update_project_view()
-        self.logger.debug("Closed phonology selector window and updated project")
-        self.logger.info(f"Phoneme inventory is now {self.language.inventory.symbols}")
-        delattr(self, "phonology_selector")
         return super().closeEvent(a0)
 
     def closeEvent(self, a0: QCloseEvent | None) -> None:
@@ -420,6 +443,9 @@ def main():
     icon = QIcon()
     icon.addFile(str(basedir.joinpath(Path("icons/wordweaver.ico")).absolute()))
     app.setWindowIcon(icon)
+    # Apply the theme before building any widgets, so their icons get the right colors.
+    theme.apply(app)
+    theme.follow_system(app)
     window = App(project)
     window.show()
     logger.debug("Running application")

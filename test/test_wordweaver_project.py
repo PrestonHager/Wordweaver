@@ -8,6 +8,10 @@ import sys
 from os import path
 sys.path.append(path.abspath(path.join(path.dirname(__file__), '../src')))
 
+from ipapy import UNICODE_TO_IPA
+
+from phonology import is_valid_phoneme
+from phonology_const import NON_PULMONIC_CONSONANTS, PULMONIC_CONSONANTS, VOWELS
 from wordweaver_project import LanguageKind, Project, ProjectFileError
 
 DEFAULT_PROJECT = path.abspath(path.join(path.dirname(__file__), '../src/default.wwproj'))
@@ -67,6 +71,52 @@ class TestProject(unittest.TestCase):
         with self.assertRaises(ValueError):
             inventory.set_symbols(["p", "Q"])
         self.assertEqual(len(inventory), 0)
+
+    def test_reject_marks_that_arent_sounds(self):
+        # Diacritics and length marks are valid IPA, but they aren't Phonemes on their own.
+        inventory = Project("Test Project").add_language("Test").inventory
+        for symbol in ["ʰ", "ː", "ʼ", "", " p"]:
+            with self.assertRaises(ValueError, msg=repr(symbol)):
+                inventory.add(symbol)
+        self.assertEqual(len(inventory), 0)
+
+    def test_off_chart_phonemes_round_trip(self):
+        project = Project("Test Project")
+        inventory = project.add_language("Test").inventory
+        inventory.set_symbols(["p", "a"])
+        # Clicks, affricates, and implosives aren't on the main chart.
+        for symbol in ["ǀ", "ʘ", "t͡s", "t͡ʃ", "ɓ"]:
+            inventory.add(symbol)
+        loaded = self.round_trip(project)
+        self.assertEqual(loaded.languages[0].inventory.symbols, ["p", "a", "ǀ", "ʘ", "t͡s", "t͡ʃ", "ɓ"])
+
+    def test_remove_chart_and_off_chart_phonemes(self):
+        project = Project("Test Project")
+        inventory = project.add_language("Test").inventory
+        inventory.set_symbols(["p", "a", "t͡s", "ǀ"])
+        inventory.remove("p")
+        inventory.remove("t͡s")
+        loaded = self.round_trip(project)
+        self.assertEqual(loaded.languages[0].inventory.symbols, ["a", "ǀ"])
+
+    def test_several_hundred_phonemes(self):
+        project = Project("Test Project")
+        inventory = project.add_language("Test").inventory
+        symbols = [s for s in UNICODE_TO_IPA if is_valid_phoneme(s)]
+        self.assertGreater(len(symbols), 300)
+        inventory.set_symbols(symbols)
+        loaded = self.round_trip(project).languages[0].inventory
+        self.assertEqual(loaded.symbols, symbols)
+        self.assertEqual({p.symbol: p.id for p in loaded}, {p.symbol: p.id for p in inventory})
+
+    def test_every_chart_symbol_is_a_phoneme(self):
+        inventory = Project("Test Project").add_language("Test").inventory
+        for chart in (PULMONIC_CONSONANTS, NON_PULMONIC_CONSONANTS, VOWELS):
+            for row in chart.values():
+                for cell in row.values():
+                    for symbol in cell.values():
+                        inventory.add(symbol)
+        self.assertGreater(len(inventory), 50)
 
     def test_ids_survive_save_and_load(self):
         project = Project("Test Project")
