@@ -6,6 +6,7 @@ from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import (QDialog, QDialogButtonBox, QFormLayout, QHBoxLayout, QLabel, QLineEdit, QListWidget,
                              QMessageBox, QPlainTextEdit, QPushButton, QVBoxLayout, QWidget)
 
+from concepticon import concepticon_lookup
 from lexicon import ConceptReference, Definition, Entry, Form, FormCheck, check_form
 from sense_picker import SensePicker
 from senses import Sense, SenseLookup, lookup_for
@@ -89,16 +90,18 @@ class EntryEditor(QDialog):
     """
 
     def __init__(self, language: Language, entry: Entry | None=None, parent: QWidget | None=None,
-                 gloss_language: str=DEFAULT_GLOSS_LANGUAGE, senses: SenseLookup | None=None):
+                 gloss_language: str=DEFAULT_GLOSS_LANGUAGE, senses: SenseLookup | None=None, concepts: SenseLookup | None=None):
         """
         :param gloss_language: str: The Project's Gloss Language, which picks the dictionary to search.
         :param senses: SenseLookup | None: The dictionary to search, instead of the one for the Gloss Language.
+        :param concepts: SenseLookup | None: The Concepticon lookup to search, instead of the app's own.
         """
         super().__init__(parent)
         self.language = language
         self.entry = entry
         self.gloss_language = gloss_language
         self._senses = senses
+        self._concepts = concepts
         self.setWindowTitle("Edit Entry" if entry is not None else "Add Entry")
         if entry is None:
             self._drafts = [_DefinitionDraft()]
@@ -157,6 +160,11 @@ class EntryEditor(QDialog):
         self.link_button = QPushButton("Link Sense…", self)
         self.link_button.clicked.connect(self.link_sense)
         reference_row.addWidget(self.link_button)
+        # Concepticon works in any Gloss Language, so it gets its own button instead of a source picker.
+        self.link_concept_button = QPushButton("Link Concept…", self)
+        self.link_concept_button.setToolTip("Link a Concepticon concept, like the ones in the Swadesh 100")
+        self.link_concept_button.clicked.connect(self.link_concept)
+        reference_row.addWidget(self.link_concept_button)
         self.unlink_button = QPushButton("Unlink", self)
         self.unlink_button.clicked.connect(self.unlink_sense)
         reference_row.addWidget(self.unlink_button)
@@ -228,6 +236,14 @@ class EntryEditor(QDialog):
                                     "You can still write the Definition without linking a sense, "
                                     "or pick a language with a wordnet in Project Settings.")
             return
+        self._link_from(lookup)
+
+    def link_concept(self):
+        if not 0 <= self._current < len(self._drafts):
+            return
+        self._link_from(self._concepts if self._concepts is not None else concepticon_lookup())
+
+    def _link_from(self, lookup: SenseLookup):
         self._store_fields()
         draft = self._drafts[self._current]
         # Start the search with the first Gloss, since that's usually the word you'd look up.
@@ -332,7 +348,7 @@ class EntryEditor(QDialog):
             return True
         # Open the picked match in its own editor, then come back here so you can decide again.
         if warning.opened is not None:
-            editor = EntryEditor(self.language, warning.opened, parent=self, gloss_language=self.gloss_language, senses=self._senses)
+            editor = EntryEditor(self.language, warning.opened, parent=self, gloss_language=self.gloss_language, senses=self._senses, concepts=self._concepts)
             editor.form_warnings.phoneme_added.connect(self.added_phonemes.append)
             editor.exec()
             # The other editor may have added Phonemes, so check this Form again.

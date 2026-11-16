@@ -97,6 +97,8 @@ classDiagram
     Entry "*" --> "0..1" PartOfSpeech
     Entry "*" --> "0..1" InflectionClass
     Entry "*" --> "*" Tag
+    ConceptList ..> Lexicon : seeds unfinished Entries
+    ConceptList ..> ConceptReference : links each seeded Entry
     InflectionClass "1" *-- "*" Inflection
     Language "1" *-- "*" GrammaticalCategory
     GrammaticalCategory "1" *-- "*" Value

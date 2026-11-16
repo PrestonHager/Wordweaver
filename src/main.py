@@ -12,6 +12,7 @@ import logging
 import pyperclip
 
 from about import About
+from concepticon import concept_lists
 from icons import bind_icon, icon as make_icon
 from lexicon_page import LexiconPage
 from pages import OverviewPage, WelcomePage
@@ -157,6 +158,7 @@ class App(QMainWindow):
             ("save", "&Save Project", "save", "Ctrl+S", self.save),
             ("save_as", "S&ave Project As", "save-all", "Ctrl+Shift+S", self.save_as),
             ("export_csv", "&Export Lexicon to CSV…", None, "", self.export_lexicon_csv),
+            ("seed", "Seed from &Concept List…", None, "", self.seed_from_concept_list),
             ("settings", "Project Se&ttings…", None, "", self.edit_project_settings),
             None,
             ("about", "A&bout", "info", "F1", self.open_about),
@@ -192,7 +194,7 @@ class App(QMainWindow):
     def _update_main_view(self):
         # First, turn the menu actions on or off for whether a Project is open.
         has_project = self.project is not None
-        for key in ("close", "save", "save_as", "export_csv", "settings", "copy", "overview", "phonology", "lexicon"):
+        for key in ("close", "save", "save_as", "export_csv", "seed", "settings", "copy", "overview", "phonology", "lexicon"):
             self.menu_actions[key].setEnabled(has_project)
         self.menu_actions["paste"].setEnabled(has_project and pyperclip.paste() != '')
         # Then show the welcome page or the workspace.
@@ -395,6 +397,42 @@ class App(QMainWindow):
             return
         self.statusBar().showMessage(f"Exported the Lexicon to {file}", 4000)
         self.logger.info(f"Exported the Lexicon of \"{self.language.name}\" to {file}")
+
+    def seed_from_concept_list(self):
+        if self.project is None or self.language is None:
+            return
+        try:
+            lists = concept_lists()
+        except (OSError, ValueError) as e:
+            QMessageBox.warning(self, "Couldn't Read Concept Lists", str(e))
+            return
+        if not lists:
+            QMessageBox.information(self, "No Concept Lists", "There aren't any concept lists to seed from.")
+            return
+        # First, pick a list. The names show how many concepts are in each one.
+        names = [f"{concept_list.name}, {len(concept_list)} concepts" for concept_list in lists]
+        name, ok = QInputDialog.getItem(self, "Seed from Concept List",
+                                        f"Add an Entry for each concept to {self.language.name}.\n"
+                                        "Concepts that are already linked get skipped.", names, 0, False)
+        if not ok:
+            return
+        concept_list = lists[names.index(name)]
+        # Then seed it, and open the Lexicon on just the new unfinished Entries so you can start filling in Forms.
+        added = self.language.lexicon.seed_from_concept_list(concept_list)
+        skipped = len(concept_list) - len(added)
+        if added:
+            self.lexicon_page.unfinished_filter.setChecked(True)
+        self.lexicon_page.refresh(self.project, self.language)
+        self._open_page("lexicon")
+        if not added:
+            message = f"Every concept in {concept_list.name} is already linked, so there was nothing to add."
+        else:
+            message = f"Added {len(added)} Entr{'y' if len(added) == 1 else 'ies'} from {concept_list.name}."
+            if skipped:
+                message += f" Skipped {skipped} that {'was' if skipped == 1 else 'were'} already linked."
+        message += f"\n\nConcepts from Concepticon ({concept_list.license}): {concept_list.attribution}"
+        QMessageBox.information(self, "Seeded Lexicon", message)
+        self.logger.info(f"Seeded {len(added)} Entries in \"{self.language.name}\" from {concept_list.id}")
 
     def edit_project_settings(self):
         if self.project is None:

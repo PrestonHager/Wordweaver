@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 from PyInstaller.utils.hooks import collect_data_files
 
-datas = [('src/icons/', 'icons/'), ('VERSION', '.'), ('src/default.wwproj', '.')]
+datas = [('src/icons/', 'icons/'), ('VERSION', '.'), ('src/default.wwproj', '.'), ('src/concept_lists/', 'concept_lists/')]
 datas += collect_data_files('ipapy')
 # wn reads its schema and download index from package files when you first search for a sense.
 datas += collect_data_files('wn')

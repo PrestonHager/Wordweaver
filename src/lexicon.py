@@ -4,6 +4,7 @@ import unicodedata
 from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass
 from enum import Enum, IntEnum
+from typing import Protocol
 
 from phonology import is_valid_phoneme
 from tags import Tag, Tags
@@ -122,7 +123,6 @@ class ConceptSource(IntEnum):
     # The values match the ConceptSource enum in the .proto, so they can be saved as is.
     OPEN_ENGLISH_WORDNET = 1
     OPEN_MULTILINGUAL_WORDNET = 2
-    # TODO: Concepticon comes in #49. It's here so its value stays reserved.
     CONCEPTICON = 3
 
     @property
@@ -256,8 +256,24 @@ class Entry:
     def is_coinage(self) -> bool:
         return not self.etymons
 
+    @property
+    def is_unfinished(self) -> bool:
+        """Whether the Entry still needs a Form, like one seeded from a concept list."""
+        return not self._form
+
     def __repr__(self) -> str:
         return f"<Entry {self.id} /{self.form}/: {'; '.join(self.glosses)}>"
+
+class SeedConcept(Protocol):
+    """A concept to seed a Lexicon with, like a Concepticon concept from the Swadesh 100."""
+    @property
+    def reference(self) -> ConceptReference:
+        ...
+
+    @property
+    def seed_gloss(self) -> str:
+        """The Gloss its Entry starts with."""
+        ...
 
 class Lexicon:
     """A Language's dictionary of Entries, kept in the order they were added."""
@@ -435,6 +451,30 @@ class Lexicon:
             ranked.sort(key=lambda pair: pair[0])
         return [entry for _rank, entry in ranked]
 
+    def unfinished(self) -> list[Entry]:
+        """Every Entry that still needs a Form, in Lexicon order."""
+        return [entry for entry in self._entries.values() if entry.is_unfinished]
+
+    def seed_from_concept_list(self, concepts: Iterable[SeedConcept]) -> list[Entry]:
+        """Add one unfinished Entry per concept, in order, so you only need to fill in the Forms.
+
+        Each one gets an empty Form, the concept's Gloss, and its Concept Reference.
+        Concepts that a Definition in this Lexicon already links to are skipped, so seeding twice doesn't make duplicates.
+        Returns the new Entries.
+        """
+        linked = {d.concept_reference for entry in self._entries.values() for d in entry._definitions if d.concept_reference is not None}
+        added = []
+        for concept in concepts:
+            reference = concept.reference
+            if reference in linked:
+                continue
+            entry = self.add(Form(), [concept.seed_gloss])
+            self.set_concept_reference(entry, entry._definitions[0], reference)
+            # Remember it too, in case a list has the same concept twice.
+            linked.add(reference)
+            added.append(entry)
+        return added
+
     def homophones_of(self, form: Form | str, exclude: Entry | None=None) -> list[Entry]:
         """Every Entry with exactly this Form, other than `exclude`, in the order they were added.
 
@@ -512,4 +552,4 @@ def _clean_terms(terms: Iterable[str]) -> tuple[str, ...]:
     # Technical terms are optional, so blank ones are just dropped.
     return tuple(t.strip() for t in terms if t.strip())
 
-__all__ = ["ConceptReference", "ConceptSource", "Definition", "Entry", "Form", "FormCheck", "Lexicon", "SearchField", "SortOrder", "check_form"]
+__all__ = ["ConceptReference", "ConceptSource", "Definition", "Entry", "Form", "FormCheck", "Lexicon", "SearchField", "SeedConcept", "SortOrder", "check_form"]
