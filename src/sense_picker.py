@@ -8,7 +8,7 @@ from senses import Sense, SenseLookup
 
 class _DownloadThread(QThread):
     # Downloading and unpacking a wordnet takes a minute or two, so it runs here instead of freezing the window.
-    failed = pyqtSignal(str)
+    failed = pyqtSignal(str)  # pyright: ignore[reportCallIssue]  PyQt6 stub bug, see pyproject.
 
     def __init__(self, lookup: SenseLookup, parent: QWidget | None=None):
         super().__init__(parent)
@@ -90,8 +90,9 @@ class SensePicker(QDialog):
         layout.addWidget(self.results)
 
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Cancel, self)
-        self.link_button = buttons.addButton("Link Sense", QDialogButtonBox.ButtonRole.AcceptRole)
+        self.link_button = QPushButton("Link Sense", self)
         self.link_button.setAutoDefault(False)
+        buttons.addButton(self.link_button, QDialogButtonBox.ButtonRole.AcceptRole)
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)

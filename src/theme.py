@@ -139,7 +139,7 @@ def _tinted_icon(name: str, color: str) -> str:
 class Theme(QObject):
     """Holds the light or dark palette and tells widgets when it changes."""
 
-    changed = pyqtSignal()
+    changed = pyqtSignal()  # pyright: ignore[reportCallIssue]  PyQt6 stub bug, see pyproject.
 
     def __init__(self):
         super().__init__()
@@ -158,7 +158,8 @@ class Theme(QObject):
     def apply(self, app: QApplication):
         # First, figure out which palette we want.
         if self.mode == "system":
-            dark = QGuiApplication.styleHints().colorScheme() == Qt.ColorScheme.Dark
+            hints = QGuiApplication.styleHints()
+            dark = hints is not None and hints.colorScheme() == Qt.ColorScheme.Dark
         else:
             dark = self.mode == "dark"
         self.colors = DARK if dark else LIGHT
@@ -191,7 +192,9 @@ class Theme(QObject):
         def on_change(_scheme):
             if self.mode == "system":
                 self.apply(app)
-        QGuiApplication.styleHints().colorSchemeChanged.connect(on_change)
+        hints = QGuiApplication.styleHints()
+        if hints is not None:
+            hints.colorSchemeChanged.connect(on_change)
 
 # There's one theme for the whole app.
 theme = Theme()

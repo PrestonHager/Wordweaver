@@ -79,10 +79,10 @@ class PhonemeButton(QPushButton):
 class ConsonantChart(QWidget):
     """The pulmonic consonant chart, with voiceless sounds on the left of each cell and voiced on the right."""
 
-    toggled = pyqtSignal(str, bool)
+    toggled = pyqtSignal(str, bool)  # pyright: ignore[reportCallIssue]  PyQt6 stub bug, see pyproject.
 
     def __init__(self, parent: QWidget | None = None):
-        super().__init__(parent)
+        super().__init__(parent)  # pyright: ignore[reportArgumentType]  PyQt6 stub bug, see pyproject.
         self.buttons: dict[str, PhonemeButton] = {}
         grid = QGridLayout(self)
         grid.setContentsMargins(0, 0, 0, 0)
@@ -126,13 +126,13 @@ class ConsonantChart(QWidget):
 class VowelChart(QWidget):
     """The vowel trapezoid, with unrounded vowels on the left of each point and rounded on the right."""
 
-    toggled = pyqtSignal(str, bool)
+    toggled = pyqtSignal(str, bool)  # pyright: ignore[reportCallIssue]  PyQt6 stub bug, see pyproject.
 
     MARGIN_LEFT = 90
     MARGIN = 40
 
     def __init__(self, parent: QWidget | None = None):
-        super().__init__(parent)
+        super().__init__(parent)  # pyright: ignore[reportArgumentType]  PyQt6 stub bug, see pyproject.
         self.buttons: dict[str, PhonemeButton] = {}
         # Each entry is (height index, backness index, rounding, button).
         self._placed = []
@@ -203,10 +203,10 @@ class PhonologyPage(QWidget):
     """Edit one Language's Phoneme Inventory, by clicking the charts or typing IPA symbols."""
 
     # Sent whenever the inventory changes, so other pages can update.
-    changed = pyqtSignal()
+    changed = pyqtSignal()  # pyright: ignore[reportCallIssue]  PyQt6 stub bug, see pyproject.
 
     def __init__(self, parent: QWidget | None = None):
-        super().__init__(parent)
+        super().__init__(parent)  # pyright: ignore[reportArgumentType]  PyQt6 stub bug, see pyproject.
         self.setObjectName("Page")
         self.logger = logging.getLogger(__name__ + "." + self.__class__.__name__)
         self.language: Language | None = None
@@ -238,12 +238,12 @@ class PhonologyPage(QWidget):
         self.count = label("0", "badge")
         title_row.addWidget(self.count)
         title_row.addStretch()
-        inventory.layout.addLayout(title_row)
+        inventory.content.addLayout(title_row)
         self.chips_box = QWidget(inventory)
         self.chips = FlowLayout(self.chips_box)
-        inventory.layout.addWidget(self.chips_box)
+        inventory.content.addWidget(self.chips_box)
         self.empty = label("No Phonemes yet. Click sounds on the charts below, or type one in.", "muted", inventory)
-        inventory.layout.addWidget(self.empty)
+        inventory.content.addWidget(self.empty)
         input_row = QHBoxLayout()
         self.symbol_input = QLineEdit(inventory)
         self.symbol_input.setObjectName("IpaInput")
@@ -254,10 +254,10 @@ class PhonologyPage(QWidget):
         self.add_button = Button("Add", "plus", "primary", parent=inventory)
         self.add_button.clicked.connect(self.add_symbol)
         input_row.addWidget(self.add_button)
-        inventory.layout.addLayout(input_row)
+        inventory.content.addLayout(input_row)
         self.error = label("", "error", inventory)
         self.error.hide()
-        inventory.layout.addWidget(self.error)
+        inventory.content.addWidget(self.error)
         layout.addWidget(inventory)
 
         # Then the Phoneme Classes, which group the inventory.
@@ -281,8 +281,8 @@ class PhonologyPage(QWidget):
 
         # Now the two charts, each in its own card.
         consonants = Card(body)
-        consonants.layout.addWidget(label("PULMONIC CONSONANTS", "section"))
-        consonants.layout.addWidget(label("Voiceless sounds are on the left of each cell, voiced on the right.", "muted"))
+        consonants.content.addWidget(label("PULMONIC CONSONANTS", "section"))
+        consonants.content.addWidget(label("Voiceless sounds are on the left of each cell, voiced on the right.", "muted"))
         # The chart is wide, so it scrolls sideways by itself instead of stretching the whole page.
         chart_scroll = QScrollArea(consonants)
         chart_scroll.setFrameShape(QFrame.Shape.NoFrame)
@@ -291,13 +291,13 @@ class PhonologyPage(QWidget):
         self.consonant_chart.toggled.connect(self.toggle)
         chart_scroll.setWidget(self.consonant_chart)
         chart_scroll.setMinimumHeight(self.consonant_chart.sizeHint().height() + 14)
-        consonants.layout.addWidget(chart_scroll)
+        consonants.content.addWidget(chart_scroll)
         vowels = Card(body)
-        vowels.layout.addWidget(label("VOWELS", "section"))
-        vowels.layout.addWidget(label("Unrounded vowels are on the left of each point, rounded on the right.", "muted"))
+        vowels.content.addWidget(label("VOWELS", "section"))
+        vowels.content.addWidget(label("Unrounded vowels are on the left of each point, rounded on the right.", "muted"))
         self.vowel_chart = VowelChart(vowels)
         self.vowel_chart.toggled.connect(self.toggle)
-        vowels.layout.addWidget(self.vowel_chart)
+        vowels.content.addWidget(self.vowel_chart)
         layout.addWidget(consonants)
         layout.addWidget(vowels)
         layout.addStretch()
@@ -320,15 +320,17 @@ class PhonologyPage(QWidget):
         self.header.subtitle.setText(f"The sounds {name} uses. Click a sound on a chart to add or remove it.")
         self.count.setText(str(len(symbols)))
         self.chips.clear()
-        for symbol in symbols:
-            classes = ", ".join(c.name for c in self.language.classes_of(symbol))
-            tooltip = DESCRIPTIONS.get(symbol, "Off-chart Phoneme") + (f"\nClasses: {classes}" if classes else "")
-            # Show the Phoneme's Allophones next to it, like t [ɾ ʔ].
-            allophones = self.language.allophones_of(symbol)
-            detail = f"[{' '.join(allophones)}]" if allophones else ""
-            chip = Chip(symbol, tooltip, self.chips_box, detail)
-            chip.removed.connect(lambda s: self.toggle(s, False))
-            self.chips.addWidget(chip)
+        language = self.language
+        if language is not None:
+            for symbol in symbols:
+                classes = ", ".join(c.name for c in language.classes_of(symbol))
+                tooltip = DESCRIPTIONS.get(symbol, "Off-chart Phoneme") + (f"\nClasses: {classes}" if classes else "")
+                # Show the Phoneme's Allophones next to it, like t [ɾ ʔ].
+                allophones = language.allophones_of(symbol)
+                detail = f"[{' '.join(allophones)}]" if allophones else ""
+                chip = Chip(symbol, tooltip, self.chips_box, detail)
+                chip.removed.connect(lambda s: self.toggle(s, False))
+                self.chips.addWidget(chip)
         self.chips_box.setVisible(bool(symbols))
         self.empty.setVisible(not symbols)
         for symbol, button in self.buttons.items():
@@ -370,8 +372,10 @@ class PhonologyPage(QWidget):
         self.add_button.setEnabled(message is None)
         self.symbol_input.setProperty("invalid", message is not None)
         # Qt only re-reads a property selector when the style is reapplied.
-        self.symbol_input.style().unpolish(self.symbol_input)
-        self.symbol_input.style().polish(self.symbol_input)
+        style = self.symbol_input.style()
+        if style is not None:
+            style.unpolish(self.symbol_input)
+            style.polish(self.symbol_input)
 
     def add_symbol(self):
         symbol = self.symbol_input.text().strip()

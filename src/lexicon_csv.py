@@ -30,7 +30,7 @@ def export_csv(lexicon: Lexicon, tags: Tags | None=None) -> str:
     writer = csv.writer(out)
     writer.writerow(HEADER)
     for entry in lexicon:
-        tag_names = [tags.get(tag_id).name for tag_id in entry.tag_ids] if tags is not None else []
+        tag_names = [tag.name for tag_id in entry.tag_ids if (tag := tags.get(tag_id)) is not None] if tags is not None else []
         for number, definition in enumerate(entry.definitions, start=1):
             writer.writerow((
                 entry.id,

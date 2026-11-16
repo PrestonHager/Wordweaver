@@ -8,7 +8,7 @@ from PyQt6.QtWidgets import QFrame, QHBoxLayout, QLabel, QLayout, QPushButton, Q
 from icons import bind_icon
 
 # Which theme color an icon gets on each kind of button.
-ICON_COLORS = {
+ICON_COLORS: dict[str | None, tuple[str, str | None]] = {
     "primary": ("accent_text", None),
     "nav": ("muted", "accent"),
     "danger": ("danger", None),
@@ -52,15 +52,15 @@ class Card(QFrame):
     def __init__(self, parent: QWidget | None = None, padding: int = 16, spacing: int = 12):
         super().__init__(parent)
         self.setProperty("card", True)
-        self.layout = QVBoxLayout(self)
-        self.layout.setContentsMargins(padding, padding, padding, padding)
-        self.layout.setSpacing(spacing)
+        self.content = QVBoxLayout(self)
+        self.content.setContentsMargins(padding, padding, padding, padding)
+        self.content.setSpacing(spacing)
 
 class PageHeader(QWidget):
     """A page title with a subtitle under it and actions on the right."""
 
     def __init__(self, title: str, subtitle: str = "", parent: QWidget | None = None):
-        super().__init__(parent)
+        super().__init__(parent)  # pyright: ignore[reportArgumentType]  PyQt6 stub bug, see pyproject.
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         text = QVBoxLayout()
@@ -71,17 +71,17 @@ class PageHeader(QWidget):
         text.addWidget(self.title)
         text.addWidget(self.subtitle)
         layout.addLayout(text, 1)
-        self.actions = QHBoxLayout()
-        self.actions.setSpacing(6)
-        layout.addLayout(self.actions)
+        self.action_row = QHBoxLayout()
+        self.action_row.setSpacing(6)
+        layout.addLayout(self.action_row)
 
     def add_action(self, widget: QWidget):
-        self.actions.addWidget(widget, 0, Qt.AlignmentFlag.AlignTop)
+        self.action_row.addWidget(widget, 0, Qt.AlignmentFlag.AlignTop)
 
 class Chip(QFrame):
     """A small rounded tag with a remove button, used for Phonemes in an inventory."""
 
-    removed = pyqtSignal(str)
+    removed = pyqtSignal(str)  # pyright: ignore[reportCallIssue]  PyQt6 stub bug, see pyproject.
 
     def __init__(self, text: str, tooltip: str = "", parent: QWidget | None = None, detail: str = ""):
         super().__init__(parent)
@@ -175,7 +175,7 @@ class EmptyState(QWidget):
     """A centered message for a page with nothing on it yet."""
 
     def __init__(self, icon_name: str, title: str, text: str, parent: QWidget | None = None):
-        super().__init__(parent)
+        super().__init__(parent)  # pyright: ignore[reportArgumentType]  PyQt6 stub bug, see pyproject.
         layout = QVBoxLayout(self)
         layout.addStretch()
         badge = Button(icon=icon_name, variant="ghost", parent=self, icon_size=40, icon_color="muted")

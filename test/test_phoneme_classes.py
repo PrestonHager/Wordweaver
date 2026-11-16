@@ -121,7 +121,7 @@ class TestPhonemeClasses(unittest.TestCase):
 
     def test_defaults_cant_be_deleted(self):
         with self.assertRaises(ValueError):
-            self.language.remove_class(self.language.get_class("Nasal"))
+            self.language.remove_class(self.language.get_class("Nasal"))  # pyright: ignore[reportArgumentType]  None would fail the test anyway.
 
     def test_class_names_are_unique(self):
         with self.assertRaises(ValueError):

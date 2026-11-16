@@ -9,21 +9,21 @@ from wordweaver_project import Language
 class FrequencyCard(Card):
     """Lets you give each Phoneme an optional Frequency. A blank box means it counts the same as the rest."""
 
-    changed = pyqtSignal()
+    changed = pyqtSignal()  # pyright: ignore[reportCallIssue]  PyQt6 stub bug, see pyproject.
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.language: Language | None = None
         self.inputs: dict[str, QLineEdit] = {}
-        self.layout.addWidget(label("PHONEME FREQUENCY", "section"))
-        self.layout.addWidget(label("How common each Phoneme is, as a weight. Leave a box blank and that Phoneme counts as 1, so all blank means all equal.", "muted", self))
+        self.content.addWidget(label("PHONEME FREQUENCY", "section"))
+        self.content.addWidget(label("How common each Phoneme is, as a weight. Leave a box blank and that Phoneme counts as 1, so all blank means all equal.", "muted", self))
         self.grid_box = QWidget(self)
         self.grid = QGridLayout(self.grid_box)
         self.grid.setContentsMargins(0, 0, 0, 0)
-        self.layout.addWidget(self.grid_box)
+        self.content.addWidget(self.grid_box)
         self.error = label("", "error", self)
         self.error.hide()
-        self.layout.addWidget(self.error)
+        self.content.addWidget(self.error)
 
     def set_language(self, language: Language | None):
         self.language = language
@@ -32,7 +32,10 @@ class FrequencyCard(Card):
     def refresh(self):
         # First, clear out the old boxes.
         while self.grid.count():
-            self.grid.takeAt(0).widget().deleteLater()
+            item = self.grid.takeAt(0)
+            widget = item.widget() if item is not None else None
+            if widget is not None:
+                widget.deleteLater()
         self.inputs = {}
         if self.language is None:
             return
@@ -71,13 +74,13 @@ class FrequencyCard(Card):
 class SuprasegmentalsCard(Card):
     """Lets you set whether a Language uses Stress and Length, and list its tones."""
 
-    changed = pyqtSignal()
+    changed = pyqtSignal()  # pyright: ignore[reportCallIssue]  PyQt6 stub bug, see pyproject.
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.language: Language | None = None
-        self.layout.addWidget(label("SUPRASEGMENTALS", "section"))
-        self.layout.addWidget(label("Language-wide for now. Putting these on syllables comes with Phonotactics.", "muted", self))
+        self.content.addWidget(label("SUPRASEGMENTALS", "section"))
+        self.content.addWidget(label("Language-wide for now. Putting these on syllables comes with Phonotactics.", "muted", self))
         checks = QHBoxLayout()
         self.stress = QCheckBox("Uses Stress", self)
         self.stress.toggled.connect(self._on_stress)
@@ -86,7 +89,7 @@ class SuprasegmentalsCard(Card):
         self.length.toggled.connect(self._on_length)
         checks.addWidget(self.length)
         checks.addStretch()
-        self.layout.addLayout(checks)
+        self.content.addLayout(checks)
         tones = QHBoxLayout()
         tones.addWidget(label("Tones:", parent=self))
         self.tones = QLineEdit(self)
@@ -96,10 +99,10 @@ class SuprasegmentalsCard(Card):
         save = Button("Save Tones", "save", parent=self)
         save.clicked.connect(self.save_tones)
         tones.addWidget(save)
-        self.layout.addLayout(tones)
+        self.content.addLayout(tones)
         self.error = label("", "error", self)
         self.error.hide()
-        self.layout.addWidget(self.error)
+        self.content.addWidget(self.error)
 
     def set_language(self, language: Language | None):
         self.language = language

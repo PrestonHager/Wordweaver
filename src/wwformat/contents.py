@@ -1,6 +1,7 @@
 # wwformat/contents.py
 
 import os
+from typing import Any, Literal, overload
 from pathlib import Path
 
 from google.protobuf.message import DecodeError, Message
@@ -32,6 +33,11 @@ class FileContents:
         # How many bytes of the file are patches, so the Project knows when to compact.
         self.patch_bytes = 0
 
+    # These overloads only tell type checkers which message each chunk type holds.
+    @overload
+    def get(self, chunk_type: Literal[ChunkType.PROJECT]) -> pb.ProjectInfo: ...
+    @overload
+    def get(self, chunk_type: ChunkType) -> Message: ...
     def get(self, chunk_type: ChunkType) -> Message:
         """Get a single-message chunk, or an empty message if the file didn't have it."""
         if chunk_type not in self._singles:
@@ -39,9 +45,25 @@ class FileContents:
         return self._singles[chunk_type]
 
     def add_record(self, table: ChunkType, record: Message):
-        self._records[table][record.id] = record
+        self._records[table][record.id] = record  # pyright: ignore[reportAttributeAccessIssue]  Every record message has an id.
 
-    def records(self, table: ChunkType) -> list[Message]:
+    @overload
+    def records(self, table: Literal[ChunkType.LANGUAGES]) -> list[pb.Language]: ...
+    @overload
+    def records(self, table: Literal[ChunkType.PHONEMES]) -> list[pb.Phoneme]: ...
+    @overload
+    def records(self, table: Literal[ChunkType.ENTRIES]) -> list[pb.Entry]: ...
+    @overload
+    def records(self, table: Literal[ChunkType.DEFINITIONS]) -> list[pb.Definition]: ...
+    @overload
+    def records(self, table: Literal[ChunkType.TAGS]) -> list[pb.Tag]: ...
+    @overload
+    def records(self, table: Literal[ChunkType.PHONEME_CLASSES]) -> list[pb.PhonemeClass]: ...
+    @overload
+    def records(self, table: Literal[ChunkType.ALLOPHONE_RULES]) -> list[pb.AllophoneRule]: ...
+    @overload
+    def records(self, table: ChunkType) -> list[Any]: ...
+    def records(self, table: ChunkType) -> list[Any]:
         """Get a table's records, oldest ID first."""
         return sorted(self._records[table].values(), key=lambda record: record.id)
 
@@ -95,7 +117,7 @@ class FileContents:
         self.strings.extend(patch.strings)
         for single in patch.singles:
             if single.chunk_type in SINGLE_MESSAGES:
-                self._singles[ChunkType(single.chunk_type)] = _parse(SINGLE_MESSAGES[single.chunk_type], single.message)
+                self._singles[ChunkType(single.chunk_type)] = _parse(SINGLE_MESSAGES[ChunkType(single.chunk_type)], single.message)
             elif is_critical(single.chunk_type):
                 raise _unknown_chunk(single.chunk_type)
         for delete in patch.deletes:
@@ -123,9 +145,9 @@ class FileContents:
                 if chunk.type_id == ChunkType.STRING_TABLE:
                     contents.strings = StringTable.from_message(_parse(pb.StringTable, chunk.payload))
                 elif chunk.type_id in SINGLE_MESSAGES:
-                    contents.get(ChunkType(chunk.type_id)).MergeFrom(_parse(SINGLE_MESSAGES[chunk.type_id], chunk.payload))
+                    contents.get(ChunkType(chunk.type_id)).MergeFrom(_parse(SINGLE_MESSAGES[ChunkType(chunk.type_id)], chunk.payload))
                 elif chunk.type_id in RECORD_TABLES:
-                    table = _parse(RECORD_TABLES[chunk.type_id], chunk.payload)
+                    table = _parse(RECORD_TABLES[ChunkType(chunk.type_id)], chunk.payload)
                     for record in table.records:
                         contents.add_record(ChunkType(chunk.type_id), record)
                 elif chunk.type_id == ChunkType.PATCH:
@@ -160,7 +182,7 @@ class FileContents:
         with open(path, "rb") as f_in:
             return cls.decode(f_in.read())
 
-def _parse(message_class: type[Message], payload: bytes) -> Message:
+def _parse[M: Message](message_class: type[M], payload: bytes) -> M:
     message = message_class()
     message.ParseFromString(payload)
     return message

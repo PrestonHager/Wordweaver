@@ -1,5 +1,7 @@
 # allophones_card.py
 
+from typing import Any
+
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QComboBox, QHBoxLayout, QLineEdit, QListWidget, QListWidgetItem, QWidget
 
@@ -7,11 +9,18 @@ from allophones import WORD_BOUNDARY, AllophoneRule, ContextSide
 from widgets import Button, Card, label
 from wordweaver_project import Language
 
+class _OptionPicker(QComboBox):
+    """A combo box that keeps the Python value behind each of its items."""
+
+    def __init__(self, parent: QWidget | None = None):
+        super().__init__(parent)
+        self.options: list[tuple[str, Any]] = []
+
 class AllophonesCard(Card):
     """Lists a Language's Allophone Rules and lets you add, edit, and remove them."""
 
     # Sent whenever a rule changes, so other pages can update.
-    changed = pyqtSignal()
+    changed = pyqtSignal()  # pyright: ignore[reportCallIssue]  PyQt6 stub bug, see pyproject.
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
@@ -24,18 +33,18 @@ class AllophonesCard(Card):
         self.count = label("0", "badge")
         title_row.addWidget(self.count)
         title_row.addStretch()
-        self.layout.addLayout(title_row)
-        self.layout.addWidget(label("How a Phoneme is pronounced in a context, like /t/ → [ɾ] / Vowel _ Vowel. # is the edge of a word.", "muted", self))
+        self.content.addLayout(title_row)
+        self.content.addWidget(label("How a Phoneme is pronounced in a context, like /t/ → [ɾ] / Vowel _ Vowel. # is the edge of a word.", "muted", self))
 
         # Then the list of rules.
         self.list = QListWidget(self)
         self.list.setMinimumHeight(120)
         self.list.currentItemChanged.connect(self._on_picked)
-        self.layout.addWidget(self.list)
+        self.content.addWidget(self.list)
 
         # Now the form, which reads /phoneme/ → [allophone] / before _ after.
         form = QHBoxLayout()
-        self.phoneme_picker = QComboBox(self)
+        self.phoneme_picker = _OptionPicker(self)
         self.phoneme_picker.setToolTip("The Phoneme")
         form.addWidget(self.phoneme_picker)
         form.addWidget(label("→", parent=self))
@@ -46,15 +55,15 @@ class AllophonesCard(Card):
         self.allophone_input.setMaximumWidth(180)
         form.addWidget(self.allophone_input)
         form.addWidget(label("/", parent=self))
-        self.before_picker = QComboBox(self)
+        self.before_picker = _OptionPicker(self)
         self.before_picker.setToolTip("What comes before")
         form.addWidget(self.before_picker)
         form.addWidget(label("_", parent=self))
-        self.after_picker = QComboBox(self)
+        self.after_picker = _OptionPicker(self)
         self.after_picker.setToolTip("What comes after")
         form.addWidget(self.after_picker)
         form.addStretch()
-        self.layout.addLayout(form)
+        self.content.addLayout(form)
 
         # Finally, the buttons and a place for errors.
         buttons = QHBoxLayout()
@@ -68,10 +77,10 @@ class AllophonesCard(Card):
         self.remove_button.clicked.connect(self.remove_rule)
         buttons.addWidget(self.remove_button)
         buttons.addStretch()
-        self.layout.addLayout(buttons)
+        self.content.addLayout(buttons)
         self.error = label("", "error", self)
         self.error.hide()
-        self.layout.addWidget(self.error)
+        self.content.addWidget(self.error)
 
     def set_language(self, language: Language | None):
         self.language = language
@@ -104,10 +113,10 @@ class AllophonesCard(Card):
         self._fill(self.after_picker, sides)
         self._show_selected()
 
-    def _fill(self, picker: QComboBox, options: list[tuple[str, object]]):
+    def _fill(self, picker: _OptionPicker, options: list[tuple[str, Any]]):
         # QComboBox can't compare Python objects, so keep them in a list and store their index.
         current = picker.currentData()
-        old = getattr(picker, "options", [])
+        old = picker.options
         current_value = old[current][1] if current is not None and current < len(old) else None
         picker.blockSignals(True)
         picker.clear()
@@ -117,14 +126,14 @@ class AllophonesCard(Card):
         self._pick(picker, current_value)
         picker.blockSignals(False)
 
-    def _pick(self, picker: QComboBox, value):
+    def _pick(self, picker: _OptionPicker, value):
         for i, (_text, option) in enumerate(picker.options):
             if option is value or (isinstance(value, str) and option == value):
                 picker.setCurrentIndex(i)
                 return
         picker.setCurrentIndex(0 if picker.count() else -1)
 
-    def _value(self, picker: QComboBox):
+    def _value(self, picker: _OptionPicker) -> Any:
         index = picker.currentData()
         return picker.options[index][1] if index is not None else None
 

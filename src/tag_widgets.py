@@ -97,7 +97,7 @@ class TagPicker(QWidget):
     """A checklist of the Project's Tags, for picking which ones go on an Entry."""
 
     def __init__(self, tags: Tags, entry: Entry | None=None, parent: QWidget | None=None):
-        super().__init__(parent)
+        super().__init__(parent)  # pyright: ignore[reportArgumentType]  PyQt6 stub bug, see pyproject.
         self.tags = tags
 
         layout = QVBoxLayout(self)
@@ -127,15 +127,22 @@ class TagPicker(QWidget):
             self._add_item(tag, True)
 
     def checked_tags(self) -> list[Tag]:
-        items = (self.tag_list.item(i) for i in range(self.tag_list.count()))
-        return [self.tags.get(item.data(Qt.ItemDataRole.UserRole)) for item in items if item.checkState() == Qt.CheckState.Checked]
+        checked = []
+        for i in range(self.tag_list.count()):
+            item = self.tag_list.item(i)
+            if item is None or item.checkState() != Qt.CheckState.Checked:
+                continue
+            tag = self.tags.get(item.data(Qt.ItemDataRole.UserRole))
+            if tag is not None:
+                checked.append(tag)
+        return checked
 
     def apply(self, lexicon: Lexicon, entry: Entry):
         """Tag and untag `entry` so it has just the checked Tags."""
         checked = self.checked_tags()
         for tag_id in entry.tag_ids:
             tag = self.tags.get(tag_id)
-            if tag not in checked:
+            if tag is not None and tag not in checked:
                 lexicon.untag(entry, tag)
         for tag in checked:
             lexicon.tag(entry, tag)

@@ -39,10 +39,10 @@ class _DefinitionDraft:
 class FormWarnings(QWidget):
     """The Form check's warnings, shown under the Form field, with a button to add each unknown Phoneme to the Inventory."""
 
-    phoneme_added = pyqtSignal(str)
+    phoneme_added = pyqtSignal(str)  # pyright: ignore[reportCallIssue]  PyQt6 stub bug, see pyproject.
 
     def __init__(self, language: Language, parent: QWidget | None=None):
-        super().__init__(parent)
+        super().__init__(parent)  # pyright: ignore[reportArgumentType]  PyQt6 stub bug, see pyproject.
         self.language = language
         self.check = FormCheck()
         self.add_buttons: dict[str, QPushButton] = {}
@@ -57,9 +57,11 @@ class FormWarnings(QWidget):
         self.check = check_form(text, self.language.inventory.symbols)
         # First, clear out the old warnings.
         while self._layout.count():
-            widget = self._layout.takeAt(0).widget()
-            widget.setParent(None)
-            widget.deleteLater()
+            item = self._layout.takeAt(0)
+            widget = item.widget() if item is not None else None
+            if widget is not None:
+                widget.setParent(None)  # pyright: ignore[reportArgumentType]  PyQt6 stub bug, see pyproject.
+                widget.deleteLater()
         self.add_buttons = {}
         # Then give each unknown Phoneme a row with its own button.
         for symbol in self.check.unknown:
@@ -268,7 +270,9 @@ class EntryEditor(QDialog):
         # Keep the list label in step with the Glosses as you type.
         if 0 <= self._current < len(self._drafts):
             self._store_fields()
-            self.definition_list.item(self._current).setText(self._drafts[self._current].label(self._current + 1))
+            item = self.definition_list.item(self._current)
+            if item is not None:
+                item.setText(self._drafts[self._current].label(self._current + 1))
 
     def _add_definition(self):
         self._store_fields()
@@ -315,6 +319,7 @@ class EntryEditor(QDialog):
             first.definition = self.entry.definitions[0]
         else:
             lexicon.edit(self.entry, form=form)
+        kept: list[Definition] = []
         for draft in self._drafts:
             if draft.definition is None:
                 draft.definition = lexicon.add_definition(self.entry, draft.glosses, draft.terms, draft.description)
@@ -324,7 +329,7 @@ class EntryEditor(QDialog):
                 lexicon.clear_concept_reference(self.entry, draft.definition)
             else:
                 lexicon.set_concept_reference(self.entry, draft.definition, draft.concept_reference)
-        kept = [draft.definition for draft in self._drafts]
+            kept.append(draft.definition)
         for definition in self.entry.definitions:
             if all(definition is not k for k in kept):
                 lexicon.remove_definition(self.entry, definition)
@@ -374,7 +379,9 @@ class HomophoneWarning(QDialog):
         self.match_list.itemDoubleClicked.connect(lambda _item: self.open_match())
         layout.addWidget(self.match_list)
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Cancel, self)
-        buttons.addButton("Open Entry", QDialogButtonBox.ButtonRole.ActionRole).clicked.connect(self.open_match)
+        open_button = QPushButton("Open Entry", self)
+        open_button.clicked.connect(self.open_match)
+        buttons.addButton(open_button, QDialogButtonBox.ButtonRole.ActionRole)
         buttons.addButton("Save Anyway", QDialogButtonBox.ButtonRole.AcceptRole)
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
