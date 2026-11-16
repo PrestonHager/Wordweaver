@@ -154,6 +154,7 @@ class App(QMainWindow):
             None,
             ("save", "&Save Project", "save", "Ctrl+S", self.save),
             ("save_as", "S&ave Project As", "save-all", "Ctrl+Shift+S", self.save_as),
+            ("export_csv", "&Export Lexicon to CSV…", None, "", self.export_lexicon_csv),
             None,
             ("about", "A&bout", "info", "F1", self.open_about),
             ("exit", "&Exit", "log-out", "Alt+F4", self.close),
@@ -177,9 +178,10 @@ class App(QMainWindow):
         self.menu_actions["theme"] = self._action(self.view_menu, "Toggle &Dark Mode", "moon", "Ctrl+Shift+L", self.toggle_theme)
         menubar.addMenu(self.view_menu)
 
-    def _action(self, menu: QMenu, text: str, icon_name: str, shortcut: str, slot):
+    def _action(self, menu: QMenu, text: str, icon_name: str | None, shortcut: str, slot):
         action = menu.addAction(text)
-        bind_icon(action, icon_name, "muted", size=16)
+        if icon_name is not None:
+            bind_icon(action, icon_name, "muted", size=16)
         action.setShortcut(shortcut)
         action.triggered.connect(slot)
         return action
@@ -187,7 +189,7 @@ class App(QMainWindow):
     def _update_main_view(self):
         # First, turn the menu actions on or off for whether a Project is open.
         has_project = self.project is not None
-        for key in ("close", "save", "save_as", "copy", "overview", "phonology", "lexicon"):
+        for key in ("close", "save", "save_as", "export_csv", "copy", "overview", "phonology", "lexicon"):
             self.menu_actions[key].setEnabled(has_project)
         self.menu_actions["paste"].setEnabled(has_project and pyperclip.paste() != '')
         # Then show the welcome page or the workspace.
@@ -362,6 +364,29 @@ class App(QMainWindow):
             self.project.save()
             self.statusBar().showMessage(f"Saved to {self.project.file}", 4000)
             self.logger.info(f"Saved project \"{self.project.name}\" to {self.project.file} and updated project file location.")
+
+    def export_lexicon_csv(self):
+        if self.project is None or self.language is None:
+            return
+        # Ask where to save the current Language's Lexicon.
+        dialog = QFileDialog(self)
+        dialog.selectFile(f"{self.language.name} Lexicon.csv")
+        dialog.setFileMode(QFileDialog.FileMode.AnyFile)
+        dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptSave)
+        dialog.setDefaultSuffix("csv")
+        dialog.setNameFilters(("CSV File (*.csv)", "All Files (*)"))
+        if dialog.exec() != QFileDialog.DialogCode.Accepted:
+            return
+        file = dialog.selectedFiles()[0]
+        # The text already starts with a byte order mark, so plain UTF-8 keeps it, and newline="" keeps the CSV's line endings.
+        try:
+            with open(file, "w", encoding="utf-8", newline="") as f:
+                f.write(self.project.export_lexicon_csv(self.language))
+        except OSError as e:
+            QMessageBox.warning(self, "Couldn't Export Lexicon", str(e))
+            return
+        self.statusBar().showMessage(f"Exported the Lexicon to {file}", 4000)
+        self.logger.info(f"Exported the Lexicon of \"{self.language.name}\" to {file}")
 
     def open_about(self):
         if not hasattr(self, "about_window"):
