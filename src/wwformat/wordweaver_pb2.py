@@ -24,23 +24,25 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x10wordweaver.proto\x12\rwordweaver.v1\"\x1e\n\x0bStringTable\x12\x0f\n\x07strings\x18\x01 \x03(\t\",\n\x0bProjectInfo\x12\x0c\n\x04name\x18\x01 \x01(\r\x12\x0f\n\x07next_id\x18\x02 \x01(\x04\"$\n\x08Language\x12\n\n\x02id\x18\x01 \x01(\x04\x12\x0c\n\x04name\x18\x02 \x01(\r\"9\n\rLanguageTable\x12(\n\x07records\x18\x01 \x03(\x0b\x32\x17.wordweaver.v1.Language\":\n\x07Phoneme\x12\n\n\x02id\x18\x01 \x01(\x04\x12\x13\n\x0blanguage_id\x18\x02 \x01(\x04\x12\x0e\n\x06symbol\x18\x03 \x01(\r\"7\n\x0cPhonemeTable\x12\'\n\x07records\x18\x01 \x03(\x0b\x32\x16.wordweaver.v1.Phonemeb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x10wordweaver.proto\x12\rwordweaver.v1\"\x1e\n\x0bStringTable\x12\x0f\n\x07strings\x18\x01 \x03(\t\",\n\x0bProjectInfo\x12\x0c\n\x04name\x18\x01 \x01(\r\x12\x0f\n\x07next_id\x18\x02 \x01(\x04\"O\n\x08Language\x12\n\n\x02id\x18\x01 \x01(\x04\x12\x0c\n\x04name\x18\x02 \x01(\r\x12)\n\x04kind\x18\x03 \x01(\x0e\x32\x1b.wordweaver.v1.LanguageKind\"9\n\rLanguageTable\x12(\n\x07records\x18\x01 \x03(\x0b\x32\x17.wordweaver.v1.Language\":\n\x07Phoneme\x12\n\n\x02id\x18\x01 \x01(\x04\x12\x13\n\x0blanguage_id\x18\x02 \x01(\x04\x12\x0e\n\x06symbol\x18\x03 \x01(\r\"7\n\x0cPhonemeTable\x12\'\n\x07records\x18\x01 \x03(\x0b\x32\x16.wordweaver.v1.Phoneme*\x81\x01\n\x0cLanguageKind\x12\x1a\n\x16LANGUAGE_KIND_LANGUAGE\x10\x00\x12 \n\x1cLANGUAGE_KIND_PROTO_LANGUAGE\x10\x01\x12\x19\n\x15LANGUAGE_KIND_DIALECT\x10\x02\x12\x18\n\x14LANGUAGE_KIND_CREOLE\x10\x03\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'wordweaver_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
+  _globals['_LANGUAGEKIND']._serialized_start=371
+  _globals['_LANGUAGEKIND']._serialized_end=500
   _globals['_STRINGTABLE']._serialized_start=35
   _globals['_STRINGTABLE']._serialized_end=65
   _globals['_PROJECTINFO']._serialized_start=67
   _globals['_PROJECTINFO']._serialized_end=111
   _globals['_LANGUAGE']._serialized_start=113
-  _globals['_LANGUAGE']._serialized_end=149
-  _globals['_LANGUAGETABLE']._serialized_start=151
-  _globals['_LANGUAGETABLE']._serialized_end=208
-  _globals['_PHONEME']._serialized_start=210
-  _globals['_PHONEME']._serialized_end=268
-  _globals['_PHONEMETABLE']._serialized_start=270
-  _globals['_PHONEMETABLE']._serialized_end=325
+  _globals['_LANGUAGE']._serialized_end=192
+  _globals['_LANGUAGETABLE']._serialized_start=194
+  _globals['_LANGUAGETABLE']._serialized_end=251
+  _globals['_PHONEME']._serialized_start=253
+  _globals['_PHONEME']._serialized_end=311
+  _globals['_PHONEMETABLE']._serialized_start=313
+  _globals['_PHONEMETABLE']._serialized_end=368
 # @@protoc_insertion_point(module_scope)
