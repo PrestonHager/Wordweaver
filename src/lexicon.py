@@ -217,6 +217,17 @@ class Lexicon:
     def get(self, id: int) -> Entry | None:
         return self._entries.get(id)
 
+    def homophones_of(self, form: Form | str, exclude: Entry | None=None) -> list[Entry]:
+        """Every Entry with exactly this Form, other than `exclude`, in the order they were added.
+
+        Call it before adding or editing an Entry to warn about Homophones. It never stops the save.
+        An empty Form never matches, since unfinished Entries (like seeded ones) all have one.
+        """
+        form = _to_form(form)
+        if not form:
+            return []
+        return [e for e in self._entries.values() if e.form == form and e is not exclude]
+
     def _check(self, entry: Entry):
         if self._entries.get(entry.id) is not entry:
             raise KeyError(f"Entry {entry.id} isn't in this Lexicon")

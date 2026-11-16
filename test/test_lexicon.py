@@ -132,6 +132,42 @@ class TestLexicon(unittest.TestCase):
         self.assertEqual(entry.etymons, ())
         self.assertTrue(entry.is_coinage)
 
+    def test_homophones_on_add(self):
+        bank = self.lexicon.add("ta", ["river bank"])
+        money = self.lexicon.add("ta", ["money bank"])
+        self.lexicon.add("tas", ["other"])
+        # Before adding a third /ta/, both earlier ones are reported, in order.
+        self.assertEqual(self.lexicon.homophones_of("ta"), [bank, money])
+        self.assertEqual(self.lexicon.homophones_of("si"), [])
+
+    def test_homophones_on_edit(self):
+        bank = self.lexicon.add("ta", ["bank"])
+        other = self.lexicon.add("si", ["other"])
+        # The Entry being edited isn't its own Homophone.
+        self.assertEqual(self.lexicon.homophones_of("ta", exclude=bank), [])
+        self.assertEqual(self.lexicon.homophones_of("ta", exclude=other), [bank])
+        # Reporting never blocks the edit.
+        self.lexicon.edit(other, form="ta")
+        self.assertEqual(self.lexicon.homophones_of("ta", exclude=bank), [other])
+
+    def test_homophones_match_whole_phonemes(self):
+        symbols = self.language.inventory.symbols
+        affricate = self.lexicon.add(Form.parse("t͡sa", symbols), ["one"])
+        self.lexicon.add(Form(["t", "s", "a"]), ["two"])
+        self.assertEqual(self.lexicon.homophones_of(Form.parse("t͡sa", symbols)), [affricate])
+
+    def test_empty_forms_are_not_homophones(self):
+        self.lexicon.add("", ["water"])
+        self.lexicon.add("", ["fire"])
+        self.assertEqual(self.lexicon.homophones_of(""), [])
+
+    def test_homophone_round_trip(self):
+        self.lexicon.add("ta", ["river bank"])
+        self.lexicon.add("ta", ["money bank"])
+        loaded = self.round_trip().languages[0].lexicon
+        self.assertEqual(self.entries(loaded), self.entries(self.lexicon))
+        self.assertEqual([e.glosses for e in loaded.homophones_of("ta")], [("river bank",), ("money bank",)])
+
     def test_polysemy_round_trip(self):
         entry = self.lexicon.add("ta", ["river"], terms=["noun"], description="A big stream of water.")
         self.lexicon.add_definition(entry, ["road", "path", "way"], terms=["noun", "inalienable"])
