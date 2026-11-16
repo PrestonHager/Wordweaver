@@ -3,6 +3,8 @@
 import unicodedata
 from collections.abc import Callable, Iterable, Iterator
 
+from tags import Tag, Tags
+
 class Form:
     """How an Entry is said, as a sequence of Phonemes written as IPA symbols."""
 
@@ -88,10 +90,12 @@ class Definition:
 class Entry:
     """One item in a Lexicon, with one Form and one or more Definitions in order."""
 
-    def __init__(self, id: int, form: Form, definitions: Iterable[Definition]):
+    def __init__(self, id: int, form: Form, definitions: Iterable[Definition], tag_ids: Iterable[int]=()):
         # Entries are made and changed by the Lexicon, which hands out the ID.
         self._id = id
         self._form = form
+        # Tags belong to the Project, so an Entry only keeps their IDs, in the order they were added.
+        self._tag_ids = list(dict.fromkeys(tag_ids))
         self._definitions = list(definitions)
 
     @property
@@ -112,6 +116,11 @@ class Entry:
         return tuple(gloss for definition in self._definitions for gloss in definition.glosses)
 
     @property
+    def tag_ids(self) -> tuple[int, ...]:
+        """The IDs of this Entry's Tags. Look them up in the Project's Tags to get their names."""
+        return tuple(self._tag_ids)
+
+    @property
     def etymons(self) -> tuple:
         # TODO: Etymons come with the Descent spec. Until then every Entry is a Coinage.
         return ()
@@ -126,12 +135,14 @@ class Entry:
 class Lexicon:
     """A Language's dictionary of Entries, kept in the order they were added."""
 
-    def __init__(self, new_id: Callable[[], int]):
+    def __init__(self, new_id: Callable[[], int], tags: Tags | None=None):
         """
         :param new_id: Callable[[], int]: Gives out a new record ID each time it's called, so IDs are unique in the Project.
+        :param tags: Tags | None: The Project's Tags. If given, only those Tags can go on Entries.
         """
         self._new_id = new_id
         self._entries: dict[int, Entry] = {}
+        self._tags = tags
 
     def add(self, form: Form | str, glosses: Iterable[str], terms: Iterable[str]=(), description: str="") -> Entry:
         """Add an Entry with a Form and one Definition. Use add_definition to give it more.
@@ -216,6 +227,35 @@ class Lexicon:
 
     def get(self, id: int) -> Entry | None:
         return self._entries.get(id)
+
+    @property
+    def tags(self) -> Tags | None:
+        """The Project's Tags, which every Language shares."""
+        return self._tags
+
+    def tag(self, entry: Entry, tag: Tag):
+        """Put a Tag on an Entry. Nothing happens if it's already there.
+
+        :raises KeyError: If the Entry isn't in this Lexicon, or the Tag isn't in the Project.
+        """
+        self._check(entry)
+        if self._tags is not None and tag not in self._tags:
+            raise KeyError(f"Tag {tag.id} isn't in this Project")
+        if tag.id not in entry._tag_ids:
+            entry._tag_ids.append(tag.id)
+
+    def untag(self, entry: Entry, tag: Tag):
+        """Take a Tag off an Entry. Nothing happens if it wasn't there.
+
+        :raises KeyError: If the Entry isn't in this Lexicon.
+        """
+        self._check(entry)
+        if tag.id in entry._tag_ids:
+            entry._tag_ids.remove(tag.id)
+
+    def tagged(self, tag: Tag) -> list[Entry]:
+        """Find every Entry with a Tag, in Lexicon order."""
+        return [entry for entry in self._entries.values() if tag.id in entry._tag_ids]
 
     def homophones_of(self, form: Form | str, exclude: Entry | None=None) -> list[Entry]:
         """Every Entry with exactly this Form, other than `exclude`, in the order they were added.

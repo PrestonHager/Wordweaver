@@ -15,6 +15,7 @@ class ChunkType(IntEnum):
     PHONEMES = 7
     ENTRIES = 9
     DEFINITIONS = 11
+    TAGS = 13
     PHONEME_CLASSES = 15
 
 def is_critical(type_id: int) -> bool:
@@ -33,5 +34,6 @@ RECORD_TABLES = {
     ChunkType.PHONEMES: pb.PhonemeTable,
     ChunkType.ENTRIES: pb.EntryTable,
     ChunkType.DEFINITIONS: pb.DefinitionTable,
+    ChunkType.TAGS: pb.TagTable,
     ChunkType.PHONEME_CLASSES: pb.PhonemeClassTable,
 }

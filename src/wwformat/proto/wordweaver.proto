@@ -88,6 +88,9 @@ message Entry {
   uint64 language_id = 2;
   // The Form, one IPA symbol per Phoneme, in order.
   repeated uint32 form = 3;
+  // The IDs of the Entry's Tags, in the order they were added.
+  // They live on the Entry, so tagging one Entry only changes that Entry's record.
+  repeated uint64 tag_ids = 4;
 }
 
 // Chunk ENTRIES.
@@ -111,4 +114,15 @@ message Definition {
 // Chunk DEFINITIONS.
 message DefinitionTable {
   repeated Definition records = 1;
+}
+
+// A Tag belongs to the Project, so every Language can use it.
+message Tag {
+  uint64 id = 1;
+  uint32 name = 2;
+}
+
+// Chunk TAGS.
+message TagTable {
+  repeated Tag records = 1;
 }

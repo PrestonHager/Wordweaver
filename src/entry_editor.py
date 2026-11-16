@@ -6,6 +6,7 @@ from PyQt6.QtWidgets import (QDialog, QDialogButtonBox, QFormLayout, QHBoxLayout
                              QMessageBox, QPlainTextEdit, QPushButton, QVBoxLayout, QWidget)
 
 from lexicon import Definition, Entry, Form
+from tag_widgets import TagPicker
 from wordweaver_project import Language
 
 @dataclass
@@ -39,6 +40,12 @@ class EntryEditor(QDialog):
         self.form_input = QLineEdit(self)
         self.form_input.setPlaceholderText("IPA, like kata")
         form_layout.addRow("Form:", self.form_input)
+        # Tags go with the whole Entry, not one Definition, so they sit up here by the Form.
+        # They're kept in their own widget, since they belong to the Project and not the Entry.
+        self.tag_picker = None
+        if language.lexicon.tags is not None:
+            self.tag_picker = TagPicker(language.lexicon.tags, entry, self)
+            form_layout.addRow("Tags:", self.tag_picker)
         layout.addLayout(form_layout)
 
         # First, the list of Definitions with buttons to add, remove, and reorder them.
@@ -169,9 +176,12 @@ class EntryEditor(QDialog):
         for definition in self.entry.definitions:
             if all(definition is not k for k in kept):
                 lexicon.remove_definition(self.entry, definition)
-        # Finally, put the Definitions in the order they're listed.
+        # After that, put the Definitions in the order they're listed.
         for index, definition in enumerate(kept):
             lexicon.move_definition(self.entry, definition, index)
+        # Finally, put on just the checked Tags.
+        if self.tag_picker is not None:
+            self.tag_picker.apply(lexicon, self.entry)
         super().accept()
 
     def _check_homophones(self, form: Form) -> bool:
