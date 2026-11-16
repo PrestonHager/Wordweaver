@@ -149,9 +149,15 @@ class Project:
             for entry in language.lexicon:
                 form = [strings.index(symbol) for symbol in entry.form.phonemes]
                 contents.add_record(ChunkType.ENTRIES, pb.Entry(id=entry.id, language_id=language.id, form=form))
-                for definition in entry.definitions:
-                    glosses = [strings.index(gloss) for gloss in definition.glosses]
-                    contents.add_record(ChunkType.DEFINITIONS, pb.Definition(id=definition.id, entry_id=entry.id, glosses=glosses))
+                for position, definition in enumerate(entry.definitions):
+                    contents.add_record(ChunkType.DEFINITIONS, pb.Definition(
+                        id=definition.id,
+                        entry_id=entry.id,
+                        glosses=[strings.index(gloss) for gloss in definition.glosses],
+                        position=position,
+                        terms=[strings.index(term) for term in definition.terms],
+                        description=strings.index(definition.description),
+                    ))
         contents.unknown_chunks = list(self._unknown_chunks)
         return contents
 
@@ -192,9 +198,16 @@ class Project:
             if record.hand_edited:
                 phoneme_class._restore_members(record.phoneme_ids)
         # Then gather each Entry's Definitions, and put the Entries back into their Lexicons.
+        # The records come in ID order, so sorting by position keeps ID order for ties, like in files saved before positions.
         definitions: dict[int, list[Definition]] = {}
-        for record in contents.records(ChunkType.DEFINITIONS):
-            definitions.setdefault(record.entry_id, []).append(Definition(record.id, [strings[g] for g in record.glosses]))
+        for record in sorted(contents.records(ChunkType.DEFINITIONS), key=lambda record: record.position):
+            definition = Definition(
+                record.id,
+                [strings[g] for g in record.glosses],
+                [strings[t] for t in record.terms],
+                strings[record.description],
+            )
+            definitions.setdefault(record.entry_id, []).append(definition)
         entry_ids = set()
         for record in contents.records(ChunkType.ENTRIES):
             if record.language_id not in languages:

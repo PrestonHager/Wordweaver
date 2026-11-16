@@ -53,12 +53,17 @@ class Form:
         return len(self._phonemes)
 
 class Definition:
-    """One precise meaning of an Entry, described with an ordered list of Glosses."""
+    """One precise meaning of an Entry.
 
-    def __init__(self, id: int, glosses: Iterable[str]):
+    It has an ordered list of Glosses, and optionally some technical linguistic terms and a free-text description.
+    """
+
+    def __init__(self, id: int, glosses: Iterable[str], terms: Iterable[str]=(), description: str=""):
         # Definitions are made and changed by the Lexicon, which hands out the ID.
         self._id = id
         self._glosses = tuple(glosses)
+        self._terms = tuple(terms)
+        self._description = description
 
     @property
     def id(self) -> int:
@@ -68,17 +73,25 @@ class Definition:
     def glosses(self) -> tuple[str, ...]:
         return self._glosses
 
+    @property
+    def terms(self) -> tuple[str, ...]:
+        """Technical linguistic terms, like "plural" or "inalienable", in order."""
+        return self._terms
+
+    @property
+    def description(self) -> str:
+        return self._description
+
     def __repr__(self) -> str:
         return f"<Definition {self.id}: {'; '.join(self.glosses)}>"
 
 class Entry:
-    """One item in a Lexicon, with one Form and its Definitions."""
+    """One item in a Lexicon, with one Form and one or more Definitions in order."""
 
     def __init__(self, id: int, form: Form, definitions: Iterable[Definition]):
         # Entries are made and changed by the Lexicon, which hands out the ID.
         self._id = id
         self._form = form
-        # NOTE: there's only ever one Definition for now, but it's a list so Polysemy can be added later.
         self._definitions = list(definitions)
 
     @property
@@ -120,27 +133,30 @@ class Lexicon:
         self._new_id = new_id
         self._entries: dict[int, Entry] = {}
 
-    def add(self, form: Form | str, glosses: Iterable[str]) -> Entry:
-        """Add an Entry with a Form and one Definition made of `glosses`.
+    def add(self, form: Form | str, glosses: Iterable[str], terms: Iterable[str]=(), description: str="") -> Entry:
+        """Add an Entry with a Form and one Definition. Use add_definition to give it more.
 
         A Form given as a string is split one letter at a time; use Form.parse to match a Phoneme Inventory.
 
         :raises ValueError: If there isn't at least one Gloss.
         """
+        # Check the Glosses before handing out any IDs.
         glosses = _clean_glosses(glosses)
-        entry = Entry(self._new_id(), _to_form(form), [Definition(self._new_id(), glosses)])
+        entry_id = self._new_id()
+        entry = Entry(entry_id, _to_form(form), [self._new_definition(glosses, terms, description)])
         self._entries[entry.id] = entry
         return entry
 
     def edit(self, entry: Entry, form: Form | str | None=None, glosses: Iterable[str] | None=None):
-        """Change an Entry's Form, the Glosses of its Definition, or both. IDs stay the same.
+        """Change an Entry's Form, the Glosses of its first Definition, or both. IDs stay the same.
+
+        Use edit_definition to change any other Definition.
 
         :raises KeyError: If the Entry isn't in this Lexicon.
         :raises ValueError: If `glosses` is given but has no Gloss in it. The Entry isn't changed then.
         """
         self._check(entry)
         if glosses is not None:
-            # TODO: edit one Definition at a time once an Entry can have several.
             entry._definitions[0]._glosses = _clean_glosses(glosses)
         if form is not None:
             entry._form = _to_form(form)
@@ -153,12 +169,65 @@ class Lexicon:
         self._check(entry)
         del self._entries[entry.id]
 
+    def add_definition(self, entry: Entry, glosses: Iterable[str], terms: Iterable[str]=(), description: str="", index: int | None=None) -> Definition:
+        """Give an Entry another Definition, at the end or at `index`.
+
+        :raises KeyError: If the Entry isn't in this Lexicon.
+        :raises ValueError: If there isn't at least one Gloss.
+        """
+        self._check(entry)
+        definition = self._new_definition(glosses, terms, description)
+        entry._definitions.insert(len(entry._definitions) if index is None else index, definition)
+        return definition
+
+    def edit_definition(self, entry: Entry, definition: Definition, glosses: Iterable[str] | None=None, terms: Iterable[str] | None=None, description: str | None=None):
+        """Change a Definition's Glosses, technical terms, or description. Anything left as None stays the same.
+
+        :raises KeyError: If the Entry isn't in this Lexicon, or the Definition isn't on the Entry.
+        :raises ValueError: If `glosses` is given but has no Gloss in it. The Definition isn't changed then.
+        """
+        self._check_definition(entry, definition)
+        if glosses is not None:
+            definition._glosses = _clean_glosses(glosses)
+        if terms is not None:
+            definition._terms = _clean_terms(terms)
+        if description is not None:
+            definition._description = description.strip()
+
+    def remove_definition(self, entry: Entry, definition: Definition):
+        """Remove one of an Entry's Definitions. Its ID is never handed out again.
+
+        :raises KeyError: If the Entry isn't in this Lexicon, or the Definition isn't on the Entry.
+        :raises ValueError: If it's the Entry's last Definition, since every Entry needs one.
+        """
+        self._check_definition(entry, definition)
+        if len(entry._definitions) == 1:
+            raise ValueError("An Entry needs at least one Definition")
+        entry._definitions.remove(definition)
+
+    def move_definition(self, entry: Entry, definition: Definition, index: int):
+        """Move one of an Entry's Definitions to `index`, shifting the others along.
+
+        :raises KeyError: If the Entry isn't in this Lexicon, or the Definition isn't on the Entry.
+        """
+        self._check_definition(entry, definition)
+        entry._definitions.remove(definition)
+        entry._definitions.insert(index, definition)
+
     def get(self, id: int) -> Entry | None:
         return self._entries.get(id)
 
     def _check(self, entry: Entry):
         if self._entries.get(entry.id) is not entry:
             raise KeyError(f"Entry {entry.id} isn't in this Lexicon")
+
+    def _check_definition(self, entry: Entry, definition: Definition):
+        self._check(entry)
+        if not any(d is definition for d in entry._definitions):
+            raise KeyError(f"Definition {definition.id} isn't on Entry {entry.id}")
+
+    def _new_definition(self, glosses: Iterable[str], terms: Iterable[str], description: str) -> Definition:
+        return Definition(self._new_id(), _clean_glosses(glosses), _clean_terms(terms), description.strip())
 
     def _restore(self, entry: Entry):
         # Put back an Entry loaded from a file, keeping its IDs.
@@ -182,5 +251,9 @@ def _clean_glosses(glosses: Iterable[str]) -> tuple[str, ...]:
     if not glosses:
         raise ValueError("A Definition needs at least one Gloss")
     return glosses
+
+def _clean_terms(terms: Iterable[str]) -> tuple[str, ...]:
+    # Technical terms are optional, so blank ones are just dropped.
+    return tuple(t.strip() for t in terms if t.strip())
 
 __all__ = ["Definition", "Entry", "Form", "Lexicon"]

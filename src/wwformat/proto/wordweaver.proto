@@ -95,11 +95,17 @@ message EntryTable {
   repeated Entry records = 1;
 }
 
-// An Entry's Definitions are kept in ID order.
+// An Entry's Definitions are kept in `position` order, then ID order for any ties.
 message Definition {
   uint64 id = 1;
   uint64 entry_id = 2;
   repeated uint32 glosses = 3;
+  // Where the Definition goes among its Entry's Definitions, starting at 0.
+  uint32 position = 4;
+  // Technical linguistic terms, in order.
+  repeated uint32 terms = 5;
+  // A free-text description.
+  uint32 description = 6;
 }
 
 // Chunk DEFINITIONS.
