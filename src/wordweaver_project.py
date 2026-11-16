@@ -7,6 +7,7 @@ from pathlib import Path
 from lexicon import Definition, Entry, Form, Lexicon
 from phoneme_classes import DEFAULT_CLASS_ID_BLOCK, PhonemeClass, PhonemeClasses
 from phonology import Phoneme, PhonemeInventory
+from tags import Tag, Tags
 from wwformat import ChunkType, CorruptFileError, FileContents, NewerVersionError, ProjectFileError, UnknownChunkError, pb
 
 class LanguageKind(IntEnum):
@@ -23,14 +24,14 @@ class LanguageKind(IntEnum):
 class Language:
     """One conlang inside a Project, with its own Phoneme Inventory and Lexicon."""
 
-    def __init__(self, id: int, name: str, new_id: Callable[[], int], kind: LanguageKind, default_class_ids_start: int):
+    def __init__(self, id: int, name: str, new_id: Callable[[], int], kind: LanguageKind, default_class_ids_start: int, tags: Tags | None=None):
         # Languages are made by Project.add_language, which hands out the IDs.
         self._id = id
         self.name = name
         self.kind = kind
         self.inventory = PhonemeInventory(new_id)
         self._classes = PhonemeClasses(self.inventory, new_id, default_class_ids_start)
-        self.lexicon = Lexicon(new_id)
+        self.lexicon = Lexicon(new_id, tags=tags)
 
     @property
     def id(self) -> int:
@@ -76,13 +77,15 @@ class Project:
         self._next_id = 1
         # Ancillary chunks from a newer app that we skipped on load, held so saving doesn't lose them.
         self._unknown_chunks = []
+        # Tags are shared by every Language, and removing one takes it off every Entry.
+        self.tags = Tags(self._new_id, self._untag_everywhere)
 
     @property
     def languages(self) -> list[Language]:
         return list(self._languages)
 
     def add_language(self, name: str, kind: LanguageKind=LanguageKind.LANGUAGE) -> Language:
-        language = Language(self._new_id(), name, self._new_id, kind, self._reserve_ids(DEFAULT_CLASS_ID_BLOCK))
+        language = Language(self._new_id(), name, self._new_id, kind, self._reserve_ids(DEFAULT_CLASS_ID_BLOCK), tags=self.tags)
         self._languages.append(language)
         return language
 
@@ -92,6 +95,15 @@ class Project:
         :raises ValueError: If the Language isn't in this Project.
         """
         self._languages.remove(language)
+
+    def tagged(self, tag: Tag) -> list[Entry]:
+        """Find every Entry with a Tag, in every Language."""
+        return [entry for language in self._languages for entry in language.lexicon.tagged(tag)]
+
+    def _untag_everywhere(self, tag: Tag):
+        for language in self._languages:
+            for entry in language.lexicon.tagged(tag):
+                language.lexicon.untag(entry, tag)
 
     def _new_id(self) -> int:
         return self._reserve_ids(1)
@@ -131,6 +143,8 @@ class Project:
         info = contents.get(ChunkType.PROJECT)
         info.name = strings.index(self.name)
         info.next_id = self._next_id
+        for tag in self.tags:
+            contents.add_record(ChunkType.TAGS, pb.Tag(id=tag.id, name=strings.index(tag.name)))
         for language in self._languages:
             contents.add_record(ChunkType.LANGUAGES, pb.Language(id=language.id, name=strings.index(language.name), kind=language.kind, default_class_ids_start=language._classes.default_ids_start))
             for phoneme in language.inventory:
@@ -148,7 +162,7 @@ class Project:
                 contents.add_record(ChunkType.PHONEME_CLASSES, record)
             for entry in language.lexicon:
                 form = [strings.index(symbol) for symbol in entry.form.phonemes]
-                contents.add_record(ChunkType.ENTRIES, pb.Entry(id=entry.id, language_id=language.id, form=form))
+                contents.add_record(ChunkType.ENTRIES, pb.Entry(id=entry.id, language_id=language.id, form=form, tag_ids=entry.tag_ids))
                 for position, definition in enumerate(entry.definitions):
                     contents.add_record(ChunkType.DEFINITIONS, pb.Definition(
                         id=definition.id,
@@ -177,7 +191,7 @@ class Project:
             kind = LanguageKind(record.kind) if record.kind in LanguageKind._value2member_map_ else LanguageKind.LANGUAGE
             # Files from before Phoneme Classes don't have default Class IDs yet, so give them some now.
             class_ids_start = record.default_class_ids_start or project._reserve_ids(DEFAULT_CLASS_ID_BLOCK)
-            language = Language(record.id, strings[record.name], project._new_id, kind, class_ids_start)
+            language = Language(record.id, strings[record.name], project._new_id, kind, class_ids_start, tags=project.tags)
             languages[record.id] = language
             project._languages.append(language)
         for record in contents.records(ChunkType.PHONEMES):
@@ -197,6 +211,9 @@ class Project:
                 phoneme_class._name = strings[record.name]
             if record.hand_edited:
                 phoneme_class._restore_members(record.phoneme_ids)
+        # Then put back the Tags, so the Entries can point at them.
+        for record in contents.records(ChunkType.TAGS):
+            project.tags._restore(Tag(record.id, strings[record.name]))
         # Then gather each Entry's Definitions, and put the Entries back into their Lexicons.
         # The records come in ID order, so sorting by position keeps ID order for ties, like in files saved before positions.
         definitions: dict[int, list[Definition]] = {}
@@ -214,12 +231,14 @@ class Project:
                 raise CorruptFileError(f"Entry {record.id} belongs to a Language that isn't in the file")
             if record.id not in definitions:
                 raise CorruptFileError(f"Entry {record.id} doesn't have a Definition")
+            if any(project.tags.get(tag_id) is None for tag_id in record.tag_ids):
+                raise CorruptFileError(f"Entry {record.id} has a Tag that isn't in the file")
             form = Form(strings[symbol] for symbol in record.form)
-            languages[record.language_id].lexicon._restore(Entry(record.id, form, definitions[record.id]))
+            languages[record.language_id].lexicon._restore(Entry(record.id, form, definitions[record.id], record.tag_ids))
             entry_ids.add(record.id)
         if not definitions.keys() <= entry_ids:
             raise CorruptFileError("A Definition belongs to an Entry that isn't in the file")
         project._unknown_chunks = list(contents.unknown_chunks)
         return project
 
-__all__ = ["Language", "LanguageKind", "Project", "ProjectFileError", "CorruptFileError", "NewerVersionError", "UnknownChunkError"]
+__all__ = ["Language", "LanguageKind", "Project", "ProjectFileError", "CorruptFileError", "NewerVersionError", "UnknownChunkError", "Tag"]

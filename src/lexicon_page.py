@@ -7,7 +7,8 @@ import logging
 
 from entry_editor import EntryEditor
 from lexicon import Entry
-from widgets import Button, Card, EmptyState, PageHeader
+from tag_widgets import TagFilter, TagManager
+from widgets import Button, Card, EmptyState, PageHeader, label
 from wordweaver_project import Language, Project
 
 class LexiconPage(QWidget):
@@ -24,8 +25,11 @@ class LexiconPage(QWidget):
         layout.setContentsMargins(32, 28, 32, 32)
         layout.setSpacing(16)
 
-        # First, the header with the Add Entry action.
+        # First, the header with the Tag manager and Add Entry actions.
         self.header = PageHeader("Lexicon", "", self)
+        manage_tags = Button("Manage Tags", "pencil", parent=self)
+        manage_tags.clicked.connect(self.manage_tags)
+        self.header.add_action(manage_tags)
         add = Button("Add Entry", "plus", "primary", parent=self)
         add.clicked.connect(self.add_entry)
         self.header.add_action(add)
@@ -33,6 +37,15 @@ class LexiconPage(QWidget):
 
         # Then the Entry list in a card, with buttons for the picked Entry under it.
         self.list_card = Card(self)
+        # The Tag filter sits on top, so you can work on one group of words at a time.
+        toolbar = QHBoxLayout()
+        toolbar.addWidget(label("Tag", "muted", self.list_card))
+        self.tag_filter = TagFilter(self.list_card)
+        self.tag_filter.setMinimumWidth(180)
+        self.tag_filter.currentIndexChanged.connect(lambda _index: self._update_lexicon_list())
+        toolbar.addWidget(self.tag_filter)
+        toolbar.addStretch()
+        self.list_card.layout.addLayout(toolbar)
         self.lexicon_list = QListWidget(self.list_card)
         self.lexicon_list.setObjectName("EntryList")
         self.lexicon_list.itemDoubleClicked.connect(lambda _item: self.edit_entry())
@@ -62,19 +75,27 @@ class LexiconPage(QWidget):
         self._update_lexicon_list()
 
     def _update_lexicon_list(self):
-        if self.language is None:
+        if self.project is None or self.language is None:
             return
-        # Show each Entry as its Form and Glosses, and keep its ID on the item to find it again.
+        # First, refill the Tag filter, since Tags can change from the editor or the Tag manager.
+        self.tag_filter.refresh(self.project.tags)
+        tag = self.tag_filter.picked_tag(self.project.tags)
+        entries = self.language.lexicon.tagged(tag) if tag is not None else self.language.lexicon
+        # Then show each Entry as its Form, Glosses, and Tags, and keep its ID on the item to find it again.
         # With Polysemy, number each Definition so you can tell them apart.
         self.lexicon_list.clear()
-        for entry in self.language.lexicon:
+        for entry in entries:
             meanings = ["; ".join(d.glosses) for d in entry.definitions]
             if len(meanings) > 1:
                 meanings = [f"{number}. {meaning}" for number, meaning in enumerate(meanings, start=1)]
-            item = QListWidgetItem(f"/{entry.form}/  {'  '.join(meanings)}")
+            text = f"/{entry.form}/  {'  '.join(meanings)}"
+            tag_names = [self.project.tags.get(tag_id).name for tag_id in entry.tag_ids]
+            if tag_names:
+                text += f"  [{', '.join(tag_names)}]"
+            item = QListWidgetItem(text)
             item.setData(Qt.ItemDataRole.UserRole, entry.id)
             self.lexicon_list.addItem(item)
-        # Then swap in the empty state if there's nothing to list.
+        # Finally, swap in the empty state if the Lexicon has nothing in it at all.
         has_entries = len(self.language.lexicon) > 0
         self.list_card.setVisible(has_entries)
         self.empty.setVisible(not has_entries)
@@ -117,5 +138,11 @@ class LexiconPage(QWidget):
             self.language.lexicon.remove(entry)
             self._update_lexicon_list()
             self.logger.info(f"Removed Entry: {entry}")
+
+    def manage_tags(self):
+        if self.project is None:
+            return
+        TagManager(self.project, parent=self).exec()
+        self._update_lexicon_list()
 
 __all__ = ["LexiconPage"]
