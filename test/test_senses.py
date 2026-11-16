@@ -159,8 +159,9 @@ class TestOmwSenses(unittest.TestCase):
         languages = wordnet_languages()
         self.assertEqual(languages[0], ("English", "en"))
         self.assertIn(("French", "fr"), languages)
-        self.assertEqual(len({code for _name, code in languages}), len(languages))
-        for name, code in languages:
+        self.assertEqual(len({language[1] for language in languages}), len(languages))
+        for language in languages:
+            code = language[1]
             with self.subTest(code=code):
                 self.assertIsNotNone(lookup_for(code))
 

@@ -348,7 +348,7 @@ class Lexicon:
         if description is not None:
             definition._description = description.strip()
 
-    def set_concept_reference(self, entry: Entry, definition: Definition, reference: ConceptReference):
+    def set_concept_reference(self, entry: Entry, definition: Definition, reference: object):
         """Link a Definition to one exact sense in an open dictionary, replacing any link it had.
 
         :raises KeyError: If the Entry isn't in this Lexicon, or the Definition isn't on the Entry.
@@ -449,7 +449,7 @@ class Lexicon:
             ranked.sort(key=lambda pair: _search_key(pair[1].definitions[0].glosses[0], SearchField.GLOSS))
         else:
             ranked.sort(key=lambda pair: pair[0])
-        return [entry for _rank, entry in ranked]
+        return [pair[1] for pair in ranked]
 
     def unfinished(self) -> list[Entry]:
         """Every Entry that still needs a Form, in Lexicon order."""

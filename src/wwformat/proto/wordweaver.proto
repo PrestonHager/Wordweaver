@@ -194,6 +194,23 @@ message SyllableStructureTable {
   repeated SyllableStructure records = 1;
 }
 
+// A sequence that a Form may not contain in a given Syllable Part or word position.
+message PhonotacticConstraint {
+  uint64 id = 1;
+  uint64 language_id = 2;
+  repeated uint32 atoms = 3;
+  repeated bool atom_classes = 4;
+  uint32 part = 5;
+  uint32 position = 6;
+  bool across_boundaries = 7;
+  uint32 mode = 8;
+}
+
+// Chunk PHONOTACTIC_CONSTRAINTS.
+message PhonotacticConstraintTable {
+  repeated PhonotacticConstraint records = 1;
+}
+
 // Chunk PATCH. One save's worth of changes, applied on top of everything before it.
 // Patches are generic: they replace whole messages and point at records by table and ID.
 message Patch {

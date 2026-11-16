@@ -1,6 +1,7 @@
 {
   "id": "Swadesh-1955-100",
   "name": "Swadesh 100 (1955)",
+  "description": "A compact set of widely used basic words for quick vocabulary comparison.",
   "source": "https://github.com/concepticon/concepticon-data/blob/v3.4.0/concepticondata/conceptlists/Swadesh-1955-100.tsv",
   "version": "Concepticon v3.4.0",
   "license": "CC-BY-4.0",

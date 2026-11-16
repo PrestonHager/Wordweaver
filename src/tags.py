@@ -27,7 +27,7 @@ class Tag:
 class Tags:
     """The Project's Tags, shared by every Language. Entries refer to them by ID."""
 
-    def __init__(self, new_id: Callable[[], int], on_remove: Callable[[Tag], None]=lambda tag: None):
+    def __init__(self, new_id: Callable[[], int], on_remove: Callable[[Tag], None]=lambda tag: tag and None):
         """
         :param new_id: Callable[[], int]: Gives out a new record ID each time it's called, so IDs are unique in the Project.
         :param on_remove: Callable[[Tag], None]: Called with a Tag just before it's removed, so it can be taken off every Entry.

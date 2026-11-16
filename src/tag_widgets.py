@@ -33,7 +33,7 @@ class TagManager(QDialog):
 
         layout = QVBoxLayout(self)
         self.tag_list = QListWidget(self)
-        self.tag_list.itemDoubleClicked.connect(lambda _item: self.rename_tag())
+        self.tag_list.itemDoubleClicked.connect(self.rename_tag)
         layout.addWidget(self.tag_list)
         buttons = QWidget(self)
         buttons_layout = QHBoxLayout(buttons)

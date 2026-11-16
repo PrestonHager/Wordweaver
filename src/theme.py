@@ -144,7 +144,7 @@ class Theme(QObject):
     changed = pyqtSignal()  # pyright: ignore[reportCallIssue]  PyQt6 stub bug, see pyproject.
 
     def __init__(self):
-        super().__init__()
+        super().__init__()  # pyright: ignore[reportArgumentType]  PyQt6 stub bug, see pyproject.
         # The mode is "system", "light", or "dark", and it's remembered between runs.
         self._settings = QSettings("Wordweaver", "Wordweaver")
         self.mode = str(self._settings.value("theme", "system"))
@@ -191,7 +191,7 @@ class Theme(QObject):
 
     def follow_system(self, app: QApplication):
         # Re-apply when the system scheme changes, but only if we're following it.
-        def on_change(_scheme):
+        def on_change():
             if self.mode == "system":
                 self.apply(app)
         hints = QGuiApplication.styleHints()

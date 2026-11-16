@@ -81,8 +81,8 @@ assert len(DEFAULT_CLASSES) <= DEFAULT_CLASS_ID_BLOCK
 class PhonemeClass:
     """A named group of Phonemes in one Language. Classes overlap, so a Phoneme can be in many."""
 
-    def __init__(self, id: int, name: str, inventory: PhonemeInventory, default: DefaultClass | None=None, check_name: Callable[[str, "PhonemeClass"], None]=lambda name, cls: None,
-                 check_label: Callable[[str, "PhonemeClass"], None]=lambda label, cls: None):
+    def __init__(self, id: int, name: str, inventory: PhonemeInventory, default: DefaultClass | None=None, check_name: Callable[[str, "PhonemeClass"], None]=lambda name, cls: (name, cls) and None,
+                 check_label: Callable[[str, "PhonemeClass"], None]=lambda label, cls: (label, cls) and None):
         self._id = id
         self._name = name
         self._check_name = check_name
@@ -131,7 +131,8 @@ class PhonemeClass:
 
     @property
     def is_relabeled(self) -> bool:
-        return self.is_default and self._label != self._default.label
+        default = self._default
+        return default is not None and self._label != default.label
 
     @property
     def holds_vowels(self) -> bool:
@@ -139,7 +140,8 @@ class PhonemeClass:
         phonemes = self.phonemes
         if phonemes:
             return all(p.ipa.is_vowel for p in phonemes)
-        return self.is_default and self._default.vowels
+        default = self._default
+        return default is not None and default.vowels
 
     @property
     def is_renamed(self) -> bool:

@@ -17,6 +17,17 @@ Your complete toolbox for creating conlangs.
 - **Text**: Write and translate text in your conlang.
 - **Export**: Export your conlang's data to a variety of formats.
 
+When seeding a Lexicon, the app includes these Concepticon lists:
+
+- **Swadesh 100 (1955)**: A compact set of widely used basic words for quick vocabulary comparison.
+- **Swadesh 215 (1955)**: A broad foundational vocabulary for basic words across everyday domains.
+- **Leipzig-Jakarta 100**: Especially stable basic vocabulary for comparison.
+- **Verb meanings 170**: Verb meanings for comparing actions and events.
+- **Pronouns 5**: A small focused list of personal pronoun meanings.
+- **Concrete Nouns 200**: Concrete nouns spanning common semantic fields and relations.
+- **Body, Color, and Emotion 220**: Human body parts, colors, and emotion concepts.
+- **Gabelentz Fieldwork 1074**: A broad fieldwork questionnaire including interrogatives such as who, what, where, why, and how.
+
 ## Installation
 
 Download the latest release from the [releases page][0] and run the installer.

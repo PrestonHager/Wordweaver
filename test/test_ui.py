@@ -40,6 +40,7 @@ class TestApp(unittest.TestCase):
         self.assertIs(self.window.root.currentWidget(), self.window.workspace)
         self.assertIs(self.window.pages.currentWidget(), self.window.overview_page)
         self.assertEqual(self.window.language_picker.currentText(), "Testish")
+        self.assertTrue(self.project.is_dirty)
 
     def test_chart_toggles_inventory(self):
         page = self.window.phonology_page
@@ -120,7 +121,7 @@ class TestApp(unittest.TestCase):
         # A bad structure shows an error and isn't added.
         card.notation_input.setText("CC")
         card.add_structure()
-        self.assertTrue(card.error.isVisibleTo(card))
+        self.assertTrue(card.error.isVisibleTo(card))  # pyright: ignore[reportArgumentType]  PyQt6 stub bug.
         self.assertEqual(len(self.language.phonotactics.syllable_structures), 1)
 
     def test_class_label_from_classes_card(self):
@@ -136,7 +137,7 @@ class TestApp(unittest.TestCase):
         card.label_input.setText("V")
         card.rename()
         self.assertEqual((stop.name, stop.label), ("Stop", "P"))
-        self.assertTrue(card.error.isVisibleTo(card))
+        self.assertTrue(card.error.isVisibleTo(card))  # pyright: ignore[reportArgumentType]  PyQt6 stub bug.
 
 if __name__ == "__main__":
     unittest.main()

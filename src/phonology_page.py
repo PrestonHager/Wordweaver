@@ -188,6 +188,7 @@ class VowelChart(QWidget):
             axis.move(int(point.x() - PHONEME_SIZE - axis.width() - 10), int(point.y() - axis.height() / 2))
 
     def paintEvent(self, event):
+        del event
         # Draw the trapezoid and its guide lines behind the buttons.
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)

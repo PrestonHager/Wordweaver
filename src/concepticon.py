@@ -54,6 +54,7 @@ class ConceptList:
     source: str = ""
     license: str = ""
     attribution: str = ""
+    description: str = ""
 
     @classmethod
     def load(cls, path: str | Path) -> "ConceptList":
@@ -66,7 +67,7 @@ class ConceptList:
             data = json.load(f_in)
         try:
             concepts = tuple(Concept(str(c["id"]), c["gloss"], c.get("definition", ""), c.get("english", ""), str(c.get("number", ""))) for c in data["concepts"])
-            return cls(data["id"], data.get("name", data["id"]), concepts, data.get("source", ""), data.get("license", ""), data.get("attribution", ""))
+            return cls(data["id"], data.get("name", data["id"]), concepts, data.get("source", ""), data.get("license", ""), data.get("attribution", ""), data.get("description", ""))
         except (KeyError, TypeError) as e:
             raise ValueError(f"{path} isn't a concept list") from e
 
@@ -127,7 +128,7 @@ class ConcepticonSenses:
                 matches.append((0, len(gloss), sense))
             elif re.search(rf"\b{re.escape(key)}\b", gloss):
                 matches.append((1, len(gloss), sense))
-        return [sense for *_rank, sense in sorted(matches, key=lambda match: match[:2])]
+        return [match[2] for match in sorted(matches, key=lambda match: match[:2])]
 
     def get(self, id: str) -> Sense | None:
         return self._all().get(id.strip())

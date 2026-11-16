@@ -121,13 +121,14 @@ class AllophonesCard(Card):
         picker.blockSignals(True)
         picker.clear()
         picker.options = options
-        for i, (text, _value) in enumerate(options):
-            picker.addItem(text, i)
+        for i, option in enumerate(options):
+            picker.addItem(option[0], i)
         self._pick(picker, current_value)
         picker.blockSignals(False)
 
     def _pick(self, picker: _OptionPicker, value):
-        for i, (_text, option) in enumerate(picker.options):
+        for i, option_data in enumerate(picker.options):
+            option = option_data[1]
             if option is value or (isinstance(value, str) and option == value):
                 picker.setCurrentIndex(i)
                 return
@@ -137,7 +138,7 @@ class AllophonesCard(Card):
         index = picker.currentData()
         return picker.options[index][1] if index is not None else None
 
-    def _on_picked(self, item: QListWidgetItem | None, _previous=None):
+    def _on_picked(self, item: QListWidgetItem | None):
         if item is None or self.language is None:
             self.selected = None
         else:

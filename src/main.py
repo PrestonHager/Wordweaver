@@ -9,6 +9,7 @@ from platformdirs import user_cache_path, user_log_path
 # user_log_dir, and user_runtime_dir (aka temp folder)
 
 import logging
+import os
 import pyperclip
 
 from about import About
@@ -127,7 +128,7 @@ class App(QMainWindow):
         for key, text, icon_name in NAV:
             button = Button(text, icon_name, "nav", parent=sidebar)
             button.setCheckable(True)
-            button.clicked.connect(lambda _checked, k=key: self._open_page(k))
+            button.clicked.connect(lambda _checked=False, k=key: self._open_page(k))
             self.nav.addButton(button)
             self.nav_buttons[key] = button
             layout.addWidget(button)
@@ -365,7 +366,28 @@ class App(QMainWindow):
         self.logger.info("Closed current project")
 
     def prompt_save(self) -> bool:
-        return True
+        if self.project is None or not self.project.is_dirty:
+            return True
+        answer = QMessageBox.warning(
+            self,
+            "Unsaved Changes",
+            f"\"{self.project.name}\" has unsaved changes.",
+            QMessageBox.StandardButton.Save
+            | QMessageBox.StandardButton.Discard
+            | QMessageBox.StandardButton.Cancel,
+            QMessageBox.StandardButton.Save,
+        )
+        if answer == QMessageBox.StandardButton.Cancel:
+            return False
+        if answer == QMessageBox.StandardButton.Discard:
+            return True
+        try:
+            self.save()
+        except (OSError, ValueError) as e:
+            self.logger.warning(f"Couldn't save project: {e}")
+            QMessageBox.warning(self, "Couldn't Save Project", str(e))
+            return False
+        return not self.project.is_dirty
 
     def save(self):
         # See if the project has a file associated with it
@@ -443,7 +465,12 @@ class App(QMainWindow):
             QMessageBox.information(self, "No Concept Lists", "There aren't any concept lists to seed from.")
             return
         # First, pick a list. The names show how many concepts are in each one.
-        names = [f"{concept_list.name}, {len(concept_list)} concepts" for concept_list in lists]
+        names = [
+            f"{concept_list.name}: {concept_list.description}, {len(concept_list)} concepts"
+            if concept_list.description
+            else f"{concept_list.name}, {len(concept_list)} concepts"
+            for concept_list in lists
+        ]
         name, ok = QInputDialog.getItem(self, "Seed from Concept List",
                                         f"Add an Entry for each concept to {self.language.name}.\n"
                                         "Concepts that are already linked get skipped.", names, 0, False)
@@ -504,7 +531,9 @@ class App(QMainWindow):
         # If there is an unsaved project, then prompt the user to save it
         if self.project is not None:
             if not self.prompt_save():
-                pass
+                if a0 is not None:
+                    a0.ignore()
+                return
             # Save the window metadata for later
             with open(user_cache_path("Wordweaver", False, ensure_exists=True).joinpath(Path(".editor")), "w") as f_out:
                 f_out.write(f"{self.project.file}")
@@ -551,6 +580,10 @@ def main():
         project = None
     # Create an application and run it
     logger.debug("Create application")
+    if "QT_QPA_FONTDIR" not in os.environ and sys.platform == "win32":
+        windows_fonts = Path(os.environ.get("WINDIR", r"C:\Windows")) / "Fonts"
+        if windows_fonts.is_dir():
+            os.environ["QT_QPA_FONTDIR"] = str(windows_fonts)
     app = QApplication(sys.argv)
     icon = QIcon()
     icon.addFile(str(basedir.joinpath(Path("icons/wordweaver.ico")).absolute()))

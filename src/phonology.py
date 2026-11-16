@@ -251,7 +251,7 @@ class PhonemeGenerator:
 
     def generate_random(self, syllable_length: int, n: int) -> list[list[list[IPAChar]]]:
         return [
-            [j for j in self.generate_syllables(syllable_length)] for i in range(n)
+            [j for j in self.generate_syllables(syllable_length)] for _ in range(n)
         ]
 
     def print_word(self, syllable_list: list[list[IPAChar]], seperator: str=''):
