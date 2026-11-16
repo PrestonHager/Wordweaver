@@ -444,7 +444,12 @@ class App(QMainWindow):
             QMessageBox.information(self, "No Concept Lists", "There aren't any concept lists to seed from.")
             return
         # First, pick a list. The names show how many concepts are in each one.
-        names = [f"{concept_list.name}, {len(concept_list)} concepts" for concept_list in lists]
+        names = [
+            f"{concept_list.name}: {concept_list.description}, {len(concept_list)} concepts"
+            if concept_list.description
+            else f"{concept_list.name}, {len(concept_list)} concepts"
+            for concept_list in lists
+        ]
         name, ok = QInputDialog.getItem(self, "Seed from Concept List",
                                         f"Add an Entry for each concept to {self.language.name}.\n"
                                         "Concepts that are already linked get skipped.", names, 0, False)

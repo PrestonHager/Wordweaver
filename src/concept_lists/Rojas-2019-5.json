@@ -1,0 +1,17 @@
+{
+  "id": "Rojas-2019-5",
+  "name": "Pronouns 5",
+  "description": "A small focused list of personal pronoun meanings.",
+  "source": "https://github.com/concepticon/concepticon-data/blob/v3.4.0/concepticondata/conceptlists/Rojas-2019-5.tsv",
+  "version": "Concepticon v3.4.0",
+  "license": "CC-BY-4.0",
+  "license_url": "https://creativecommons.org/licenses/by/4.0/",
+  "attribution": "List, Johann Mattis & Tjuka, Annika & Blum, Frederic & Kučerová, Alžběta & Ugarte, Carlos Barrientos & Rzymski, Christoph & Greenhill, Simon & Forkel, Robert (eds.) 2025. Concepticon v3.4.0. A Resource for the Linking of Concept Lists. Leipzig: Max Planck Institute for Evolutionary Anthropology. https://concepticon.clld.org",
+  "concepts": [
+    {"number": "1", "id": "262", "gloss": "HE OR SHE OR IT", "english": "he/she/it", "definition": "Third person singular pronoun, regardless of gender/sex."},
+    {"number": "2", "id": "1209", "gloss": "I", "english": "I", "definition": "The speaker or writer referring to himself or herself alone."},
+    {"number": "3", "id": "1212", "gloss": "WE", "english": "we", "definition": "The speaker or writer and at least one other person."},
+    {"number": "4", "id": "1213", "gloss": "YOU", "english": "you", "definition": "The group of persons addressed."},
+    {"number": "5", "id": "1215", "gloss": "THOU", "english": "you (singular)", "definition": "The person addressed."}
+  ]
+}

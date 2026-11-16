@@ -1,7 +1,7 @@
 # scripts/make_concept_list.py
 #
 # Build a concept list file in src/concept_lists from a Concepticon release.
-# Run it from the repo root, like `uv run python scripts/make_concept_list.py Swadesh-1955-100 "Swadesh 100 (1955)"`.
+# Run it from the repo root, like `uv run python scripts/make_concept_list.py Swadesh-1955-100 "Swadesh 100 (1955)" "A compact basic vocabulary list."`.
 # It needs an internet connection, since it downloads the list and the concept table from GitHub.
 
 import csv
@@ -29,9 +29,10 @@ def read_tsv(url: str) -> list[dict[str, str]]:
     return list(csv.DictReader(io.StringIO(text, newline=""), delimiter="\t", quoting=csv.QUOTE_NONE))
 
 def main():
-    if len(sys.argv) != 3:
-        sys.exit("Usage: make_concept_list.py <Concepticon list ID> <name to show>")
-    list_id, name = sys.argv[1:]
+    if len(sys.argv) not in (3, 4):
+        sys.exit("Usage: make_concept_list.py <Concepticon list ID> <name to show> [short description]")
+    list_id, name = sys.argv[1:3]
+    description = sys.argv[3] if len(sys.argv) == 4 else ""
     # First, grab the concept table for the definitions, then the list itself.
     definitions = {row["ID"]: row["DEFINITION"] for row in read_tsv(CONCEPTICON_URL)}
     rows = read_tsv(LIST_URL.format(version=CONCEPTICON_VERSION, list_id=list_id))
@@ -51,6 +52,7 @@ def main():
     header = {
         "id": list_id,
         "name": name,
+        "description": description,
         "source": SOURCE_URL.format(version=CONCEPTICON_VERSION, list_id=list_id),
         "version": f"Concepticon {CONCEPTICON_VERSION}",
         "license": "CC-BY-4.0",
