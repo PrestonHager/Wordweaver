@@ -74,6 +74,7 @@ class App(QMainWindow):
         self.phonology_page = PhonologyPage(self.pages)
         self.phonology_page.changed.connect(self._on_inventory_changed)
         self.lexicon_page = LexiconPage(self.pages)
+        self.lexicon_page.inventory_changed.connect(self._on_lexicon_inventory_changed)
         self.page_widgets = {"overview": self.overview_page, "phonology": self.phonology_page, "lexicon": self.lexicon_page}
         for page in self.page_widgets.values():
             self.pages.addWidget(page)
@@ -246,6 +247,11 @@ class App(QMainWindow):
     def _on_inventory_changed(self):
         # The Overview cards show the inventory, so keep them current.
         self.overview_page.refresh(self.project, self.language)
+
+    def _on_lexicon_inventory_changed(self):
+        # The Lexicon added a Phoneme, so the Phonology page needs redrawing as well as the cards.
+        self.phonology_page.refresh()
+        self._on_inventory_changed()
 
     def _update_theme_button(self):
         # Show the mode you'd switch to, like most apps do.

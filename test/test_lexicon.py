@@ -8,7 +8,7 @@ import sys
 from os import path
 sys.path.append(path.abspath(path.join(path.dirname(__file__), '../src')))
 
-from lexicon import ConceptReference, ConceptSource, Form
+from lexicon import ConceptReference, ConceptSource, Form, check_form
 from wordweaver_project import Project
 
 class TestLexicon(unittest.TestCase):
@@ -319,6 +319,69 @@ class TestForm(unittest.TestCase):
 
     def test_parse_ignores_spaces(self):
         self.assertEqual(str(Form.parse(" t a ")), "ta")
+
+    def test_parse_keeps_tied_letters_together(self):
+        # Without t͡s in the symbols, the tie bar still holds the affricate together.
+        self.assertEqual(Form.parse("t͡sa").phonemes, ("t͡s", "a"))
+
+class TestFormCheck(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.file = path.join(self.temp_dir.name, "test.wwproj")
+        self.project = Project("Test Project")
+        self.language = self.project.add_language("Test")
+        self.language.inventory.set_symbols(["t͡s", "t", "a", "i"])
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def check(self, text: str):
+        return check_form(text, self.language.inventory.symbols)
+
+    def test_form_in_inventory_passes(self):
+        result = self.check("t͡sati")
+        self.assertTrue(result.ok)
+        self.assertEqual((result.unknown, result.invalid), ((), ()))
+
+    def test_empty_form_passes(self):
+        self.assertTrue(self.check("").ok)
+        self.assertTrue(check_form(Form(), []).ok)
+
+    def test_unknown_phonemes_are_named(self):
+        # Each Phoneme is named once, in the order it first shows up.
+        result = self.check("kaŋkaǀ")
+        self.assertFalse(result.ok)
+        self.assertEqual(result.unknown, ("k", "ŋ", "ǀ"))
+        self.assertEqual(result.invalid, ())
+
+    def test_unknown_affricate_stays_whole(self):
+        self.assertEqual(self.check("d͡ʒa").unknown, ("d͡ʒ",))
+
+    def test_invalid_ipa_is_reported(self):
+        # Marks that aren't sounds on their own, and letters that aren't IPA, are invalid.
+        result = self.check("tʰaː1")
+        self.assertEqual(result.invalid, ("ʰ", "ː", "1"))
+        self.assertEqual(result.unknown, ())
+        self.assertFalse(result.ok)
+
+    def test_checks_a_parsed_form(self):
+        form = Form.parse("tak", self.language.inventory.symbols)
+        self.assertEqual(check_form(form, self.language.inventory.symbols).unknown, ("k",))
+
+    def test_adding_the_phoneme_clears_the_flag(self):
+        entry = self.language.lexicon.add(Form.parse("kati", self.language.inventory.symbols), ["dog"])
+        (unknown,) = self.check(str(entry.form)).unknown
+        phoneme = self.language.inventory.add(unknown)
+        self.assertTrue(self.check(str(entry.form)).ok)
+        # Then it round-trips with the Entry, keeping its ID.
+        loaded = Project.load(self.save()).languages[0]
+        self.assertEqual(loaded.inventory.get("k"), phoneme)
+        self.assertEqual(str(loaded.lexicon.get(entry.id).form), "kati")
+        self.assertTrue(check_form(loaded.lexicon.get(entry.id).form, loaded.inventory.symbols).ok)
+
+    def save(self) -> str:
+        self.project.save(self.file)
+        return self.file
 
 if __name__ == "__main__":
     unittest.main()

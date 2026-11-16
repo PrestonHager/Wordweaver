@@ -79,6 +79,13 @@ class TestApp(unittest.TestCase):
         self.assertIs(self.window.pages.currentWidget(), self.window.phonology_page)
         self.assertTrue(self.window.nav_buttons["phonology"].isChecked())
 
+    def test_lexicon_inventory_change_redraws_phonology(self):
+        # A Phoneme added from the Entry editor shows up on the chart without switching Language.
+        self.language.inventory.add("t")
+        self.window.lexicon_page.inventory_changed.emit()
+        self.assertTrue(self.window.phonology_page.buttons["t"].isChecked())
+        self.assertEqual(self.window.phonology_page.count.text(), "3")
+
     def test_dark_theme_applies(self):
         theme.mode = "dark"
         theme.apply(app)
