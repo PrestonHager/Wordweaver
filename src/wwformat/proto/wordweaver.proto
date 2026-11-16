@@ -82,3 +82,27 @@ message PhonemeClass {
 message PhonemeClassTable {
   repeated PhonemeClass records = 1;
 }
+
+message Entry {
+  uint64 id = 1;
+  uint64 language_id = 2;
+  // The Form, one IPA symbol per Phoneme, in order.
+  repeated uint32 form = 3;
+}
+
+// Chunk ENTRIES.
+message EntryTable {
+  repeated Entry records = 1;
+}
+
+// An Entry's Definitions are kept in ID order.
+message Definition {
+  uint64 id = 1;
+  uint64 entry_id = 2;
+  repeated uint32 glosses = 3;
+}
+
+// Chunk DEFINITIONS.
+message DefinitionTable {
+  repeated Definition records = 1;
+}
