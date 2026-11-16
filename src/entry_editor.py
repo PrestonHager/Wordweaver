@@ -2,8 +2,8 @@
 
 from dataclasses import dataclass, field
 
-from PyQt6.QtWidgets import (QDialog, QDialogButtonBox, QFormLayout, QHBoxLayout, QLineEdit, QListWidget, QMessageBox,
-                             QPlainTextEdit, QPushButton, QVBoxLayout, QWidget)
+from PyQt6.QtWidgets import (QDialog, QDialogButtonBox, QFormLayout, QHBoxLayout, QLabel, QLineEdit, QListWidget,
+                             QMessageBox, QPlainTextEdit, QPushButton, QVBoxLayout, QWidget)
 
 from lexicon import Definition, Entry, Form
 from wordweaver_project import Language
@@ -149,6 +149,9 @@ class EntryEditor(QDialog):
                 return
         # Now split the Form using the Language's Phonemes, so multi-letter ones stay whole.
         form = Form.parse(self.form_input.text(), self.language.inventory.symbols)
+        # Next, check for Homophones, which you can still save anyway.
+        if not self._check_homophones(form):
+            return
         lexicon = self.language.lexicon
         # Then write the drafts into the Lexicon, adding new Definitions before removing old ones so one is always left.
         if self.entry is None:
@@ -171,4 +174,48 @@ class EntryEditor(QDialog):
             lexicon.move_definition(self.entry, definition, index)
         super().accept()
 
-__all__ = ["EntryEditor"]
+    def _check_homophones(self, form: Form) -> bool:
+        # Only warn when the Form is new, so editing a known Homophone's Glosses doesn't nag every time.
+        if self.entry is not None and self.entry.form == form:
+            return True
+        matches = self.language.lexicon.homophones_of(form, exclude=self.entry)
+        if not matches:
+            return True
+        warning = HomophoneWarning(form, matches, self)
+        if warning.exec() == QDialog.DialogCode.Accepted:
+            return True
+        # Open the picked match in its own editor, then come back here so you can decide again.
+        if warning.opened is not None:
+            EntryEditor(self.language, warning.opened, parent=self).exec()
+        return False
+
+class HomophoneWarning(QDialog):
+    """Lists the Entries that already have a Form, so you can open one or save a Homophone anyway."""
+
+    def __init__(self, form: Form, matches: list[Entry], parent: QWidget | None=None):
+        super().__init__(parent)
+        self.matches = matches
+        self.opened: Entry | None = None
+        self.setWindowTitle("Homophone")
+
+        layout = QVBoxLayout(self)
+        count = "An Entry already has" if len(matches) == 1 else f"{len(matches)} Entries already have"
+        layout.addWidget(QLabel(f"{count} the Form /{form}/.\nOpen one to add a Definition to it, or save a separate Homophone anyway.", self))
+        self.match_list = QListWidget(self)
+        for entry in matches:
+            self.match_list.addItem(f"/{entry.form}/  {'; '.join(entry.glosses)}")
+        self.match_list.setCurrentRow(0)
+        self.match_list.itemDoubleClicked.connect(lambda _item: self.open_match())
+        layout.addWidget(self.match_list)
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Cancel, self)
+        buttons.addButton("Open Entry", QDialogButtonBox.ButtonRole.ActionRole).clicked.connect(self.open_match)
+        buttons.addButton("Save Anyway", QDialogButtonBox.ButtonRole.AcceptRole)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+    def open_match(self):
+        self.opened = self.matches[max(self.match_list.currentRow(), 0)]
+        self.reject()
+
+__all__ = ["EntryEditor", "HomophoneWarning"]
