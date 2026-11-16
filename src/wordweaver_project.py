@@ -11,6 +11,7 @@ from lexicon import ConceptReference, ConceptSource, Definition, Entry, Form, Le
 from lexicon_csv import export_csv
 from phoneme_classes import DEFAULT_CLASS_ID_BLOCK, PhonemeClass, PhonemeClasses
 from phonology import Phoneme, PhonemeInventory
+from suprasegmentals import Suprasegmentals
 from tags import Tag, Tags
 from wwformat import ChunkType, CorruptFileError, FileContents, NewerVersionError, ProjectFileError, StringTable, UnknownChunkError, pb
 
@@ -54,6 +55,7 @@ class Language:
         self._classes = PhonemeClasses(self.inventory, new_id, default_class_ids_start)
         self.lexicon = Lexicon(new_id, tags=tags)
         self._allophone_rules = AllophoneRules(self.inventory, self._classes, new_id)
+        self.suprasegmentals = Suprasegmentals()
 
     @property
     def id(self) -> int:
@@ -233,9 +235,13 @@ class Project:
         for tag in self.tags:
             contents.add_record(ChunkType.TAGS, pb.Tag(id=tag.id, name=strings.index(tag.name)))
         for language in self._languages:
-            contents.add_record(ChunkType.LANGUAGES, pb.Language(id=language.id, name=strings.index(language.name), kind=language.kind, default_class_ids_start=language._classes.default_ids_start))
+            suprasegmentals = language.suprasegmentals
+            contents.add_record(ChunkType.LANGUAGES, pb.Language(
+                id=language.id, name=strings.index(language.name), kind=language.kind, default_class_ids_start=language._classes.default_ids_start,
+                stress=suprasegmentals.stress, tones=[strings.index(tone) for tone in suprasegmentals.tones], length=suprasegmentals.length))
             for phoneme in language.inventory:
-                contents.add_record(ChunkType.PHONEMES, pb.Phoneme(id=phoneme.id, language_id=language.id, symbol=strings.index(phoneme.symbol)))
+                # The Frequency is left out when there isn't one, so it loads back as None.
+                contents.add_record(ChunkType.PHONEMES, pb.Phoneme(id=phoneme.id, language_id=language.id, symbol=strings.index(phoneme.symbol), frequency=language.inventory.frequency(phoneme.symbol)))
             # Default Classes are rebuilt on load, so only save the ones the user changed.
             for phoneme_class in language.classes:
                 if phoneme_class.is_default and not (phoneme_class.is_renamed or phoneme_class.is_hand_edited):
@@ -293,12 +299,22 @@ class Project:
             # Files from before Phoneme Classes don't have default Class IDs yet, so give them some now.
             class_ids_start = record.default_class_ids_start or project._reserve_ids(DEFAULT_CLASS_ID_BLOCK)
             language = Language(record.id, strings[record.name], project._new_id, kind, class_ids_start, tags=project.tags)
+            try:
+                language.suprasegmentals = Suprasegmentals(record.stress, [strings[tone] for tone in record.tones], record.length)
+            except ValueError as e:
+                raise CorruptFileError(f"Language {record.id} has bad tones") from e
             languages[record.id] = language
             project._languages.append(language)
         for record in contents.records(ChunkType.PHONEMES):
             if record.language_id not in languages:
                 raise CorruptFileError(f"Phoneme {record.id} belongs to a Language that isn't in the file")
-            languages[record.language_id].inventory._restore(Phoneme(record.id, strings[record.symbol]))
+            inventory = languages[record.language_id].inventory
+            inventory._restore(Phoneme(record.id, strings[record.symbol]))
+            if record.HasField("frequency"):
+                try:
+                    inventory.set_frequency(strings[record.symbol], record.frequency)
+                except ValueError as e:
+                    raise CorruptFileError(f"Phoneme {record.id} has a bad Frequency") from e
         # Then apply the user's changes to the default Classes, and put back their own Classes.
         for record in contents.records(ChunkType.PHONEME_CLASSES):
             if record.language_id not in languages:

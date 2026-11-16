@@ -52,6 +52,8 @@ class PhonemeInventory:
         """
         self._new_id = new_id
         self._phonemes: dict[str, Phoneme] = {}
+        # Phoneme Frequencies, by Phoneme ID. They live here so a Phoneme itself never changes.
+        self._frequencies: dict[int, float] = {}
 
     def add(self, symbol: str) -> Phoneme:
         """Add a Phoneme by its IPA symbol, or return the existing one if it's already in the inventory.
@@ -71,7 +73,8 @@ class PhonemeInventory:
 
         :raises KeyError: If the Phoneme isn't in the inventory.
         """
-        del self._phonemes[symbol]
+        phoneme = self._phonemes.pop(symbol)
+        self._frequencies.pop(phoneme.id, None)
 
     def set_symbols(self, symbols: list[str]):
         """Make the inventory hold exactly these symbols. Phonemes that stay keep their IDs.
@@ -88,6 +91,32 @@ class PhonemeInventory:
 
     def get(self, symbol: str) -> Phoneme | None:
         return self._phonemes.get(symbol)
+
+    def frequency(self, symbol: str) -> float | None:
+        """Get a Phoneme's Frequency, or None if it doesn't have one.
+
+        :raises KeyError: If the Phoneme isn't in the inventory.
+        """
+        return self._frequencies.get(self._phonemes[symbol].id)
+
+    def set_frequency(self, symbol: str, frequency: float | None):
+        """Say how common a Phoneme is, as a weight compared with the others. None takes it away.
+
+        :raises KeyError: If the Phoneme isn't in the inventory.
+        :raises ValueError: If the Frequency isn't a positive number.
+        """
+        phoneme = self._phonemes[symbol]
+        if frequency is None:
+            self._frequencies.pop(phoneme.id, None)
+            return
+        frequency = float(frequency)
+        if not 0 < frequency < float("inf"):
+            raise ValueError(f"A Phoneme Frequency has to be a positive number, not {frequency}")
+        self._frequencies[phoneme.id] = frequency
+
+    def weights(self) -> dict[str, float]:
+        """Get how common each Phoneme is. Phonemes without a Frequency count as 1, so with none set they're all equal."""
+        return {p.symbol: self._frequencies.get(p.id, 1.0) for p in self._phonemes.values()}
 
     @property
     def symbols(self) -> list[str]:

@@ -47,6 +47,11 @@ message Language {
   // Default Classes aren't saved, so this keeps their IDs the same across loads.
   // 0 means the file is from before Phoneme Classes.
   uint64 default_class_ids_start = 4;
+  // Suprasegmentals, which are Language-wide for now.
+  bool stress = 5;
+  // The tones' names. Empty means the Language doesn't use Tone.
+  repeated uint32 tones = 6;
+  bool length = 7;
 }
 
 // Chunk LANGUAGES.
@@ -59,6 +64,8 @@ message Phoneme {
   uint64 language_id = 2;
   // The Phoneme's IPA symbol.
   uint32 symbol = 3;
+  // How common the Phoneme is, as a weight. Left out means it has no Frequency and counts the same as the others.
+  optional double frequency = 4;
 }
 
 // Chunk PHONEMES.
