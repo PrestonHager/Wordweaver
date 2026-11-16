@@ -64,7 +64,7 @@ def main():
     lines += ["  ]", "}", ""]
     out = LISTS_DIR / f"{list_id}.json"
     out.parent.mkdir(exist_ok=True)
-    out.write_text("\n".join(lines), encoding="utf-8")
+    out.write_text("\n".join(lines), encoding="utf-8", newline="\n")
     print(f"Wrote {len(concepts)} concepts to {out}")
 
 if __name__ == "__main__":
