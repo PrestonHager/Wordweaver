@@ -15,6 +15,7 @@ BASE_URL = f"https://unpkg.com/lucide-static@{LUCIDE_VERSION}"
 ICONS = [
     "audio-lines",
     "book-open",
+    "check",
     "chevron-down",
     "clipboard-paste",
     "copy",
