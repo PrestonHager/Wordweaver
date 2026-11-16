@@ -2,6 +2,7 @@
 
 import unicodedata
 from collections.abc import Callable, Iterable, Iterator
+from enum import Enum
 
 from tags import Tag, Tags
 
@@ -53,6 +54,24 @@ class Form:
 
     def __len__(self) -> int:
         return len(self._phonemes)
+
+class SearchField(Enum):
+    """What part of an Entry a Lexicon search looks at."""
+    FORM = "Form"
+    GLOSS = "Gloss"
+    DESCRIPTION = "Description"
+
+    def __str__(self) -> str:
+        return self.value
+
+class SortOrder(Enum):
+    """How a Lexicon search orders the Entries it finds."""
+    BEST_MATCH = "Best match"
+    FORM = "Form"
+    GLOSS = "Gloss"
+
+    def __str__(self) -> str:
+        return self.value
 
 class Definition:
     """One precise meaning of an Entry.
@@ -257,6 +276,38 @@ class Lexicon:
         """Find every Entry with a Tag, in Lexicon order."""
         return [entry for entry in self._entries.values() if tag.id in entry._tag_ids]
 
+    def search(self, text: str="", field: SearchField=SearchField.GLOSS, tag: Tag | None=None, sort: SortOrder=SortOrder.BEST_MATCH) -> list[Entry]:
+        """Find the Entries whose Form, Gloss, or Definition description matches `text`, optionally only those with `tag`.
+
+        Forms match the IPA text as typed, ignoring spaces. Glosses and descriptions ignore case.
+        An Entry matches a Gloss or description search if any of its Definitions does.
+        Blank `text` matches every Entry, so this also lists or sorts the whole Lexicon.
+
+        With SortOrder.BEST_MATCH, exact matches come first, then ones that start with `text`, then ones that only contain it.
+        SortOrder.FORM puts empty Forms last, and SortOrder.GLOSS goes by the first Gloss of the first Definition.
+        Ties stay in Lexicon order.
+        """
+        query = _search_key(text, field)
+        entries = self._entries.values() if tag is None else self.tagged(tag)
+        # First, rank every Entry against the query, and drop the ones that don't match at all.
+        ranked = []
+        for entry in entries:
+            rank = 0
+            if query:
+                ranks = [_match_rank(query, value) for value in _search_values(entry, field)]
+                rank = min((r for r in ranks if r is not None), default=None)
+                if rank is None:
+                    continue
+            ranked.append((rank, entry))
+        # Then put them in the order that was asked for. Python's sort is stable, so ties keep Lexicon order.
+        if sort is SortOrder.FORM:
+            ranked.sort(key=lambda pair: (not pair[1].form, _search_key(str(pair[1].form), SearchField.FORM)))
+        elif sort is SortOrder.GLOSS:
+            ranked.sort(key=lambda pair: _search_key(pair[1].definitions[0].glosses[0], SearchField.GLOSS))
+        else:
+            ranked.sort(key=lambda pair: pair[0])
+        return [entry for _rank, entry in ranked]
+
     def homophones_of(self, form: Form | str, exclude: Entry | None=None) -> list[Entry]:
         """Every Entry with exactly this Form, other than `exclude`, in the order they were added.
 
@@ -296,6 +347,33 @@ class Lexicon:
 def _to_form(form: Form | str) -> Form:
     return form if isinstance(form, Form) else Form.parse(form)
 
+def _search_key(text: str, field: SearchField) -> str:
+    # Normalize the Unicode so a letter typed with a combining mark matches the same letter typed precomposed.
+    text = unicodedata.normalize("NFC", text)
+    if field is SearchField.FORM:
+        # Forms ignore spaces like Form.parse does, but IPA cares about case, so that's kept.
+        return "".join(text.split())
+    return " ".join(text.split()).casefold()
+
+def _search_values(entry: Entry, field: SearchField) -> list[str]:
+    if field is SearchField.FORM:
+        values = [str(entry.form)]
+    elif field is SearchField.GLOSS:
+        values = list(entry.glosses)
+    else:
+        values = [d.description for d in entry.definitions]
+    return [_search_key(value, field) for value in values]
+
+def _match_rank(query: str, value: str) -> int | None:
+    # Lower is better: 0 is exact, 1 starts with the query, 2 only contains it, and None doesn't match.
+    if value == query:
+        return 0
+    if value.startswith(query):
+        return 1
+    if query in value:
+        return 2
+    return None
+
 def _clean_glosses(glosses: Iterable[str]) -> tuple[str, ...]:
     # Drop blank Glosses, so an empty line in the editor doesn't turn into one.
     glosses = tuple(g.strip() for g in glosses if g.strip())
@@ -307,4 +385,4 @@ def _clean_terms(terms: Iterable[str]) -> tuple[str, ...]:
     # Technical terms are optional, so blank ones are just dropped.
     return tuple(t.strip() for t in terms if t.strip())
 
-__all__ = ["Definition", "Entry", "Form", "Lexicon"]
+__all__ = ["Definition", "Entry", "Form", "Lexicon", "SearchField", "SortOrder"]
