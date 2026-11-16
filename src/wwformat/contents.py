@@ -6,10 +6,10 @@ from pathlib import Path
 from google.protobuf.message import DecodeError, Message
 
 from wwformat import wordweaver_pb2 as pb
-from wwformat.container import Chunk, decode_file, encode_file
-from wwformat.errors import CorruptFileError
+from wwformat.container import MAJOR_VERSION, Chunk, decode_file, encode_file
+from wwformat.errors import CorruptFileError, NewerVersionError, UnknownChunkError
 from wwformat.migrations import migrate
-from wwformat.registry import RECORD_TABLES, SINGLE_MESSAGES, ChunkType
+from wwformat.registry import RECORD_TABLES, SINGLE_MESSAGES, ChunkType, is_critical
 from wwformat.strings import StringTable
 
 class FileContents:
@@ -57,11 +57,15 @@ class FileContents:
                 chunks.append(Chunk(table, message.SerializeToString()))
         # Then put the string table in front of them.
         string_chunk = Chunk(ChunkType.STRING_TABLE, self.strings.to_message().SerializeToString())
-        return encode_file([string_chunk] + chunks)
+        # Finally, the chunks we didn't understand go back out as they came in.
+        return encode_file([string_chunk] + chunks + self.unknown_chunks)
 
     @classmethod
     def decode(cls, data: bytes) -> "FileContents":
+        # A newer minor version only adds things we can skip, but a newer major version changes the layout.
         major, _minor, chunks = decode_file(data)
+        if major > MAJOR_VERSION:
+            raise NewerVersionError(f"This Project was saved by a newer version of Wordweaver (file version {major}). Update Wordweaver to open it.")
         chunks = migrate(major, chunks)
         contents = cls()
         for chunk in chunks:
@@ -73,6 +77,8 @@ class FileContents:
                 elif chunk.type_id in RECORD_TABLES:
                     table = _parse(RECORD_TABLES[chunk.type_id], chunk.payload)
                     contents._records[ChunkType(chunk.type_id)].extend(table.records)
+                elif is_critical(chunk.type_id):
+                    raise UnknownChunkError(f"This Project uses something this version of Wordweaver doesn't understand (chunk {chunk.type_id}). Update Wordweaver to open it.")
                 else:
                     contents.unknown_chunks.append(chunk)
             except DecodeError as e:

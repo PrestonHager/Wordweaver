@@ -5,7 +5,7 @@ from enum import IntEnum
 from pathlib import Path
 
 from phonology import Phoneme, PhonemeInventory
-from wwformat import ChunkType, CorruptFileError, FileContents, ProjectFileError, pb
+from wwformat import ChunkType, CorruptFileError, FileContents, NewerVersionError, ProjectFileError, UnknownChunkError, pb
 
 class LanguageKind(IntEnum):
     """A label for a Language. It's only a description and doesn't change how the Language works."""
@@ -44,6 +44,8 @@ class Project:
         self._languages: list[Language] = []
         # Every record in the Project takes its ID from this counter, so IDs are never reused.
         self._next_id = 1
+        # Ancillary chunks from a newer app that we skipped on load, held so saving doesn't lose them.
+        self._unknown_chunks = []
 
     @property
     def languages(self) -> list[Language]:
@@ -99,6 +101,7 @@ class Project:
             contents.add_record(ChunkType.LANGUAGES, pb.Language(id=language.id, name=strings.index(language.name), kind=language.kind))
             for phoneme in language.inventory:
                 contents.add_record(ChunkType.PHONEMES, pb.Phoneme(id=phoneme.id, language_id=language.id, symbol=strings.index(phoneme.symbol)))
+        contents.unknown_chunks = list(self._unknown_chunks)
         return contents
 
     @classmethod
@@ -120,6 +123,7 @@ class Project:
             languages[record.language_id].inventory._restore(Phoneme(record.id, strings[record.symbol]))
         # Finally, make sure new IDs can't collide with loaded ones, even if next_id was missing.
         project._next_id = max([info.next_id, 1] + [id + 1 for id in contents.record_ids()])
+        project._unknown_chunks = list(contents.unknown_chunks)
         return project
 
-__all__ = ["Language", "LanguageKind", "Project", "ProjectFileError", "CorruptFileError"]
+__all__ = ["Language", "LanguageKind", "Project", "ProjectFileError", "CorruptFileError", "NewerVersionError", "UnknownChunkError"]
