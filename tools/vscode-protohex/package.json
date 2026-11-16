@@ -56,7 +56,6 @@
     ]
   },
   "scripts": {
-    "test": "node test/dump.js wordweaver.protohex.json ../../test_project.wwproj",
     "package": "npx --yes @vscode/vsce package --allow-missing-repository --skip-license"
   }
 }

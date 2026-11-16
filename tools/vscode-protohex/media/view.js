@@ -54,7 +54,9 @@
     leafAt = new Int32Array(bytes.length).fill(-1);
     if (msg.tree) walk(msg.tree, -1, 0, "0");
     // Then mark each byte with the deepest node covering it. Children come after parents, so they win.
+    // Virtual nodes came out of decompressed bytes, so they don't line up with the file.
     for (const node of nodes) {
+      if (node.virtual) continue;
       for (let i = node.start; i < node.end && i < bytes.length; i++) leafAt[i] = node.id;
     }
     if (!msg.error) {
@@ -92,6 +94,12 @@
     return id;
   }
 
+  // The nearest node that's really in the file, for a node decoded from decompressed bytes.
+  function realOf(id) {
+    while (id > 0 && nodes[id].virtual) id = nodes[id].parent;
+    return id;
+  }
+
   // Same field name, same color, wherever it shows up.
   function hue(key) {
     let h = 0;
@@ -115,7 +123,7 @@
     const first = Math.max(0, Math.floor(hexScroll.scrollTop / ROW_H) - 5);
     const count = Math.ceil(hexScroll.clientHeight / ROW_H) + 10;
     const last = Math.min(Math.ceil(bytes.length / COLS), first + count);
-    const sel = selected >= 0 ? nodes[selected] : undefined;
+    const sel = selected >= 0 ? nodes[realOf(selected)] : undefined;
     const hov = hovered >= 0 ? nodes[hovered] : undefined;
     const html = [];
     for (let row = first; row < last; row++) {
@@ -211,13 +219,14 @@
 
   function select(id, scrollHex, keepCaret) {
     selected = id;
-    if (!keepCaret && id >= 0 && !(caret >= nodes[id].start && caret < nodes[id].end)) caret = nodes[id].start;
+    const real = nodes[realOf(id)];
+    if (!keepCaret && !(caret >= real.start && caret < real.end)) caret = real.start;
     // Open every ancestor in the tree, so the selected row is visible.
     for (let p = nodes[id].parent; p >= 0; p = nodes[p].parent) expanded.add(nodes[p].path);
     renderTree();
     const row = tree.querySelector(`[data-id="${id}"]`);
     if (row) row.scrollIntoView({ block: "nearest" });
-    if (scrollHex) scrollToByte(keepCaret ? caret : nodes[id].start);
+    if (scrollHex) scrollToByte(keepCaret ? caret : real.start);
     renderRows();
     renderDetails();
   }
@@ -237,7 +246,7 @@
       const hasKids = n.children.length > 0;
       const swatch = id > 0 ? `<span class="swatch" style="background:${colorOf(id)}"></span>` : "";
       html.push(
-        `<div class="node${id === selected ? " sel" : ""}${n.problem ? " problem" : ""}" data-id="${id}" style="padding-left:${n.depth * 14 + 4}px">` +
+        `<div class="node${id === selected ? " sel" : ""}${n.problem ? " problem" : ""}${n.virtual ? " virtual" : ""}" data-id="${id}" style="padding-left:${n.depth * 14 + 4}px">` +
         `<span class="twisty">${hasKids ? (open ? "▾" : "▸") : ""}</span>${swatch}` +
         `<span class="name">${escapeHtml(n.name)}</span>` +
         (n.type ? ` <span class="type">${escapeHtml(n.type)}</span>` : "") +
@@ -277,7 +286,8 @@
       const n = nodes[selected];
       rows.push(["Path", pathName(selected) || n.name]);
       if (n.type) rows.push(["Type", n.type]);
-      rows.push(["Range", `0x${n.start.toString(16)}–0x${n.end.toString(16)} (${n.end - n.start} bytes)`]);
+      const range = `0x${n.start.toString(16)}–0x${n.end.toString(16)} (${n.end - n.start} bytes)`;
+      rows.push(n.virtual ? ["Range", `${range} of the decompressed payload`] : ["Range", range]);
       if (n.value) rows.push(["Value", n.value]);
       if (n.problem) rows.push(["Problem", n.problem, "bad"]);
     }

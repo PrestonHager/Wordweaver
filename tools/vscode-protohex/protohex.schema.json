@@ -8,9 +8,9 @@
       "required": ["type"],
       "properties": {
         "name": { "type": "string", "description": "Shown in the tree. Later fields refer to this one by name." },
-        "type": { "enum": ["bytes", "uint", "varint", "message", "crc32", "repeat"] },
+        "type": { "enum": ["bytes", "uint", "varint", "message", "block", "crc32", "repeat"] },
         "length": {
-          "description": "For bytes and message: a fixed count, the name of an earlier varint or uint field, or \"rest\".",
+          "description": "For bytes, message, and block: a fixed count, the name of an earlier varint or uint field, or \"rest\".",
           "type": ["integer", "string"]
         },
         "expect": { "type": "string", "description": "For bytes: the hex the bytes should be, like \"87AFFA87\"." },
@@ -27,10 +27,19 @@
             "map": { "type": "string" }
           }
         },
+        "inflate": {
+          "type": "object",
+          "description": "For message: decompress first when an earlier field has one of these values.",
+          "required": ["field", "values"],
+          "properties": {
+            "field": { "type": "string" },
+            "values": { "type": "object", "additionalProperties": { "enum": ["zlib", "deflate", "gzip"] } }
+          }
+        },
         "from": { "type": "string", "description": "For crc32: the first field the CRC covers. It covers everything up to the CRC." },
         "count": { "type": ["integer", "string"], "description": "For repeat: how many times, or an earlier field's name. Leave it out to repeat to the end." },
-        "label": { "type": "string", "description": "For repeat: the tree label. {index} and {fieldName} are filled in." },
-        "fields": { "type": "array", "items": { "$ref": "#/definitions/layoutField" } }
+        "fields": { "type": "array", "items": { "$ref": "#/definitions/layoutField" }, "description": "For repeat and block: the fields inside." },
+        "label": { "type": "string", "description": "For repeat: the tree label. {index} and {fieldName} are filled in." }
       }
     }
   },

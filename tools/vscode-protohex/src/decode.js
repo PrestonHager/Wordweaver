@@ -129,7 +129,7 @@ class Decoder {
         }
         pos += size;
         scope[name] = { start, end: pos, value: Number(value) };
-        nodes.push({ name, type: `uint${size * 8} ${f.endian || "big"}`, kind: "header", key, start, end: pos, value: this.withName(f, value) });
+        nodes.push({ name, type: size === 1 ? "uint8" : `uint${size * 8} ${f.endian || "big"}`, kind: "header", key, start, end: pos, value: this.withName(f, value) });
         return pos;
       }
       case "varint": {
@@ -139,15 +139,27 @@ class Decoder {
         nodes.push({ name, type: "varint", kind: "header", key, start, end: pos, value: this.withName(f, value) });
         return pos;
       }
+      case "block": {
+        // A run of `length` bytes read with its own fields, so "rest" inside it stops at the block's end.
+        const length = this.lengthOf(f.length, pos, end, scope);
+        this.need(pos, length, end);
+        const result = this.decodeLayout(f.fields || [], pos, pos + length, scope, true);
+        nodes.push(...result.nodes);
+        if (result.pos < pos + length) {
+          nodes.push(errorNode(`${pos + length - result.pos} bytes left over in ${name}`, result.pos, pos + length));
+        }
+        return pos + length;
+      }
       case "message": {
         const length = this.lengthOf(f.length, pos, end, scope);
         this.need(pos, length, end);
-        let msgName = f.message;
-        if (f.messageFrom) {
-          const sel = scope[f.messageFrom.field];
-          const entry = sel && this.mapEntry(f.messageFrom.map, sel.value);
-          msgName = entry && entry.message;
+        const method = this.inflateMethod(f, scope);
+        if (method) {
+          scope[name] = { start, end: pos + length };
+          nodes.push(this.inflatedMessage(f, name, key, method, pos, pos + length, scope));
+          return pos + length;
         }
+        const msgName = this.layoutMessageName(f, scope);
         const msg = msgName ? this.findMessage(msgName) : undefined;
         const node = {
           name, kind: "group", key, start, end: pos + length,
@@ -192,6 +204,45 @@ class Decoder {
       default:
         throw new Error(`Unknown layout field type '${f.type}' in spec`);
     }
+  }
+
+  layoutMessageName(f, scope) {
+    if (!f.messageFrom) return f.message;
+    const sel = scope[f.messageFrom.field];
+    const entry = sel && this.mapEntry(f.messageFrom.map, sel.value);
+    return entry && entry.message;
+  }
+
+  // Which decompression to use, from an earlier field's value. Undefined means the bytes are stored as is.
+  inflateMethod(f, scope) {
+    if (!f.inflate) return undefined;
+    const sel = scope[f.inflate.field];
+    return sel && f.inflate.values && f.inflate.values[String(sel.value)];
+  }
+
+  // Decompress a payload and decode the result. The decoded fields aren't in the file's bytes,
+  // so they're marked virtual and only show up in the tree.
+  inflatedMessage(f, name, key, method, start, end, scope) {
+    const msgName = this.layoutMessageName(f, scope);
+    const msg = msgName ? this.findMessage(msgName) : undefined;
+    const node = { name, kind: "group", key, start, end, type: `${msg ? msg.name : msgName || "unknown message"} (${method})`, children: [] };
+    const zlib = require("zlib");
+    const input = this.bytes.subarray(start, end);
+    let inflated;
+    try {
+      inflated = method === "zlib" ? zlib.inflateSync(input) : method === "deflate" ? zlib.inflateRawSync(input) : method === "gzip" ? zlib.gunzipSync(input) : undefined;
+      if (!inflated) throw new Error(`Unknown inflate method '${method}' in spec`);
+    } catch (e) {
+      node.problem = `Couldn't decompress: ${e.message}`;
+      node.children.push({ name: "compressed", kind: "value", start, end, value: hex(this.bytes, start, end) });
+      return node;
+    }
+    node.children.push({ name: "compressed", kind: "value", start, end, value: `${end - start} bytes → ${inflated.length} bytes` });
+    const inner = new Decoder(new Uint8Array(inflated), this.schema, this.spec);
+    const children = inner.decodeMessage(0, inflated.length, msg);
+    markVirtual(children);
+    node.children.push(...children);
+    return node;
   }
 
   lengthOf(length, pos, end, scope) {
@@ -436,6 +487,13 @@ function expectedWire(field) {
 
 function isPackable(field) {
   return field.repeated && field.packed !== false && (field.kind === "enum" || (field.kind === "scalar" && expectedWire(field) !== 2));
+}
+
+function markVirtual(nodes) {
+  for (const node of nodes) {
+    node.virtual = true;
+    markVirtual(node.children || []);
+  }
 }
 
 function errorNode(message, start, end) {

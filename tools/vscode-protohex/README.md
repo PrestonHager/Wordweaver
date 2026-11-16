@@ -72,6 +72,8 @@ For anything with a header or framing, use `layout`, a list of fields read in or
 - `uint` reads a fixed-size integer, with `size` and `endian`.
 - `varint` reads a protobuf-style varint. Add `names` to show a name from a `typeMaps` entry.
 - `message` reads a protobuf message. `length` is a number, an earlier field's name, or `"rest"`. The type is either `message` or `messageFrom`, which looks it up in a `typeMaps` entry using an earlier field's value.
+  Add `inflate` to decompress it first, like `{ "field": "compression", "values": { "1": "zlib" } }`. `zlib`, `deflate`, and `gzip` work.
+- `block` reads `length` bytes with its own `fields`, so `"rest"` inside it stops at the end of the block.
 - `crc32` reads a 4-byte CRC32 and checks it against everything from the `from` field up to the CRC.
 - `repeat` reads its `fields` over and over until the end, or `count` times.
 
@@ -83,6 +85,7 @@ The sibling has to come before the bytes field, which it will if its field numbe
 
 ## What doesn't work
 
+- Fields inside a compressed payload show up in the tree in italics, but they can't be colored in the hex, since those bytes aren't in the file. Selecting one highlights the compressed bytes instead.
 - Groups (wire types 3 and 4) show up as an error.
 - `.proto` options, services, and extensions are skipped. Imports work if the file is next to the importing file.
 - Text fields in Wordweaver are string table indexes, and they show as plain numbers. Resolving them to the actual strings would need another spec feature.
@@ -90,7 +93,10 @@ The sibling has to come before the bytes field, which it will if its field numbe
 ## Checking a spec without VS Code
 
 ```bash
-node test/dump.js wordweaver.protohex.json ../../test_project.wwproj
+node test/dump.js wordweaver.protohex.json path/to/project.wwproj
 ```
 
 This prints the decoded tree and exits with an error if anything has a problem.
+Ranges that start with `~` are offsets in a decompressed payload.
+
+NOTE: files saved before chunks had a compression byte won't decode with the current spec.

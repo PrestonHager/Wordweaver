@@ -142,6 +142,8 @@ button:disabled { opacity: 0.5; cursor: default; }
   color: var(--vscode-list-activeSelectionForeground);
 }
 .node.problem .name { color: var(--bad); }
+/* Fields from decompressed bytes, which have no place in the hex grid. */
+.node.virtual .name { font-style: italic; }
 .twisty {
   display: inline-block;
   width: 1.4ch;

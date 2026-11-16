@@ -13,7 +13,21 @@
       "fields": [
         { "name": "type", "type": "varint", "names": "chunks" },
         { "name": "length", "type": "varint" },
-        { "name": "payload", "type": "message", "length": "length", "messageFrom": { "field": "type", "map": "chunks" } },
+        {
+          "name": "framed",
+          "type": "block",
+          "length": "length",
+          "fields": [
+            { "name": "compression", "type": "uint", "size": 1, "names": "compression" },
+            {
+              "name": "payload",
+              "type": "message",
+              "length": "rest",
+              "messageFrom": { "field": "type", "map": "chunks" },
+              "inflate": { "field": "compression", "values": { "1": "zlib" } }
+            }
+          ]
+        },
         { "name": "crc", "type": "crc32", "endian": "big", "from": "type" }
       ]
     }
@@ -28,6 +42,7 @@
       "11": { "name": "DEFINITIONS", "message": "wordweaver.v1.DefinitionTable" },
       "13": { "name": "TAGS", "message": "wordweaver.v1.TagTable" },
       "15": { "name": "PHONEME_CLASSES", "message": "wordweaver.v1.PhonemeClassTable" },
+      "17": { "name": "ALLOPHONE_RULES", "message": "wordweaver.v1.AllophoneRuleTable" },
       "127": { "name": "PATCH", "message": "wordweaver.v1.Patch" }
     },
     "records": {
@@ -36,7 +51,12 @@
       "9": "wordweaver.v1.Entry",
       "11": "wordweaver.v1.Definition",
       "13": "wordweaver.v1.Tag",
-      "15": "wordweaver.v1.PhonemeClass"
+      "15": "wordweaver.v1.PhonemeClass",
+      "17": "wordweaver.v1.AllophoneRule"
+    },
+    "compression": {
+      "0": { "name": "RAW" },
+      "1": { "name": "ZLIB" }
     }
   },
   "bytesTypes": {
