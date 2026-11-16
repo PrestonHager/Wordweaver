@@ -11,7 +11,7 @@ class ClassesCard(Card):
     """Shows a Language's Phoneme Classes and lets you make, rename, delete, and fill them."""
 
     # Sent whenever a Class changes, so other pages can update.
-    changed = pyqtSignal()
+    changed = pyqtSignal()  # pyright: ignore[reportCallIssue]  PyQt6 stub bug, see pyproject.
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
@@ -30,8 +30,8 @@ class ClassesCard(Card):
         new_button = Button("New Class", "plus", parent=self)
         new_button.clicked.connect(self.new_class)
         title_row.addWidget(new_button)
-        self.layout.addLayout(title_row)
-        self.layout.addWidget(label("Default Classes fill in from IPA features. Once you change which Phonemes are in one, it stops filling in by itself.", "muted", self))
+        self.content.addLayout(title_row)
+        self.content.addWidget(label("Default Classes fill in from IPA features. Once you change which Phonemes are in one, it stops filling in by itself.", "muted", self))
 
         # Then the list of Classes on the left and the picked Class on the right.
         body = QHBoxLayout()
@@ -67,7 +67,7 @@ class ClassesCard(Card):
         editor_layout.addWidget(self.error)
         editor_layout.addStretch()
         body.addWidget(editor, 1)
-        self.layout.addLayout(body)
+        self.content.addLayout(body)
 
     def set_language(self, language: Language | None):
         self.language = language

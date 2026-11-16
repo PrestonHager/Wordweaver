@@ -30,7 +30,7 @@ def is_critical(type_id: int) -> bool:
     return type_id % 2 == 1
 
 # Chunks that hold a single message.
-SINGLE_MESSAGES = {
+SINGLE_MESSAGES: dict[ChunkType, type[Message]] = {
     ChunkType.STRING_TABLE: pb.StringTable,
     ChunkType.PROJECT: pb.ProjectInfo,
 }

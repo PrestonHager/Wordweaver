@@ -171,10 +171,11 @@ class WordNetSenses:
         import wn
         from platformdirs import user_data_path
         data_dir = self._data_dir or user_data_path("Wordweaver", False) / "wordnet"
-        if wn.config.data_directory != Path(data_dir).expanduser().resolve():
-            wn.config.data_directory = data_dir
+        config = wn.config  # pyright: ignore[reportPrivateImportUsage]  wn documents config but leaves it out of __all__.
+        if config.data_directory != Path(data_dir).expanduser().resolve():
+            config.data_directory = data_dir
         # The download runs on a worker thread, then searches run on the main thread, so the database has to allow both.
-        wn.config.allow_multithreading = True
+        config.allow_multithreading = True
         return wn
 
 # Gloss Languages with a wordnet in Open Multilingual Wordnet, by their primary language subtag.

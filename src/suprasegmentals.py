@@ -1,12 +1,14 @@
 # suprasegmentals.py
 
+from collections.abc import Iterable
+
 class Suprasegmentals:
     """A Language's Suprasegmental settings: whether it uses Stress and Length, and its tones.
 
     These are Language-wide for now. Putting them on syllables comes with Phonotactics.
     """
 
-    def __init__(self, stress: bool=False, tones: list[str]=(), length: bool=False):
+    def __init__(self, stress: bool=False, tones: Iterable[str]=(), length: bool=False):
         self.stress = stress
         self.length = length
         self._tones: list[str] = []

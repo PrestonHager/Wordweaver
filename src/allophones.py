@@ -167,7 +167,7 @@ class AllophoneRules:
         return allophone
 
     def _check_side(self, side: ContextSide | str) -> ContextSide:
-        if side is None or side is WORD_BOUNDARY:
+        if side is None or isinstance(side, WordBoundary):
             return side
         if isinstance(side, PhonemeClass):
             if not any(c is side for c in self._classes):

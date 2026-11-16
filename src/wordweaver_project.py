@@ -197,6 +197,7 @@ class Project:
         if self._saved is not None and self._saved_path == os.path.abspath(self.file) and self._saved_stat == _stat(self.file):
             # The file already holds what we last saved, so we only append what changed since then.
             contents = self._to_contents(self._saved.strings.copy())
+            assert self._saved_stat is not None
             patch = contents.patch_from(self._saved) or b""
             contents.patch_bytes = self._saved.patch_bytes + len(patch)
             file_size = self._saved_stat[0] + len(patch)
@@ -227,6 +228,7 @@ class Project:
 
     def _remember_saved(self, contents: FileContents):
         # Keep what's in the file, so the next save can tell what changed.
+        assert self.file is not None
         self._saved = contents
         self._saved_path = os.path.abspath(self.file)
         self._saved_stat = _stat(self.file)
@@ -259,7 +261,7 @@ class Project:
         for language in self._languages:
             suprasegmentals = language.suprasegmentals
             contents.add_record(ChunkType.LANGUAGES, pb.Language(
-                id=language.id, name=strings.index(language.name), kind=language.kind, default_class_ids_start=language._classes.default_ids_start,
+                id=language.id, name=strings.index(language.name), kind=language.kind, default_class_ids_start=language._classes.default_ids_start,  # pyright: ignore[reportArgumentType]  LanguageKind has the proto enum's values.
                 stress=suprasegmentals.stress, tones=[strings.index(tone) for tone in suprasegmentals.tones], length=suprasegmentals.length))
             for phoneme in language.inventory:
                 # The Frequency is left out when there isn't one, so it loads back as None.
@@ -269,7 +271,7 @@ class Project:
                 if phoneme_class.is_default and not (phoneme_class.is_renamed or phoneme_class.is_hand_edited):
                     continue
                 record = pb.PhonemeClass(id=phoneme_class.id, language_id=language.id, name=strings.index(phoneme_class.name))
-                if phoneme_class.is_default:
+                if phoneme_class._default is not None:
                     record.default_key = strings.index(phoneme_class._default.key)
                 if not phoneme_class.is_default or phoneme_class.is_hand_edited:
                     record.hand_edited = True
@@ -289,7 +291,7 @@ class Project:
                     )
                     reference = definition.concept_reference
                     if reference is not None:
-                        record.concept_source = reference.source
+                        record.concept_source = reference.source  # pyright: ignore[reportAttributeAccessIssue]  ConceptSource has the proto enum's values.
                         record.concept_id = strings.index(reference.id)
                     contents.add_record(ChunkType.DEFINITIONS, record)
             for rule in language.allophone_rules:
