@@ -64,7 +64,8 @@ def decode_file(data: bytes) -> tuple[int, int, list[Chunk]]:
     major, pos = decode_varint(data, 4)
     minor, pos = decode_varint(data, pos)
     # Then read chunks until the end of the file.
-    # TODO: the version and unknown chunk rules come in #31, and dropping a cut-off patch in #32.
+    # The version and unknown chunk rules are checked one layer up, in FileContents.decode.
+    # TODO: dropping a cut-off patch comes in #32.
     chunks = []
     while pos < len(data):
         start = pos
@@ -75,7 +76,7 @@ def decode_file(data: bytes) -> tuple[int, int, list[Chunk]]:
             raise CorruptFileError("The file ends in the middle of a chunk")
         crc = int.from_bytes(data[end:end + 4], "big")
         if zlib.crc32(data[start:end]) != crc:
-            raise CorruptFileError(f"Chunk {type_id} failed its CRC check")
+            raise CorruptFileError(f"This Project file is damaged (chunk {type_id} failed its CRC check)")
         chunks.append(Chunk(type_id, data[pos:end]))
         pos = end + 4
     return major, minor, chunks
