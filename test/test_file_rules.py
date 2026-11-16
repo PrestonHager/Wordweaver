@@ -28,8 +28,13 @@ def varint(value: int) -> bytes:
             out.append(byte)
             return bytes(out)
 
-def chunk(type_id: int, payload: bytes=b"") -> bytes:
-    body = varint(type_id) + varint(len(payload)) + payload
+RAW = 0
+ZLIB = 1
+
+def chunk(type_id: int, payload: bytes=b"", compression: int=RAW) -> bytes:
+    # Each payload starts with a byte saying how the rest of it is compressed.
+    framed = bytes([compression]) + (zlib.compress(payload) if compression == ZLIB else payload)
+    body = varint(type_id) + varint(len(framed)) + framed
     return body + zlib.crc32(body).to_bytes(4, "big")
 
 def project_file(*extra_chunks: bytes, major: int=1, minor: int=0) -> bytes:
@@ -77,10 +82,22 @@ class TestFileRules(unittest.TestCase):
             self.assertIn(extra, f_in.read())
         self.assertEqual(Project.load(self.file).languages[0].name, "Added")
 
+    def test_compressed_chunk_loads(self):
+        # A string table with the name "Squashed" at index 1, and Project info pointing at it.
+        strings = b"\x0a\x08Squashed"
+        info = b"\x08\x01"
+        data = MAGIC + varint(1) + varint(0) + chunk(STRING_TABLE, strings, ZLIB) + chunk(PROJECT, info, ZLIB)
+        self.assertEqual(self.load(data).name, "Squashed")
+
+    def test_unknown_compression_is_refused(self):
+        with self.assertRaises(NewerVersionError) as caught:
+            self.load(project_file(chunk(1000, b"something", compression=9)))
+        self.assertIn("update", str(caught.exception).lower())
+
     def test_bad_crc_on_base_chunk_is_corrupt(self):
         data = bytearray(project_file())
-        # The string table chunk starts right after the 6 header bytes, and its CRC right after its type and length.
-        data[8] ^= 0xFF
+        # The string table chunk starts right after the 6 header bytes, and its CRC comes after its type, length, and flag byte.
+        data[9] ^= 0xFF
         with self.assertRaises(CorruptFileError):
             self.load(bytes(data))
 
