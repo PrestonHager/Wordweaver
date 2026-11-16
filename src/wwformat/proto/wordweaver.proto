@@ -41,6 +41,10 @@ message Language {
   uint64 id = 1;
   uint32 name = 2;
   LanguageKind kind = 3;
+  // The first of the IDs held back for this Language's default Phoneme Classes.
+  // Default Classes aren't saved, so this keeps their IDs the same across loads.
+  // 0 means the file is from before Phoneme Classes.
+  uint64 default_class_ids_start = 4;
 }
 
 // Chunk LANGUAGES.
@@ -58,4 +62,23 @@ message Phoneme {
 // Chunk PHONEMES.
 message PhonemeTable {
   repeated Phoneme records = 1;
+}
+
+// A Phoneme Class the user made, or a default one they changed.
+// Untouched default Classes aren't saved, since they're rebuilt from IPA features on load.
+message PhonemeClass {
+  uint64 id = 1;
+  uint64 language_id = 2;
+  uint32 name = 3;
+  // For a default Class, which one it is, like "nasal". 0 for the user's own Classes.
+  uint32 default_key = 4;
+  // Whether phoneme_ids is the Class's whole membership.
+  // A default Class that was only renamed leaves this off and keeps filling in from IPA features.
+  bool hand_edited = 5;
+  repeated uint64 phoneme_ids = 6;
+}
+
+// Chunk PHONEME_CLASSES.
+message PhonemeClassTable {
+  repeated PhonemeClass records = 1;
 }

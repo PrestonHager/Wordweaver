@@ -4,6 +4,7 @@ from collections.abc import Callable
 from enum import IntEnum
 from pathlib import Path
 
+from phoneme_classes import DEFAULT_CLASS_ID_BLOCK, PhonemeClass, PhonemeClasses
 from phonology import Phoneme, PhonemeInventory
 from wwformat import ChunkType, CorruptFileError, FileContents, NewerVersionError, ProjectFileError, UnknownChunkError, pb
 
@@ -21,16 +22,43 @@ class LanguageKind(IntEnum):
 class Language:
     """One conlang inside a Project, with its own Phoneme Inventory."""
 
-    def __init__(self, id: int, name: str, new_id: Callable[[], int], kind: LanguageKind=LanguageKind.LANGUAGE):
-        # Languages are made by Project.add_language, which hands out the ID.
+    def __init__(self, id: int, name: str, new_id: Callable[[], int], kind: LanguageKind, default_class_ids_start: int):
+        # Languages are made by Project.add_language, which hands out the IDs.
         self._id = id
         self.name = name
         self.kind = kind
         self.inventory = PhonemeInventory(new_id)
+        self._classes = PhonemeClasses(self.inventory, new_id, default_class_ids_start)
 
     @property
     def id(self) -> int:
         return self._id
+
+    @property
+    def classes(self) -> list[PhonemeClass]:
+        """Every Phoneme Class in the Language, defaults first."""
+        return list(self._classes)
+
+    def add_class(self, name: str) -> PhonemeClass:
+        """Make a new, empty Phoneme Class.
+
+        :raises ValueError: If the name is empty or another Class has it.
+        """
+        return self._classes.add(name)
+
+    def remove_class(self, phoneme_class: PhonemeClass):
+        """Delete one of the user's own Phoneme Classes.
+
+        :raises ValueError: If it's a default Class, or isn't in this Language.
+        """
+        self._classes.remove(phoneme_class)
+
+    def get_class(self, name: str) -> PhonemeClass | None:
+        return self._classes.get(name)
+
+    def classes_of(self, symbol: str) -> list[PhonemeClass]:
+        """Get every Phoneme Class a Phoneme is in."""
+        return self._classes.of(symbol)
 
     def __repr__(self) -> str:
         return f"<Language {self.id} {self.name!r}: {', '.join(self.inventory.symbols)}>"
@@ -52,7 +80,7 @@ class Project:
         return list(self._languages)
 
     def add_language(self, name: str, kind: LanguageKind=LanguageKind.LANGUAGE) -> Language:
-        language = Language(self._new_id(), name, self._new_id, kind)
+        language = Language(self._new_id(), name, self._new_id, kind, self._reserve_ids(DEFAULT_CLASS_ID_BLOCK))
         self._languages.append(language)
         return language
 
@@ -64,9 +92,13 @@ class Project:
         self._languages.remove(language)
 
     def _new_id(self) -> int:
-        id = self._next_id
-        self._next_id += 1
-        return id
+        return self._reserve_ids(1)
+
+    def _reserve_ids(self, count: int) -> int:
+        # Hand out `count` IDs in a row and return the first one.
+        start = self._next_id
+        self._next_id += count
+        return start
 
     def save(self, file: str | Path | None=None):
         """Save the whole Project to `file`, or to the file it was last saved to or loaded from.
@@ -98,9 +130,20 @@ class Project:
         info.name = strings.index(self.name)
         info.next_id = self._next_id
         for language in self._languages:
-            contents.add_record(ChunkType.LANGUAGES, pb.Language(id=language.id, name=strings.index(language.name), kind=language.kind))
+            contents.add_record(ChunkType.LANGUAGES, pb.Language(id=language.id, name=strings.index(language.name), kind=language.kind, default_class_ids_start=language._classes.default_ids_start))
             for phoneme in language.inventory:
                 contents.add_record(ChunkType.PHONEMES, pb.Phoneme(id=phoneme.id, language_id=language.id, symbol=strings.index(phoneme.symbol)))
+            # Default Classes are rebuilt on load, so only save the ones the user changed.
+            for phoneme_class in language.classes:
+                if phoneme_class.is_default and not (phoneme_class.is_renamed or phoneme_class.is_hand_edited):
+                    continue
+                record = pb.PhonemeClass(id=phoneme_class.id, language_id=language.id, name=strings.index(phoneme_class.name))
+                if phoneme_class.is_default:
+                    record.default_key = strings.index(phoneme_class._default.key)
+                if not phoneme_class.is_default or phoneme_class.is_hand_edited:
+                    record.hand_edited = True
+                    record.phoneme_ids.extend(p.id for p in phoneme_class.phonemes)
+                contents.add_record(ChunkType.PHONEME_CLASSES, record)
         contents.unknown_chunks = list(self._unknown_chunks)
         return contents
 
@@ -110,19 +153,36 @@ class Project:
         info = contents.get(ChunkType.PROJECT)
         project = cls(strings[info.name])
         # First, rebuild the Languages, then put each Phoneme back into its Language.
+        # First, make sure new IDs can't collide with loaded ones, even if next_id was missing.
+        reserved = [r.default_class_ids_start + DEFAULT_CLASS_ID_BLOCK for r in contents.records(ChunkType.LANGUAGES) if r.default_class_ids_start]
+        project._next_id = max([info.next_id, 1] + [id + 1 for id in contents.record_ids()] + reserved)
+        # Then rebuild the Languages, then put each Phoneme back into its Language.
         languages = {}
         for record in contents.records(ChunkType.LANGUAGES):
             # A kind from a newer version that we don't know about falls back to a plain Language.
             kind = LanguageKind(record.kind) if record.kind in LanguageKind._value2member_map_ else LanguageKind.LANGUAGE
-            language = Language(record.id, strings[record.name], project._new_id, kind)
+            # Files from before Phoneme Classes don't have default Class IDs yet, so give them some now.
+            class_ids_start = record.default_class_ids_start or project._reserve_ids(DEFAULT_CLASS_ID_BLOCK)
+            language = Language(record.id, strings[record.name], project._new_id, kind, class_ids_start)
             languages[record.id] = language
             project._languages.append(language)
         for record in contents.records(ChunkType.PHONEMES):
             if record.language_id not in languages:
                 raise CorruptFileError(f"Phoneme {record.id} belongs to a Language that isn't in the file")
             languages[record.language_id].inventory._restore(Phoneme(record.id, strings[record.symbol]))
-        # Finally, make sure new IDs can't collide with loaded ones, even if next_id was missing.
-        project._next_id = max([info.next_id, 1] + [id + 1 for id in contents.record_ids()])
+        # Then apply the user's changes to the default Classes, and put back their own Classes.
+        for record in contents.records(ChunkType.PHONEME_CLASSES):
+            if record.language_id not in languages:
+                raise CorruptFileError(f"Phoneme Class {record.id} belongs to a Language that isn't in the file")
+            classes = languages[record.language_id]._classes
+            # A default Class from a newer version that we don't know about comes back as a user Class.
+            phoneme_class = classes.default(strings[record.default_key]) if record.default_key else None
+            if phoneme_class is None:
+                phoneme_class = classes._restore(record.id, strings[record.name])
+            else:
+                phoneme_class._name = strings[record.name]
+            if record.hand_edited:
+                phoneme_class._restore_members(record.phoneme_ids)
         project._unknown_chunks = list(contents.unknown_chunks)
         return project
 

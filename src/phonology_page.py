@@ -7,6 +7,7 @@ from PyQt6.QtWidgets import QFrame, QGridLayout, QHBoxLayout, QLineEdit, QPushBu
 import logging
 import pyperclip
 
+from classes_card import ClassesCard
 from phonology import is_valid_phoneme
 from phonology_const import PULMONIC_CONSONANTS, VOWELS
 from theme import theme
@@ -257,6 +258,11 @@ class PhonologyPage(QWidget):
         inventory.layout.addWidget(self.error)
         layout.addWidget(inventory)
 
+        # Then the Phoneme Classes, which group the inventory.
+        self.classes_card = ClassesCard(body)
+        self.classes_card.changed.connect(self._on_classes_changed)
+        layout.addWidget(self.classes_card)
+
         # Now the two charts, each in its own card.
         consonants = Card(body)
         consonants.layout.addWidget(label("PULMONIC CONSONANTS", "section"))
@@ -285,6 +291,7 @@ class PhonologyPage(QWidget):
     def set_language(self, language: Language | None):
         self.language = language
         self.symbol_input.clear()
+        self.classes_card.set_language(language)
         self.refresh()
 
     def refresh(self):
@@ -295,13 +302,21 @@ class PhonologyPage(QWidget):
         self.count.setText(str(len(symbols)))
         self.chips.clear()
         for symbol in symbols:
-            chip = Chip(symbol, DESCRIPTIONS.get(symbol, "Off-chart Phoneme"), self.chips_box)
+            classes = ", ".join(c.name for c in self.language.classes_of(symbol))
+            tooltip = DESCRIPTIONS.get(symbol, "Off-chart Phoneme") + (f"\nClasses: {classes}" if classes else "")
+            chip = Chip(symbol, tooltip, self.chips_box)
             chip.removed.connect(lambda s: self.toggle(s, False))
             self.chips.addWidget(chip)
         self.chips_box.setVisible(bool(symbols))
         self.empty.setVisible(not symbols)
         for symbol, button in self.buttons.items():
             button.setChecked(symbol in symbols)
+        self.classes_card.refresh()
+
+    def _on_classes_changed(self):
+        # Class edits change the chip tooltips, so redraw those too.
+        self.refresh()
+        self.changed.emit()
 
     def toggle(self, symbol: str, on: bool):
         if self.language is None:

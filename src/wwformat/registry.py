@@ -13,6 +13,7 @@ class ChunkType(IntEnum):
     PROJECT = 3
     LANGUAGES = 5
     PHONEMES = 7
+    PHONEME_CLASSES = 15
 
 def is_critical(type_id: int) -> bool:
     return type_id % 2 == 1
@@ -28,4 +29,5 @@ SINGLE_MESSAGES = {
 RECORD_TABLES = {
     ChunkType.LANGUAGES: pb.LanguageTable,
     ChunkType.PHONEMES: pb.PhonemeTable,
+    ChunkType.PHONEME_CLASSES: pb.PhonemeClassTable,
 }
