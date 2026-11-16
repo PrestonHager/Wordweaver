@@ -29,7 +29,7 @@ class TestLexicon(unittest.TestCase):
 
     def entries(self, lexicon) -> list[tuple]:
         # Boil each Entry down to what you can see, so two Lexicons can be compared.
-        return [(e.id, e.form.phonemes, [(d.id, d.glosses) for d in e.definitions]) for e in lexicon]
+        return [(e.id, e.form.phonemes, [(d.id, d.glosses, d.terms, d.description) for d in e.definitions]) for e in lexicon]
 
     def test_round_trip(self):
         self.lexicon.add(Form.parse("t͡sata", self.language.inventory.symbols), ["water", "river water"])
@@ -131,6 +131,78 @@ class TestLexicon(unittest.TestCase):
         [entry] = list(self.round_trip().languages[0].lexicon)
         self.assertEqual(entry.etymons, ())
         self.assertTrue(entry.is_coinage)
+
+    def test_polysemy_round_trip(self):
+        entry = self.lexicon.add("ta", ["river"], terms=["noun"], description="A big stream of water.")
+        self.lexicon.add_definition(entry, ["road", "path", "way"], terms=["noun", "inalienable"])
+        self.lexicon.add_definition(entry, ["to travel"], description="Going a long way, by water or by land.")
+        self.lexicon.add("si", ["eye"])
+        loaded = self.round_trip().languages[0].lexicon
+        self.assertEqual(self.entries(loaded), self.entries(self.lexicon))
+        definitions = loaded.get(entry.id).definitions
+        self.assertEqual([d.glosses for d in definitions], [("river",), ("road", "path", "way"), ("to travel",)])
+        self.assertEqual([d.terms for d in definitions], [("noun",), ("noun", "inalienable"), ()])
+        self.assertEqual([d.description for d in definitions], ["A big stream of water.", "", "Going a long way, by water or by land."])
+
+    def test_definition_order_round_trip(self):
+        # Newer Definitions have bigger IDs, so put them first to check the order isn't just ID order.
+        entry = self.lexicon.add("ta", ["first"])
+        last = self.lexicon.add_definition(entry, ["last"])
+        self.lexicon.add_definition(entry, ["inserted"], index=0)
+        self.lexicon.move_definition(entry, last, 0)
+        self.assertEqual([d.glosses for d in entry.definitions], [("last",), ("inserted",), ("first",)])
+        loaded = self.round_trip().languages[0].lexicon
+        self.assertEqual(self.entries(loaded), self.entries(self.lexicon))
+
+    def test_edit_definition_round_trip(self):
+        entry = self.lexicon.add("ta", ["one"])
+        second = self.lexicon.add_definition(entry, ["two"], terms=["dual"], description="A pair.")
+        self.lexicon.edit_definition(entry, second, glosses=["pair", "couple"], description="")
+        self.assertEqual((second.glosses, second.terms, second.description), (("pair", "couple"), ("dual",), ""))
+        self.lexicon.edit_definition(entry, second, terms=[" ", "dual", "count "])
+        self.assertEqual(second.terms, ("dual", "count"))
+        loaded = self.round_trip().languages[0].lexicon
+        self.assertEqual(self.entries(loaded), self.entries(self.lexicon))
+
+    def test_bad_definition_edit_changes_nothing(self):
+        entry = self.lexicon.add("ta", ["one"], terms=["numeral"])
+        definition = entry.definitions[0]
+        with self.assertRaises(ValueError):
+            self.lexicon.edit_definition(entry, definition, glosses=[" "], terms=[])
+        self.assertEqual((definition.glosses, definition.terms), (("one",), ("numeral",)))
+        with self.assertRaises(ValueError):
+            self.lexicon.add_definition(entry, [])
+        self.assertEqual(len(entry.definitions), 1)
+
+    def test_remove_definition_round_trip(self):
+        entry = self.lexicon.add("ta", ["one"])
+        second = self.lexicon.add_definition(entry, ["two"])
+        self.lexicon.remove_definition(entry, entry.definitions[0])
+        loaded = self.round_trip().languages[0].lexicon
+        self.assertEqual([d.id for d in loaded.get(entry.id).definitions], [second.id])
+        self.assertEqual(loaded.get(entry.id).glosses, ("two",))
+
+    def test_last_definition_cant_be_removed(self):
+        entry = self.lexicon.add("ta", ["one"])
+        with self.assertRaises(ValueError):
+            self.lexicon.remove_definition(entry, entry.definitions[0])
+        self.assertEqual(entry.glosses, ("one",))
+
+    def test_definition_must_be_on_the_entry(self):
+        entry = self.lexicon.add("ta", ["one"])
+        other = self.lexicon.add("si", ["two"])
+        with self.assertRaises(KeyError):
+            self.lexicon.remove_definition(entry, other.definitions[0])
+        with self.assertRaises(KeyError):
+            self.lexicon.edit_definition(entry, other.definitions[0], glosses=["three"])
+        with self.assertRaises(KeyError):
+            self.lexicon.move_definition(entry, other.definitions[0], 0)
+
+    def test_edit_changes_the_first_definition(self):
+        entry = self.lexicon.add("ta", ["one"])
+        self.lexicon.add_definition(entry, ["two"])
+        self.lexicon.edit(entry, glosses=["uno"])
+        self.assertEqual([d.glosses for d in entry.definitions], [("uno",), ("two",)])
 
     def test_many_entries(self):
         for i in range(2000):

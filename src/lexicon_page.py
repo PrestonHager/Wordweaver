@@ -65,9 +65,13 @@ class LexiconPage(QWidget):
         if self.language is None:
             return
         # Show each Entry as its Form and Glosses, and keep its ID on the item to find it again.
+        # With Polysemy, number each Definition so you can tell them apart.
         self.lexicon_list.clear()
         for entry in self.language.lexicon:
-            item = QListWidgetItem(f"/{entry.form}/  {'; '.join(entry.glosses)}")
+            meanings = ["; ".join(d.glosses) for d in entry.definitions]
+            if len(meanings) > 1:
+                meanings = [f"{number}. {meaning}" for number, meaning in enumerate(meanings, start=1)]
+            item = QListWidgetItem(f"/{entry.form}/  {'  '.join(meanings)}")
             item.setData(Qt.ItemDataRole.UserRole, entry.id)
             self.lexicon_list.addItem(item)
         # Then swap in the empty state if there's nothing to list.
