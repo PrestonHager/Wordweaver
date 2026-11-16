@@ -1,0 +1,46 @@
+{
+  "name": "Wordweaver Project",
+  "filePatterns": ["*.wwproj"],
+  "proto": ["../../src/wwformat/proto/wordweaver.proto"],
+  "layout": [
+    { "name": "magic", "type": "bytes", "length": 4, "expect": "87AFFA87" },
+    { "name": "major", "type": "varint" },
+    { "name": "minor", "type": "varint" },
+    {
+      "name": "chunks",
+      "type": "repeat",
+      "label": "chunk {type}",
+      "fields": [
+        { "name": "type", "type": "varint", "names": "chunks" },
+        { "name": "length", "type": "varint" },
+        { "name": "payload", "type": "message", "length": "length", "messageFrom": { "field": "type", "map": "chunks" } },
+        { "name": "crc", "type": "crc32", "endian": "big", "from": "type" }
+      ]
+    }
+  ],
+  "typeMaps": {
+    "chunks": {
+      "1": { "name": "STRING_TABLE", "message": "wordweaver.v1.StringTable" },
+      "3": { "name": "PROJECT", "message": "wordweaver.v1.ProjectInfo" },
+      "5": { "name": "LANGUAGES", "message": "wordweaver.v1.LanguageTable" },
+      "7": { "name": "PHONEMES", "message": "wordweaver.v1.PhonemeTable" },
+      "9": { "name": "ENTRIES", "message": "wordweaver.v1.EntryTable" },
+      "11": { "name": "DEFINITIONS", "message": "wordweaver.v1.DefinitionTable" },
+      "13": { "name": "TAGS", "message": "wordweaver.v1.TagTable" },
+      "15": { "name": "PHONEME_CLASSES", "message": "wordweaver.v1.PhonemeClassTable" },
+      "127": { "name": "PATCH", "message": "wordweaver.v1.Patch" }
+    },
+    "records": {
+      "5": "wordweaver.v1.Language",
+      "7": "wordweaver.v1.Phoneme",
+      "9": "wordweaver.v1.Entry",
+      "11": "wordweaver.v1.Definition",
+      "13": "wordweaver.v1.Tag",
+      "15": "wordweaver.v1.PhonemeClass"
+    }
+  },
+  "bytesTypes": {
+    "wordweaver.v1.ChunkReplace.message": { "from": "chunk_type", "map": "chunks" },
+    "wordweaver.v1.RecordUpsert.record": { "from": "table", "map": "records" }
+  }
+}

@@ -1,0 +1,187 @@
+:root {
+  --bad: var(--vscode-errorForeground, #f14c4c);
+  --bad-bg: rgba(241, 76, 76, 0.45);
+  --line: var(--vscode-panel-border, rgba(128, 128, 128, 0.35));
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  color: var(--vscode-foreground);
+  background: var(--vscode-editor-background);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+}
+
+button {
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+  border: none;
+  padding: 3px 9px;
+  cursor: pointer;
+  font: inherit;
+}
+button:hover { background: var(--vscode-button-secondaryHoverBackground); }
+button:disabled { opacity: 0.5; cursor: default; }
+
+#toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--line);
+}
+#toolbar .spacer { flex: 1; }
+#status { opacity: 0.8; }
+.bad { color: var(--bad); }
+
+#main {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+#hex {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  border-right: 1px solid var(--line);
+  font-family: var(--vscode-editor-font-family);
+  font-size: var(--vscode-editor-font-size);
+}
+
+#hexHeader {
+  display: flex;
+  height: 20px;
+  line-height: 20px;
+  opacity: 0.6;
+  padding-right: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+#hexScroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  outline: none;
+  padding-right: 12px;
+}
+
+#hexSpacer { position: relative; }
+
+.row {
+  position: absolute;
+  left: 0;
+  height: 20px;
+  line-height: 20px;
+  display: flex;
+  white-space: pre;
+}
+
+.off {
+  width: 9ch;
+  padding: 0 8px;
+  opacity: 0.55;
+}
+
+.hexcells { display: flex; }
+.hexcells .b {
+  width: 2.6ch;
+  text-align: center;
+  cursor: default;
+}
+.hexcells .b:nth-child(8) { margin-right: 0.8ch; }
+
+/* The rows are absolutely positioned, so the header's fixed widths are what size the column. */
+.ascii {
+  display: flex;
+  width: calc(16 * 1.2ch);
+  margin-left: 1.5ch;
+}
+.ascii .b {
+  width: 1.2ch;
+  text-align: center;
+}
+
+.b.start { box-shadow: inset 2px 0 0 rgba(128, 128, 128, 0.7); }
+.b.hov { filter: brightness(1.35); box-shadow: inset 0 -2px 0 var(--vscode-focusBorder); }
+.b.sel { outline: 1px solid var(--vscode-focusBorder); outline-offset: -1px; font-weight: bold; }
+.b.caret { background-color: var(--vscode-editorCursor-foreground) !important; color: var(--vscode-editor-background); }
+.b.empty { background: none; }
+
+#side {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 260px;
+}
+
+#tree {
+  flex: 1;
+  overflow: auto;
+  font-family: var(--vscode-editor-font-family);
+  font-size: var(--vscode-editor-font-size);
+  padding: 4px 0;
+}
+
+.node {
+  white-space: nowrap;
+  line-height: 20px;
+  cursor: pointer;
+}
+.node:hover { background: var(--vscode-list-hoverBackground); }
+.node.sel {
+  background: var(--vscode-list-activeSelectionBackground);
+  color: var(--vscode-list-activeSelectionForeground);
+}
+.node.problem .name { color: var(--bad); }
+.twisty {
+  display: inline-block;
+  width: 1.4ch;
+  opacity: 0.7;
+}
+.swatch {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 5px;
+  border-radius: 2px;
+  vertical-align: middle;
+}
+.type { opacity: 0.6; font-style: italic; }
+.value { color: var(--vscode-debugTokenExpression-value, var(--vscode-textLink-foreground)); }
+
+#details {
+  border-top: 1px solid var(--line);
+  padding: 6px 8px;
+  max-height: 45%;
+  overflow: auto;
+  font-family: var(--vscode-editor-font-family);
+  font-size: var(--vscode-editor-font-size);
+}
+.drow { display: flex; gap: 10px; line-height: 19px; }
+.drow.sep { margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--line); }
+.drow .k { width: 11ch; flex: 0 0 auto; opacity: 0.6; }
+.drow .v { word-break: break-all; }
+
+#tooltip {
+  display: none;
+  position: fixed;
+  z-index: 10;
+  max-width: 420px;
+  padding: 5px 8px;
+  pointer-events: none;
+  background: var(--vscode-editorHoverWidget-background);
+  color: var(--vscode-editorHoverWidget-foreground);
+  border: 1px solid var(--vscode-editorHoverWidget-border);
+  font-family: var(--vscode-editor-font-family);
+  font-size: var(--vscode-editor-font-size);
+  word-break: break-all;
+}

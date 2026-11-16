@@ -1,0 +1,62 @@
+{
+  "name": "protohex",
+  "displayName": "ProtoHex",
+  "description": "A hex view that colors protobuf fields using your .proto files and a small layout spec.",
+  "version": "0.1.0",
+  "publisher": "wordweaver",
+  "private": true,
+  "license": "GPL-3.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/PrestonHager/Wordweaver.git",
+    "directory": "tools/vscode-protohex"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": ["Other"],
+  "main": "./src/extension.js",
+  "activationEvents": [],
+  "contributes": {
+    "customEditors": [
+      {
+        "viewType": "protohex.viewer",
+        "displayName": "ProtoHex",
+        "selector": [{ "filenamePattern": "*" }],
+        "priority": "option"
+      }
+    ],
+    "commands": [
+      { "command": "protohex.open", "title": "Open with ProtoHex", "category": "ProtoHex" },
+      { "command": "protohex.pickSpec", "title": "Choose Spec for This File", "category": "ProtoHex" },
+      { "command": "protohex.reload", "title": "Reload", "category": "ProtoHex" }
+    ],
+    "menus": {
+      "explorer/context": [
+        { "command": "protohex.open", "when": "!explorerResourceIsFolder", "group": "navigation@99" }
+      ],
+      "commandPalette": [
+        { "command": "protohex.pickSpec", "when": "activeCustomEditorId == protohex.viewer" },
+        { "command": "protohex.reload", "when": "activeCustomEditorId == protohex.viewer" }
+      ]
+    },
+    "configuration": {
+      "title": "ProtoHex",
+      "properties": {
+        "protohex.specFiles": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "Extra spec files to use, besides any *.protohex.json in the workspace. Relative paths start at the first workspace folder."
+        }
+      }
+    },
+    "jsonValidation": [
+      { "fileMatch": "*.protohex.json", "url": "./protohex.schema.json" }
+    ]
+  },
+  "scripts": {
+    "test": "node test/dump.js wordweaver.protohex.json ../../test_project.wwproj",
+    "package": "npx --yes @vscode/vsce package --allow-missing-repository --skip-license"
+  }
+}

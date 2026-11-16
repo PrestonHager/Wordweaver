@@ -1,0 +1,80 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ProtoHex spec",
+  "type": "object",
+  "definitions": {
+    "layoutField": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "name": { "type": "string", "description": "Shown in the tree. Later fields refer to this one by name." },
+        "type": { "enum": ["bytes", "uint", "varint", "message", "crc32", "repeat"] },
+        "length": {
+          "description": "For bytes and message: a fixed count, the name of an earlier varint or uint field, or \"rest\".",
+          "type": ["integer", "string"]
+        },
+        "expect": { "type": "string", "description": "For bytes: the hex the bytes should be, like \"87AFFA87\"." },
+        "size": { "enum": [1, 2, 4, 8], "description": "For uint: how many bytes." },
+        "endian": { "enum": ["big", "little"] },
+        "names": { "type": "string", "description": "For varint and uint: a typeMaps entry used to show a name next to the number." },
+        "message": { "type": "string", "description": "For message: the full message name, like pkg.Message." },
+        "messageFrom": {
+          "type": "object",
+          "description": "For message: pick the message type from an earlier field's value.",
+          "required": ["field", "map"],
+          "properties": {
+            "field": { "type": "string" },
+            "map": { "type": "string" }
+          }
+        },
+        "from": { "type": "string", "description": "For crc32: the first field the CRC covers. It covers everything up to the CRC." },
+        "count": { "type": ["integer", "string"], "description": "For repeat: how many times, or an earlier field's name. Leave it out to repeat to the end." },
+        "label": { "type": "string", "description": "For repeat: the tree label. {index} and {fieldName} are filled in." },
+        "fields": { "type": "array", "items": { "$ref": "#/definitions/layoutField" } }
+      }
+    }
+  },
+  "properties": {
+    "name": { "type": "string" },
+    "filePatterns": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Globs for the files this spec decodes, like *.wwproj."
+    },
+    "proto": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": ".proto files, relative to this spec."
+    },
+    "root": { "type": "string", "description": "For plain protobuf files with no layout: the message the whole file holds." },
+    "layout": { "type": "array", "items": { "$ref": "#/definitions/layoutField" } },
+    "typeMaps": {
+      "type": "object",
+      "description": "Named maps from numbers to message names, or to { name, message }.",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {
+          "oneOf": [
+            { "type": "string" },
+            {
+              "type": "object",
+              "properties": { "name": { "type": "string" }, "message": { "type": "string" } }
+            }
+          ]
+        }
+      }
+    },
+    "bytesTypes": {
+      "type": "object",
+      "description": "Bytes fields that hold a message, keyed by pkg.Message.field. The type comes from a sibling field's value.",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["from", "map"],
+        "properties": {
+          "from": { "type": "string", "description": "The sibling field, which must come before this one." },
+          "map": { "type": "string", "description": "A typeMaps entry." }
+        }
+      }
+    }
+  }
+}
