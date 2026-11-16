@@ -10,6 +10,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent / "src"))
 from PyQt6.QtWidgets import QApplication
 
 from main import App
+from phonotactics import SyllablePart
 from theme import theme
 from wordweaver_project import Project
 
@@ -91,6 +92,51 @@ class TestApp(unittest.TestCase):
         theme.apply(app)
         self.assertTrue(theme.is_dark)
         self.assertEqual(self.window.theme_button.toolTip(), "Switch to light mode")
+
+    def test_phonotactics_page_builds_and_checks(self):
+        self.window.nav_buttons["phonotactics"].click()
+        page = self.window.phonotactics_page
+        self.assertIs(self.window.pages.currentWidget(), page)
+        card = page.structures_card
+        # First, build (C)V(C) with the label buttons, then add it.
+        buttons = {card.labels.itemAt(i).widget().text(): card.labels.itemAt(i).widget() for i in range(card.labels.count())}
+        self.assertTrue({"C", "V", "N", "S"} <= buttons.keys())
+        card.optional.setChecked(True)
+        buttons["C"].click()
+        card.optional.setChecked(False)
+        buttons["V"].click()
+        card.optional.setChecked(True)
+        buttons["C"].click()
+        self.assertEqual(card.notation_input.text(), "(C)V(C)")
+        self.assertEqual(card.preview.parts, {SyllablePart.ONSET: ["(C)"], SyllablePart.NUCLEUS: ["V"], SyllablePart.CODA: ["(C)"]})
+        card.add_button.click()
+        self.assertEqual([s.notation for s in self.language.phonotactics.syllable_structures], ["(C)V(C)"])
+        self.assertEqual(card.count.text(), "1")
+        # Then check a Form that fits and one that doesn't.
+        page.check_card.form_input.setText("papa")
+        self.assertEqual(page.check_card.syllables.text(), "/pa.pa/")
+        page.check_card.form_input.setText("ppa")
+        self.assertIn("can't be split", page.check_card.result.text())
+        # A bad structure shows an error and isn't added.
+        card.notation_input.setText("CC")
+        card.add_structure()
+        self.assertTrue(card.error.isVisibleTo(card))
+        self.assertEqual(len(self.language.phonotactics.syllable_structures), 1)
+
+    def test_class_label_from_classes_card(self):
+        card = self.window.phonology_page.classes_card
+        stop = self.language.get_class("Stop")
+        card.selected = stop
+        card.refresh()
+        card.label_input.setText("P")
+        card.rename()
+        self.assertEqual(stop.label, "P")
+        # A label that's taken leaves both the name and label as they were.
+        card.name_input.setText("Plosive")
+        card.label_input.setText("V")
+        card.rename()
+        self.assertEqual((stop.name, stop.label), ("Stop", "P"))
+        self.assertTrue(card.error.isVisibleTo(card))
 
 if __name__ == "__main__":
     unittest.main()

@@ -26,6 +26,7 @@ ICONS = [
     "layout-dashboard",
     "log-out",
     "moon",
+    "parentheses",
     "pencil",
     "plus",
     "save",

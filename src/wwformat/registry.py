@@ -22,6 +22,8 @@ class ChunkType(IntEnum):
     TAGS = 13
     PHONEME_CLASSES = 15
     ALLOPHONE_RULES = 17
+    # 19 is unused, and 23 is held for Phonotactic Constraints.
+    SYLLABLE_STRUCTURES = 21
     # Patches sit at the top of the one-byte range so record tables can keep counting up from the bottom.
     # The container needs to know it too, to drop a cut-off patch.
     PATCH = PATCH_TYPE_ID
@@ -46,6 +48,7 @@ RECORD_TABLES = {
     ChunkType.TAGS: pb.TagTable,
     ChunkType.PHONEME_CLASSES: pb.PhonemeClassTable,
     ChunkType.ALLOPHONE_RULES: pb.AllophoneRuleTable,
+    ChunkType.SYLLABLE_STRUCTURES: pb.SyllableStructureTable,
 }
 
 def record_class(table: ChunkType) -> type[Message]:

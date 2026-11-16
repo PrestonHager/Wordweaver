@@ -58,6 +58,8 @@ QLabel[role="badge"] {{ background: {accent_soft}; color: {accent}; border-radiu
 QLabel[role="error"] {{ color: {danger}; }}
 QLabel[role="axis"] {{ color: {muted}; font-size: 11px; }}
 QLabel[role="ipa"] {{ font-family: {ipa_fonts}; font-size: 16px; color: {text}; }}
+QLabel[role="position"] {{ background: {accent_soft}; color: {accent}; border: 1px solid {accent_soft}; border-radius: 6px; padding: 4px 10px; font-size: 15px; font-weight: 600; }}
+QLabel[role="position"][optional="true"] {{ background: transparent; color: {muted}; border: 1px dashed {muted}; }}
 
 QFrame[card="true"] {{ background: {surface}; border: 1px solid {border}; border-radius: 12px; }}
 QFrame#ChartCell {{ border: none; border-right: 1px solid {border}; border-bottom: 1px solid {border}; background: transparent; }}

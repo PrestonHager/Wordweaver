@@ -46,6 +46,7 @@ _Avoid_: Phonology (that's the whole sound system, not just the set)
 A named group of Phonemes, like consonants, vowels, or nasals.
 Classes overlap, so one Phoneme can be in many.
 IPA features give the default Classes, and the user can change them.
+Any Class can have a short label, like C, V, or N, which Syllable Structures use to name it.
 _Avoid_: Category, type, Phonemes enum
 
 **Phoneme Frequency**:
@@ -71,6 +72,8 @@ _Avoid_: Constraints (on its own), syllable rules
 
 **Syllable Structure**:
 The allowed shape of a syllable, like `(C)V(C)`, built from Onset, Nucleus, and Coda positions that each draw from a Phoneme Class.
+Each position is written as a Class's short label, parentheses make it optional, and positions next to each other make a cluster, like `(C)(C)V`.
+Checking a Form splits it into syllables by maximal Onset, and a Form that can't be split breaks the Phonotactics.
 _Avoid_: Syllable pattern, template, constraint
 
 **Onset**, **Nucleus**, **Coda**:

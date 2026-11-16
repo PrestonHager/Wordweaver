@@ -85,6 +85,8 @@ message PhonemeClass {
   // A default Class that was only renamed leaves this off and keeps filling in from IPA features.
   bool hand_edited = 5;
   repeated uint64 phoneme_ids = 6;
+  // The short label Syllable Structures use, like "C". Left out means a default Class keeps its default label.
+  optional uint32 label = 7;
 }
 
 // Chunk PHONEME_CLASSES.
@@ -177,6 +179,19 @@ message AllophoneRule {
 // Chunk ALLOPHONE_RULES.
 message AllophoneRuleTable {
   repeated AllophoneRule records = 1;
+}
+
+// A Syllable Structure, kept as the notation the user wrote, like "(C)V(C)".
+// Each position is a Phoneme Class label, so the labels are looked up again on load.
+message SyllableStructure {
+  uint64 id = 1;
+  uint64 language_id = 2;
+  uint32 notation = 3;
+}
+
+// Chunk SYLLABLE_STRUCTURES.
+message SyllableStructureTable {
+  repeated SyllableStructure records = 1;
 }
 
 // Chunk PATCH. One save's worth of changes, applied on top of everything before it.
