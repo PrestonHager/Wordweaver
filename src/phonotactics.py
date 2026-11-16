@@ -1,8 +1,10 @@
 # phonotactics.py
 
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass
 from enum import Enum, IntEnum
+import math
+import random
 
 from lexicon import Form
 from phoneme_classes import PhonemeClass, PhonemeClasses
@@ -402,6 +404,123 @@ class Phonotactics:
             if constraint.matches(syllables):
                 violations.append(Violation(f"/{''.join(phonemes)}/ breaks Phonotactic Constraint: {constraint}"))
         return violations
+
+    def generate_forms(self, count: int, syllable_range: tuple[int, int] = (1, 3),
+                       seed: int | None = None, attempt_limit: int | None = None,
+                       existing: Iterable[Form] = ()) -> list[Form]:
+        """Generate distinct Forms that pass this Language's Phonotactics.
+
+        ``syllable_range`` is an inclusive minimum and maximum. Forms in ``existing`` are
+        skipped, and ``seed`` makes the batch repeatable. A ValueError is raised when
+        the requested batch cannot be produced before the attempt limit.
+        """
+        if count < 0:
+            raise ValueError("The number of Forms can't be negative")
+        minimum, maximum = syllable_range
+        if minimum < 1 or maximum < minimum:
+            raise ValueError("The syllable range must start at 1 and end at or after it")
+        if count == 0:
+            return []
+        if attempt_limit is None:
+            attempt_limit = max(100, count * 100)
+        if attempt_limit < 1:
+            raise ValueError("The attempt limit must be positive")
+        usable = [s for s in self._structures if s.problem is None]
+        if not usable:
+            raise ValueError("Can't generate Forms: this Language has no usable Syllable Structures")
+        weights = self._inventory.weights()
+        if not weights or any(not position.phoneme_class.symbols
+                              for structure in usable for position in structure.positions
+                              if not position.optional and position.phoneme_class is not None):
+            raise ValueError("Can't generate Forms: a required position has no Phonemes")
+        found = set(existing or ())
+        result: list[Form] = []
+        rng = random.Random(seed)
+        for _ in range(attempt_limit):
+            if len(result) == count:
+                return result
+            chosen = [rng.choice(usable) for _ in range(rng.randint(minimum, maximum))]
+            variants = [self._generation_variants(structure, rng) for structure in chosen]
+            generated_syllables = self._generate_syllables(chosen, variants, weights, rng, found)
+            if generated_syllables is None:
+                continue
+            form = Form(symbol for syllable in generated_syllables for symbol in syllable.phonemes)
+            if form not in found:
+                found.add(form)
+                result.append(form)
+                if len(result) == count:
+                    return result
+        raise ValueError(f"Couldn't generate {count} Forms in {attempt_limit} attempts; "
+                         "the Phonotactics may allow too few Forms")
+
+    def _generation_variants(self, structure: SyllableStructure, rng: random.Random) -> list[list[int]]:
+        """Return every optional-position choice for a structure in random order."""
+        optional = [i for i, position in enumerate(structure.positions) if position.optional]
+        variants: list[list[int]] = []
+        for mask in range(1 << len(optional)):
+            skipped = {position for bit, position in enumerate(optional) if mask & (1 << bit)}
+            variants.append([i for i in range(len(structure.positions)) if i not in skipped])
+        rng.shuffle(variants)
+        return variants
+
+    def _generate_syllables(self, structures: list[SyllableStructure], variants: list[list[list[int]]],
+                            weights: dict[str, float], rng: random.Random,
+                            excluded: set[Form] | None = None) -> list[Syllable] | None:
+        """Find one valid set of syllables for selected structures by backtracking."""
+        selected: list[tuple[SyllableStructure, list[int]]] = []
+
+        def choose_variants(index: int) -> list[Syllable] | None:
+            if index == len(variants):
+                return fill_phonemes(0, [])
+            structure = structures[index]
+            for positions in variants[index]:
+                selected.append((structure, positions))
+                answer = choose_variants(index + 1)
+                selected.pop()
+                if answer is not None:
+                    return answer
+            return None
+
+        def fill_phonemes(index: int, syllables: list[Syllable]) -> list[Syllable] | None:
+            if index == len(selected):
+                form = Form(symbol for syllable in syllables for symbol in syllable.phonemes)
+                return syllables if form not in (excluded or set()) and not self.check(form) else None
+            structure, position_indexes = selected[index]
+            positions = structure.positions
+            classes = [positions[i].phoneme_class for i in position_indexes]
+            if any(phoneme_class is None for phoneme_class in classes):
+                return None
+            symbols = [phoneme_class.symbols for phoneme_class in classes if phoneme_class is not None]
+            if any(not choices for choices in symbols):
+                return None
+            chosen: list[str] = []
+
+            def fill_position(position: int) -> list[Syllable] | None:
+                if position == len(symbols):
+                    parts = [positions[i].part for i in position_indexes]
+                    if any(part is None for part in parts):
+                        return None
+                    syllable = Syllable(tuple(chosen), structure, tuple(position_indexes),
+                                        tuple(part for part in parts if part is not None))
+                    if any(
+                        constraint.mode is ConstraintMode.BAN and constraint.matches(syllables + [syllable])
+                        for constraint in self._constraints
+                    ):
+                        return None
+                    return fill_phonemes(index + 1, syllables + [syllable])
+                options = list(symbols[position])
+                options.sort(key=lambda symbol: -math.log(max(rng.random(), 1e-12)) / weights[symbol])
+                for symbol in options:
+                    chosen.append(symbol)
+                    answer = fill_position(position + 1)
+                    chosen.pop()
+                    if answer is not None:
+                        return answer
+                return None
+
+            return fill_position(0)
+
+        return choose_variants(0)
 
     def _phonemes(self, form: Form | str | tuple[str, ...]) -> tuple[str, ...]:
         if isinstance(form, Form):

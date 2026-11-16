@@ -61,6 +61,22 @@ class TestLexicon(unittest.TestCase):
             self.lexicon.add("ta", ["", "  "])
         self.assertEqual(len(self.lexicon), 0)
 
+    def test_generated_entries_can_be_added_without_glosses(self):
+        added = self.lexicon.add_generated_forms([Form(["t", "a"]), Form(["s", "i"])])
+        self.assertEqual([entry.form.phonemes for entry in added], [("t", "a"), ("s", "i")])
+        self.assertEqual([entry.glosses for entry in added], [(), ()])
+        self.assertEqual(len(self.lexicon.add_generated_forms([Form(["t", "a"])])), 0)
+        loaded = self.round_trip().languages[0].lexicon
+        self.assertEqual([entry.glosses for entry in loaded], [(), ()])
+
+    def test_generated_forms_fill_unfinished_entries(self):
+        first = self.lexicon.add("", ["first"])
+        second = self.lexicon.add("", ["second"])
+        filled = self.lexicon.fill_unfinished([Form(["t", "a"])])
+        self.assertEqual(filled, [first])
+        self.assertEqual(first.form.phonemes, ("t", "a"))
+        self.assertTrue(second.is_unfinished)
+
     def test_blank_glosses_are_dropped(self):
         entry = self.lexicon.add("ta", [" one ", "", "single"])
         self.assertEqual(entry.glosses, ("one", "single"))
