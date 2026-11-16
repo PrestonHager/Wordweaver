@@ -82,6 +82,18 @@ class TestFileRules(unittest.TestCase):
             self.assertIn(extra, f_in.read())
         self.assertEqual(Project.load(self.file).languages[0].name, "Added")
 
+    def test_unknown_ancillary_chunk_survives_compaction(self):
+        extra = chunk(1000, b"from a newer app")
+        project = self.load(project_file(extra))
+        language = project.add_language("Added")
+        for symbol in ["p", "t", "a"]:
+            language.inventory.add(symbol)
+            project.save()
+        project.compact()
+        with open(self.file, "rb") as f_in:
+            self.assertIn(extra, f_in.read())
+        self.assertEqual(Project.load(self.file).languages[0].inventory.symbols, ["p", "t", "a"])
+
     def test_compressed_chunk_loads(self):
         # A string table with the name "Squashed" at index 1, and Project info pointing at it.
         strings = b"\x0a\x08Squashed"

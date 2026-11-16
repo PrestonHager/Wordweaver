@@ -29,6 +29,8 @@ class FileContents:
         self.unknown_chunks: list[Chunk] = []
         # True when the file ended in a broken patch that was left out.
         self.dropped_patch = False
+        # How many bytes of the file are patches, so the Project knows when to compact.
+        self.patch_bytes = 0
 
     def get(self, chunk_type: ChunkType) -> Message:
         """Get a single-message chunk, or an empty message if the file didn't have it."""
@@ -64,9 +66,9 @@ class FileContents:
         # Finally, the chunks we didn't understand go back out as they came in.
         return encode_file([string_chunk] + chunks + self.unknown_chunks)
 
-    def patch_from(self, old: "FileContents") -> Chunk | None:
+    def patch_from(self, old: "FileContents") -> bytes | None:
         """
-        Make a patch chunk that turns `old` into these contents, or None if nothing changed.
+        Make the bytes of a patch chunk that turns `old` into these contents, or None if nothing changed.
 
         These contents have to use a copy of `old`'s string table, so the strings `old` has keep their indexes.
         """
@@ -87,7 +89,7 @@ class FileContents:
                 patch.deletes.add(table=table, id=id)
         if not (patch.strings or patch.singles or patch.upserts or patch.deletes):
             return None
-        return Chunk(ChunkType.PATCH, patch.SerializeToString())
+        return encode_chunk(Chunk(ChunkType.PATCH, patch.SerializeToString()))
 
     def _apply(self, patch: pb.Patch):
         self.strings.extend(patch.strings)
@@ -115,6 +117,7 @@ class FileContents:
         chunks = migrate(decoded.major, decoded.chunks)
         contents = cls()
         contents.dropped_patch = decoded.dropped_patch
+        contents.patch_bytes = decoded.patch_bytes
         for chunk in chunks:
             try:
                 if chunk.type_id == ChunkType.STRING_TABLE:
@@ -140,13 +143,15 @@ class FileContents:
         temp_path = f"{path}.tmp"
         with open(temp_path, "wb") as f_out:
             f_out.write(self.encode())
+            f_out.flush()
+            os.fsync(f_out.fileno())
         os.replace(temp_path, path)
 
     @staticmethod
-    def append(path: str | Path, chunk: Chunk):
+    def append(path: str | Path, patch: bytes):
         # A crash part way through leaves a cut-off chunk at the end, which the loader drops.
         with open(path, "ab") as f_out:
-            f_out.write(encode_chunk(chunk))
+            f_out.write(patch)
             f_out.flush()
             os.fsync(f_out.fileno())
 

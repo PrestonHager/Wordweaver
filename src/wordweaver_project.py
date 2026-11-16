@@ -31,6 +31,9 @@ def normalize_language_code(code: str) -> str:
     primary, *subtags = code.split("-")
     return "-".join([primary] + [tag.upper() if len(tag) == 2 else tag for tag in subtags])
 
+# Compact the file on save once patches would be more than this share of it.
+COMPACT_AT = 0.25
+
 class LanguageKind(IntEnum):
     """A label for a Language. It's only a description and doesn't change how the Language works."""
     # The values match the LanguageKind enum in the .proto, so they can be saved as is.
@@ -192,13 +195,32 @@ class Project:
         if self._saved is not None and self._saved_path == os.path.abspath(self.file) and self._saved_stat == _stat(self.file):
             # The file already holds what we last saved, so we only append what changed since then.
             contents = self._to_contents(self._saved.strings.copy())
-            patch = contents.patch_from(self._saved)
-            if patch is not None:
+            patch = contents.patch_from(self._saved) or b""
+            contents.patch_bytes = self._saved.patch_bytes + len(patch)
+            file_size = self._saved_stat[0] + len(patch)
+            # Once patches would take up more than about a quarter of the file, write it out clean instead.
+            if contents.patch_bytes > file_size * COMPACT_AT:
+                self.compact()
+                return
+            if patch:
                 FileContents.append(self.file, patch)
         else:
             # The first save to a file writes the whole Project.
-            contents = self._to_contents(StringTable())
-            contents.write(self.file)
+            self.compact()
+            return
+        self._remember_saved(contents)
+
+    def compact(self):
+        """Save the whole Project to its file, leaving out all the patches.
+
+        It's written to a new file that then replaces the old one, so a crash part way through leaves the old file as it was.
+
+        :raises ValueError: If there's no file to save to.
+        """
+        if self.file is None:
+            raise ValueError("The Project doesn't have a file to save to")
+        contents = self._to_contents(StringTable())
+        contents.write(self.file)
         self._remember_saved(contents)
 
     def _remember_saved(self, contents: FileContents):

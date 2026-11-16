@@ -157,6 +157,7 @@ class App(QMainWindow):
             None,
             ("save", "&Save Project", "save", "Ctrl+S", self.save),
             ("save_as", "S&ave Project As", "save-all", "Ctrl+Shift+S", self.save_as),
+            ("compact", "Co&mpact Project File", None, "", self.compact),
             ("export_csv", "&Export Lexicon to CSV…", None, "", self.export_lexicon_csv),
             ("seed", "Seed from &Concept List…", None, "", self.seed_from_concept_list),
             ("settings", "Project Se&ttings…", None, "", self.edit_project_settings),
@@ -194,7 +195,7 @@ class App(QMainWindow):
     def _update_main_view(self):
         # First, turn the menu actions on or off for whether a Project is open.
         has_project = self.project is not None
-        for key in ("close", "save", "save_as", "export_csv", "seed", "settings", "copy", "overview", "phonology", "lexicon"):
+        for key in ("close", "save", "save_as", "compact", "export_csv", "seed", "settings", "copy", "overview", "phonology", "lexicon"):
             self.menu_actions[key].setEnabled(has_project)
         self.menu_actions["paste"].setEnabled(has_project and pyperclip.paste() != '')
         # Then show the welcome page or the workspace.
@@ -360,6 +361,22 @@ class App(QMainWindow):
             else:
                 # if it doesn't, use the save as dialog.
                 self.save_as()
+
+    def compact(self):
+        # Compacting writes the whole Project to its file, so a Project without a file needs Save As first.
+        if self.project is None:
+            return
+        if self.project.file is None:
+            self.save_as()
+            return
+        try:
+            self.project.compact()
+        except OSError as e:
+            self.logger.warning(f"Couldn't compact project: {e}")
+            QMessageBox.warning(self, "Couldn't Compact Project", str(e))
+            return
+        self.statusBar().showMessage(f"Compacted {self.project.file}", 4000)
+        self.logger.info(f"Compacted project \"{self.project.name}\" at {self.project.file}")
 
     def save_as(self):
         # Ask the user for a file name to save the project to
