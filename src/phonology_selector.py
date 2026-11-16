@@ -1,11 +1,12 @@
 # phonology_selector.py
 
-from PyQt6.QtWidgets import QApplication, QMessageBox, QPushButton, QGridLayout, QHBoxLayout, QLabel, QMainWindow, QTextEdit, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QApplication, QLineEdit, QMessageBox, QPushButton, QGridLayout, QHBoxLayout, QLabel, QMainWindow, QTextEdit, QVBoxLayout, QWidget
 from PyQt6.QtGui import QFont, QPalette
 from PyQt6.QtCore import Qt
 
 import logging
 
+from phonology import is_valid_phoneme
 from phonology_const import PULMONIC_CONSONANTS, VOWELS
 from wordweaver_project import Language
 
@@ -64,6 +65,22 @@ class PhonologySelector(QMainWindow):
         self.selection.textChanged.connect(self.update_selection)
         selection_group_layout.addWidget(self.selection)
         self.content_layout.addWidget(selection_group, 1, 0, 1, 2)
+
+        # Add a box for typing in sounds that aren't on the chart, like clicks or affricates.
+        symbol_group = QWidget(self.content)
+        symbol_group_layout = QHBoxLayout(symbol_group)
+        symbol_group_layout.addWidget(QLabel("IPA symbol:", symbol_group))
+        self.symbol_input = QLineEdit(symbol_group)
+        self.symbol_input.setPlaceholderText("e.g. ǀ or t͡s")
+        self.symbol_input.returnPressed.connect(self.add_symbol)
+        symbol_group_layout.addWidget(self.symbol_input)
+        add_symbol_button = QPushButton("Add", symbol_group)
+        add_symbol_button.clicked.connect(self.add_symbol)
+        symbol_group_layout.addWidget(add_symbol_button)
+        remove_symbol_button = QPushButton("Remove", symbol_group)
+        remove_symbol_button.clicked.connect(self.remove_symbol)
+        symbol_group_layout.addWidget(remove_symbol_button)
+        self.content_layout.addWidget(symbol_group, 2, 0, 1, 2)
 
         # Add the vowel selection table
         vowel_group = QWidget(self.content)
@@ -202,6 +219,30 @@ class PhonologySelector(QMainWindow):
         elif not checked and phoneme in self.inventory:
             self.inventory.remove(phoneme)
         # Update the text box
+        self.selection.setText(', '.join(self.inventory))
+
+    def add_symbol(self):
+        symbol = self.symbol_input.text().strip()
+        if not symbol:
+            return
+        # Check the symbol here, so nothing broken gets into the list.
+        if not is_valid_phoneme(symbol):
+            self.logger.warning(f"Not an IPA consonant or vowel: {symbol!r}")
+            QMessageBox.warning(self, "Invalid Phoneme", f"{symbol} isn't an IPA consonant or vowel, so it wasn't added.")
+            return
+        if symbol not in self.inventory:
+            self.inventory.append(symbol)
+        self.symbol_input.clear()
+        # Setting the text also checks the matching chart button, if there is one.
+        self.selection.setText(', '.join(self.inventory))
+
+    def remove_symbol(self):
+        symbol = self.symbol_input.text().strip()
+        if symbol not in self.inventory:
+            QMessageBox.information(self, "Not in Inventory", f"{symbol} isn't in this Language's Phoneme Inventory.")
+            return
+        self.inventory.remove(symbol)
+        self.symbol_input.clear()
         self.selection.setText(', '.join(self.inventory))
 
     def update_selection(self):
